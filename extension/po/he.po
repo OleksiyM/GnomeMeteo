@@ -1,0 +1,517 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Weatherglass 5.6\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-27 09:06-0700\n"
+"Language: he\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: extension.js:54 prefs.js:590
+msgid "Weatherglass"
+msgstr "Weatherglass"
+
+#: extension.js:146
+msgid "My location"
+msgstr "המיקום שלי"
+
+#: extension.js:147
+msgid "Custom location"
+msgstr "מיקום מותאם"
+
+#: extension.js:191 menu.js:286
+msgid "Fetching weather…"
+msgstr "מוריד נתוני מזג אוויר…"
+
+#: menu.js:34
+msgid "Temperature"
+msgstr "טמפרטורה"
+
+#: menu.js:35
+msgid "Precipitation"
+msgstr "משקעים"
+
+#: menu.js:36
+msgid "Wind"
+msgstr "רוח"
+
+#: menu.js:321 menu.js:403 menu.js:407
+msgid "Weather"
+msgstr "מזג אוויר"
+
+#: menu.js:338
+msgid "Refresh now"
+msgstr "רענן עכשיו"
+
+#: menu.js:343
+msgid "Preferences"
+msgstr "העדפות"
+
+#: menu.js:359
+msgid "Show"
+msgstr "תצוגה"
+
+#: menu.js:359
+msgid "chart"
+msgstr "התרשים"
+
+#: menu.js:408
+msgid "Could not load the forecast"
+msgstr "לא ניתן לטעון את התחזית"
+
+#: menu.js:543
+msgid "Refresh forecast — updated"
+msgstr "רענון תחזית — עודכן"
+
+#: menu.js:604
+msgid "Now"
+msgstr "עכשיו"
+
+#: menu.js:713
+msgid "Today"
+msgstr "היום"
+
+#: prefs.js:87
+msgid "Location"
+msgstr "מיקום"
+
+#: prefs.js:92
+msgid "Automatic"
+msgstr "אוטומטי"
+
+#: prefs.js:93
+msgid "Coordinates are detected from your public IP address"
+msgstr "הקואורדינטות מזוהות מכתובת ה-IP הציבורית שלך"
+
+#: prefs.js:96
+msgid "Detect location automatically"
+msgstr "זהה מיקום אוטומטית"
+
+#: prefs.js:104
+msgid "Search a city"
+msgstr "חיפוש עיר"
+
+#: prefs.js:106
+msgid "City name — press Enter to search"
+msgstr "שם העיר — יש ללחוץ Enter לחיפוש"
+
+#: prefs.js:111
+msgid "Results"
+msgstr "תוצאות"
+
+#: prefs.js:147
+msgid "No matches"
+msgstr "לא נמצאו התאמות"
+
+#: prefs.js:173
+msgid "Manual"
+msgstr "ידני"
+
+#: prefs.js:174
+msgid "Saved when you press Enter in a field"
+msgstr "נשמר בלחיצת Enter בשדה"
+
+#: prefs.js:177
+msgid "Latitude"
+msgstr "קו רוחב"
+
+#: prefs.js:178
+msgid "Longitude"
+msgstr "קו אורך"
+
+#: prefs.js:179
+msgid "Display name"
+msgstr "שם לתצוגה"
+
+#: prefs.js:221
+msgid "Display"
+msgstr "תצוגה"
+
+#: prefs.js:225
+msgid "Units"
+msgstr "יחידות"
+
+#: prefs.js:227
+msgid "Measurement system"
+msgstr "שיטת מדידה"
+
+#: prefs.js:229
+msgid "Imperial (°F, mph)"
+msgstr "אימפריאלי (°F, מייל/שעה)"
+
+#: prefs.js:229
+msgid "Metric (°C, km/h)"
+msgstr "מטרי (°C, קמ״ש)"
+
+#: prefs.js:238
+msgid "Panel indicator"
+msgstr "מחוון הפאנל"
+
+#: prefs.js:239
+msgid "Show animated icon"
+msgstr "הצג סמון מונפש"
+
+#: prefs.js:240
+msgid "Show temperature"
+msgstr "הצג טמפרטורה"
+
+#: prefs.js:242
+msgid "Animate the icon"
+msgstr "הנפשת הסמון"
+
+#: prefs.js:243
+msgid "Turn off to save a little battery"
+msgstr "כבה כדי לחסוך קצת סוללה"
+
+#: prefs.js:253
+msgid "Menu background"
+msgstr "רקע התפריט"
+
+#: prefs.js:255
+msgid "Background style"
+msgstr "סגנון הרקע"
+
+#: prefs.js:256
+msgid "How the dropdown fills itself behind the forecast"
+msgstr "איך התפריט הנפתח מתמלא מאחורי התחזית"
+
+#: prefs.js:259
+msgid "Animated sky (translucent)"
+msgstr "שמיים מונפשים (שקופים למחצה)"
+
+#: prefs.js:260
+msgid "Solid (sky dimmed under a wash)"
+msgstr "מוצק (שמיים מוכהים תחת שכבת צבע)"
+
+#: prefs.js:261
+msgid "Theme background, accent charts"
+msgstr "רקע הערכת־תמה, גרפים בצבע הדגשה"
+
+#: prefs.js:270
+msgid "Text emboss"
+msgstr "בליטת טקסט"
+
+#: prefs.js:271
+msgid "Soft shadow under card text and icons over the sky"
+msgstr "צל רך מתחת לטקסט הכרטיס ולסמלים מעל השמיים"
+
+#: prefs.js:277
+msgid "Weather conditions"
+msgstr "תנאי מזג אוויר"
+
+#: prefs.js:278
+msgid "How hourly conditions ride the chart"
+msgstr "איך תנאים שעתיים מוצגים על הגרף"
+
+#: prefs.js:280
+msgid "Grouped pills"
+msgstr "תגיות מקובצות"
+
+#: prefs.js:280
+msgid "Hourly icons"
+msgstr "סמלים שעתיים"
+
+#: prefs.js:280
+msgid "Off"
+msgstr "כבה"
+
+#: prefs.js:290
+msgid "Condition band position"
+msgstr "מיקום פס התנאים"
+
+#: prefs.js:291
+msgid "Along the chart top, or above the hour labels"
+msgstr "לאורך חלקו העליון של הגרף, או מעל תוויות השעות"
+
+#: prefs.js:293
+msgid "Above hours"
+msgstr "מעל השעות"
+
+#: prefs.js:293
+msgid "Chart top"
+msgstr "ראש הגרף"
+
+#: prefs.js:310
+msgid "Data"
+msgstr "נתונים"
+
+#: prefs.js:314
+msgid "Data source"
+msgstr "מקור הנתונים"
+
+#: prefs.js:316
+msgid "Weather provider"
+msgstr "ספק מזג האוויר"
+
+#: prefs.js:317
+msgid "All keyless · MET Norway data licensed CC BY-SA 4.0"
+msgstr "כולם ללא מפתחות · נתוני MET Norway ברישיון CC BY-SA 4.0"
+
+#: prefs.js:320
+msgid "Open-Meteo (default)"
+msgstr "Open-Meteo (ברירת מחדל)"
+
+#: prefs.js:321
+msgid "MET Norway (api.met.no)"
+msgstr "MET Norway (api.met.no)"
+
+#: prefs.js:322
+msgid "NOAA NWS (US locations only)"
+msgstr "NOAA NWS (מיקומים בארה״ב בלבד)"
+
+#: prefs.js:338
+msgid "Forecast model"
+msgstr "מודל התחזית"
+
+#: prefs.js:339
+msgid ""
+"Open-Meteo only · out to a week models disagree — if the weekend looks off, "
+"try another"
+msgstr ""
+"רק ב-Open-Meteo · עד שבוע קדימה המודלים חלוקים — אם סוף השבוע נראה לא סביר, "
+"נסה מודל אחר"
+
+#: prefs.js:342
+msgid "Best match (Open-Meteo regional pick; US → GFS)"
+msgstr "התאמה מיטבית (בחירה אזורית של Open-Meteo; ארה״ב ← GFS)"
+
+#: prefs.js:343
+msgid "ECMWF IFS (recommended)"
+msgstr "ECMWF IFS (מומלץ)"
+
+#: prefs.js:344
+msgid "DWD ICON (shorter range)"
+msgstr "DWD ICON (טווח קצר יותר)"
+
+#: prefs.js:345
+msgid "NOAA GFS"
+msgstr "NOAA GFS"
+
+#: prefs.js:361
+msgid "Updates"
+msgstr "עדכונים"
+
+#: prefs.js:363
+msgid "Refresh interval (minutes)"
+msgstr "מרווח רענון (דקות)"
+
+#: prefs.js:372
+msgid "Wind animation threshold (km/h)"
+msgstr "סף הנפשת הרוח (קמ״ש)"
+
+#: prefs.js:373
+msgid "Breezier days swap the icon to the wind animation"
+msgstr "בימים מוטרפים מתחלף הסמון לאנימציית הרוח"
+
+#: prefs.js:391
+msgid "Preview"
+msgstr "תצוגה מקדימה"
+
+#: prefs.js:438
+msgid "Preview scene"
+msgstr "סצנת התצוגה המקדימה"
+
+#: prefs.js:439
+msgid "Loops right here for ~12 s — your real panel stays put"
+msgstr "מחזור כאן לכ־12 שניות — הלוח האמיתי שלך לא זז"
+
+#: prefs.js:471
+msgid "Scene"
+msgstr "סצנה"
+
+#: prefs.js:546
+msgid "Panel preview"
+msgstr "תצוגה מקדימה של הלוח"
+
+#: prefs.js:547
+msgid ""
+"How the panel button looks for this scene — mock temperature, real icon "
+"animation"
+msgstr "איך כפתור הלוח נראה בסצנה הזו — טמפרטורה מדומה, הנפשת סמון אמיתית"
+
+#: prefs.js:553
+msgid "Menu backdrop preview"
+msgstr "תצוגה מקדימה של רקע התפריט"
+
+#: prefs.js:554
+msgid ""
+"Your menu's current sky, live — pick a condition above to animate it here"
+msgstr ""
+"השמיים הנוכחיים של התפריט שלך, בזמן אמת — בחר תנאי למעלה כדי להנפיש אותו כאן"
+
+#: prefs.js:585
+msgid "About"
+msgstr "אודות"
+
+#: prefs.js:592
+msgid "Version"
+msgstr "גרסה"
+
+#: prefs.js:596
+msgid "Free and open source"
+msgstr "חינם בקוד פתוח"
+
+#: prefs.js:597
+msgid "No ads, no accounts, no data collection — the sky should just work"
+msgstr "בלי פרסומות, בלי חשבונות, בלי איסוף נתונים — השמיים פשוט צריכים לעבוד"
+
+#: prefs.js:602
+msgid "Support the development"
+msgstr "תמכו בפיתוח"
+
+#: prefs.js:603
+msgid ""
+"Weatherglass is free forever. If it makes your desktop nicer, a coffee keeps "
+"the pixels falling."
+msgstr ""
+"Weatherglass יישאר חינם לנצח. אם הוא הופך את שולחן העבודה שלך לנעים יותר, "
+"קפה אחד ממשיך להמטיר פיקסלים."
+
+#: prefs.js:606
+msgid "Buy me a coffee"
+msgstr "קנו לי קפה"
+
+#: weather.js:18
+msgid "Clear sky"
+msgstr "שמיים בהירים"
+
+#: weather.js:19
+msgid "Mainly clear"
+msgstr "בעיקר בהיר"
+
+#: weather.js:20
+msgid "Partly cloudy"
+msgstr "חלקית מעונן"
+
+#: weather.js:21
+msgid "Overcast"
+msgstr "מעונן לחלוטין"
+
+#: weather.js:22 weather.js:72
+msgid "Fog"
+msgstr "ערפל"
+
+#: weather.js:23
+msgid "Rime fog"
+msgstr "ערפל קיפאון"
+
+#: weather.js:24
+msgid "Light drizzle"
+msgstr "טפטוף קל"
+
+#: weather.js:25
+msgid "Drizzle"
+msgstr "טפטוף"
+
+#: weather.js:26
+msgid "Dense drizzle"
+msgstr "טפטוף סמיך"
+
+#: weather.js:27 weather.js:28
+msgid "Freezing drizzle"
+msgstr "טפטוף קופא"
+
+#: weather.js:29
+msgid "Light rain"
+msgstr "גשם קל"
+
+#: weather.js:30
+msgid "Rain"
+msgstr "גשם"
+
+#: weather.js:31
+msgid "Heavy rain"
+msgstr "גשם חזק"
+
+#: weather.js:32 weather.js:33
+msgid "Freezing rain"
+msgstr "גשם קופא"
+
+#: weather.js:34
+msgid "Light snow"
+msgstr "שלג קל"
+
+#: weather.js:35
+msgid "Snow"
+msgstr "שלג"
+
+#: weather.js:36
+msgid "Heavy snow"
+msgstr "שלג כבד"
+
+#: weather.js:37
+msgid "Snow grains"
+msgstr "גרגירי שלג"
+
+#: weather.js:38
+msgid "Light showers"
+msgstr "מטחים קלים"
+
+#: weather.js:39
+msgid "Showers"
+msgstr "מטחים"
+
+#: weather.js:40
+msgid "Violent showers"
+msgstr "מטחים עזים"
+
+#: weather.js:41
+msgid "Snow showers"
+msgstr "מטרי שלג"
+
+#: weather.js:42
+msgid "Heavy snow showers"
+msgstr "מטרי שלג כבדים"
+
+#: weather.js:43 weather.js:68
+msgid "Thunderstorm"
+msgstr "סופת רעמים"
+
+#: weather.js:44 weather.js:45 weather.js:66
+msgid "Thunderstorm, hail"
+msgstr "סופת רעמים וברד"
+
+#: weather.js:49
+msgid "Unknown"
+msgstr "לא ידוע"
+
+#: weather.js:100
+msgid "Mon"
+msgstr "ב׳"
+
+#: weather.js:100
+msgid "Sun"
+msgstr "א׳"
+
+#: weather.js:100
+msgid "Tue"
+msgstr "ג׳"
+
+#: weather.js:100
+msgid "Wed"
+msgstr "ד׳"
+
+#: weather.js:101
+msgid "Fri"
+msgstr "ו׳"
+
+#: weather.js:101
+msgid "Sat"
+msgstr "ש׳"
+
+#: weather.js:101
+msgid "Thu"
+msgstr "ה׳"
+
+#: weather.js:597
+msgid "NOAA NWS covers US locations only — pick another provider"
+msgstr "NOAA NWS מכסה מיקומים בארה״ב בלבד — בחרו ספק אחר"
+
+#: weather.js:602
+msgid "NOAA NWS returned no forecast for this location"
+msgstr "NOAA NWS לא החזיר תחזית למיקום זה"
+
+#: weather.js:747
+msgid "IP geolocation failed"
+msgstr "איתור מיקום לפי IP נכשל"
