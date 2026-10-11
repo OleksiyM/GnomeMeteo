@@ -57,15 +57,25 @@ const expectFamily = (scene, night, wcag) => {
 };
 
 const manifest = [];
+// moon-bearing scenes earn a third row: TRUE NEW MOON (phase 0.005,
+// illum ~0.2% -- the user's 2026-10-11 card). Below 1.2% illum there
+// is no lit slice at all; the ghost disc is the whole glyph, and the
+// real report was that it vanished on the bright foot. On grounds the
+// ink referee hands it, the ghost's slate twin must hold a dark core;
+// below that bar the pale earthshine whisper is the designed cue and
+// grades 'present'.
+const NEW_MOON_PHASE = 0.005;
+const newMoonScenes = ['moon', 'partly'];
 for (const scene of SCENES) {
     const cols = GROUNDS.length;
-    const rows = 2; // day, night
+    const rows = newMoonScenes.includes(scene) ? 3 : 2; // day, night, new moon
     const w = cols * (CELL + PAD) + PAD, h = rows * (CELL + PAD) + PAD;
     const surf = new Cairo.ImageSurface(Cairo.Format.ARGB32, w, h);
     const cr = new Cairo.Context(surf);
     const particles = createParticles();
     for (let row = 0; row < rows; row++) {
-        const night = row === 1;
+        const newMoon = row === 2;
+        const night = row >= 1;
         GROUNDS.forEach((g, col) => {
             if (!isRealistic(scene, night))
                 return;
@@ -77,7 +87,7 @@ for (const scene of SCENES) {
             cr.translate(x + (CELL - GRID) / 2, y + (CELL - GRID) / 2);
             paintWeather(cr, {
                 scene, time: 1.25, night, dark: true,
-                intensity: 4, windKmh: 14, phase: 0.25, seed: 11,
+                intensity: 4, windKmh: 14, phase: newMoon ? NEW_MOON_PHASE : 0.25, seed: 11,
                 groundLum: g.wcag, pale: expectPale(night, g.wcag),
                 staticPose: true, particles,
             });
@@ -85,7 +95,9 @@ for (const scene of SCENES) {
             manifest.push({
                 png: `matrix-${scene}.png`, scene, night,
                 ground: g.name, wcag: g.wcag,
-                expected: expectFamily(scene, night, g.wcag),
+                expected: newMoon
+                    ? (g.wcag >= NIGHT_INK_MIN ? 'ink' : 'present')
+                    : expectFamily(scene, night, g.wcag),
                 x, y, size: CELL,
             });
         });

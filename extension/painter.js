@@ -413,6 +413,12 @@ function sunBody(cr, centerX, centerY, radius, time, rayLength) {
  * the ink referee accepts. */
 const MOON_PORCELAIN = [0.84, 0.86, 0.90];
 const MOON_INK = [0.38, 0.44, 0.55];
+/* new moon over a bright ground: the lit slice is gone entirely
+ * (moon.js early-returns below 1.2% illum), so the earthshine ghost is
+ * the whole glyph -- and the pale 0.16-alpha ghost tuned for night sky
+ * evaporates on milk. Hand the ghost the ink twin instead: a subtle
+ * slate disc that reads as exactly what it is, a dark moon. */
+const MOON_GHOST_INK = [0.38, 0.44, 0.55, 0.62];
 
 function moonBody(cr, centerX, centerY, radius, time, particles, phase) {
     const lunarPhase = Number.isFinite(phase) ? phase : moonPhase().phase;
@@ -428,7 +434,11 @@ function moonBody(cr, centerX, centerY, radius, time, particles, phase) {
     paintMoon(cr, centerX, centerY, radius, lunarPhase, 'icon',
         {
             outline: INK_MOON_EDGE(),
-            face: brightHere ? (paleGround() ? MOON_INK : MOON_PORCELAIN) : null
+            face: brightHere ? (paleGround() ? MOON_INK : MOON_PORCELAIN) : null,
+            // both bright tiers need the ink ghost: at new moon the
+            // pale ghost would leave nothing visible on milk, and the
+            // unlit remainder of a crescent reads deeper than the face
+            ghost: brightHere ? MOON_GHOST_INK : null
         });
 
     const starColor = INK_STAR();
