@@ -156,13 +156,26 @@ let _pale = false;
  * SAME pixels at [0.23,0.25), storm day at [0.248] flipped one gate
  * per scene drift. What never lies is time of day: every day icon
  * measured a 0.40-0.90 mid-bright ground (even the storm card), so
- * day earns ink; night keeps the pale glow. The unsampled surfaces
- * (panel, accent style, preview) have no night flag in play and
- * follow the caller's light/dark chain as always. `pale: true` is the
- * caller's hand on the palette: the day-tile selection scrim is a
- * deliberate dark slab no sky model sees, so the selected tile claims
- * the night glow for its glyph (same for solid-style dark cards). */
-const groundLight = () => _pale ? false : _groundLum >= 0 ? !_night : _light;
+ * day earns ink; night keeps the pale glow. One exception measured from
+ * the shipped cards: a bright-enough ground cannot hold off the glow
+ * family no matter what the clock says -- the milky foot of a clear-sky
+ * card (WCAG ~0.66) put the pale strip moon at ~1.0 contrast (invisible
+ * to its own user). Pixel grading then proved the night bar sits HIGHER
+ * than the day one: mid-blue card gradients at WCAG 0.30-0.45 defeat
+ * BOTH families' cores, so night keeps its glow veto until
+ * NIGHT_GLOW_MAX and only unambiguous milk earns the ink twins. The
+ * forensics mid-tones ([0.23,0.30)) and the unsampled surfaces (panel,
+ * accent style, preview) keep the old chain: night's veto and the
+ * caller's light/dark flag respectively.
+ * `pale: true` is the caller's hand on the palette: the day-tile
+ * selection scrim is a deliberate dark slab no sky model sees, so the
+ * selected tile claims the night glow for its glyph (same for solid-
+ * style dark cards). */
+export const NIGHT_GLOW_MAX = 0.45;
+const groundLight = () =>
+    _pale ? false
+        : _groundLum >= (_night ? NIGHT_GLOW_MAX : GLYPH_INK_BAR) ? true
+        : _groundLum >= 0 ? !_night : _light;
 /* same bar as the day-tile glyph legibility rule, mirrored: WCAG-space
  * grounds below it push the glyph to the pale glow (menu's setPale),
  * grounds at or above it can afford the deepest ink. lumOf is
@@ -187,9 +200,12 @@ const INK_STREAK = () => groundLight()
     ? (paleGround() ? [0.24, 0.50, 0.85] : [0.24, 0.50, 0.78])
     : [0.50, 0.83, 1.00];
 const INK_FOG = () => groundLight() ? [0.36, 0.44, 0.54] : [0.72, 0.76, 0.80];
-const INK_STAR = () => _light ? [0.55, 0.62, 0.74] : [0.95, 0.97, 1.00];
+const INK_STAR = () => groundLight() ? [0.55, 0.62, 0.74] : [0.95, 0.97, 1.00];
 const INK_SPIN = () => _light ? [0.28, 0.33, 0.40] : [0.85, 0.88, 0.92];
-const INK_MOON_EDGE = () => _light ? [0.24, 0.30, 0.40, 0.85] : null;
+/* the porcelain face is the only moon tier that needs a drawn edge;
+ * the bright-ground ink tier separates by depth, the glow tier by halo */
+const INK_MOON_EDGE = () =>
+    groundLight() && !paleGround() ? [0.24, 0.30, 0.40, 0.85] : null;
 
 /** Flowing dash "wind streak" across the full width of the scene. */
 function streak(cr, y, lineWidth, alpha, dashOn, dashOff, offset, color = null) {
@@ -388,9 +404,20 @@ function sunBody(cr, centerX, centerY, radius, time, rayLength) {
     cr.fill();
 }
 
+/* the moon's three grounds: over dark sky it glows (halo, bare disc);
+ * over an unsampled light surface it wears porcelain + a drawn edge;
+ * over a BRIGHT sampled ground the porcelain is the ground -- an
+ * [0.84,0.86,0.90] face on the card's [0.80,0.85,0.90] milky foot is
+ * 1.0 contrast, and the night strip moons vanished there. Same
+ * silhouette, slate twin deep enough for a dark core on any ground
+ * the ink referee accepts. */
+const MOON_PORCELAIN = [0.84, 0.86, 0.90];
+const MOON_INK = [0.38, 0.44, 0.55];
+
 function moonBody(cr, centerX, centerY, radius, time, particles, phase) {
     const lunarPhase = Number.isFinite(phase) ? phase : moonPhase().phase;
-    if (!_light) {
+    const brightHere = groundLight();
+    if (!brightHere) {
         const glow = new Cairo.RadialGradient(centerX, centerY, radius * 0.5, centerX, centerY, radius * 2.2);
         glow.addColorStopRGBA(0, 0.86, 0.87, 0.97, 0.30 * (0.25 + 0.75 * illumOf(lunarPhase)));
         glow.addColorStopRGBA(1, 0.86, 0.87, 0.97, 0);
@@ -401,7 +428,7 @@ function moonBody(cr, centerX, centerY, radius, time, particles, phase) {
     paintMoon(cr, centerX, centerY, radius, lunarPhase, 'icon',
         {
             outline: INK_MOON_EDGE(),
-            face: _light ? [0.84, 0.86, 0.90] : null
+            face: brightHere ? (paleGround() ? MOON_INK : MOON_PORCELAIN) : null
         });
 
     const starColor = INK_STAR();
