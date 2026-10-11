@@ -188,12 +188,15 @@ def grade_grid(img, cell):
     sampled_rgb = (tuple(int(round(c * 255)) for c in sampled)
                    if sampled else ground_rgb)
     # re-derive the strip referee from WCAG formulas (not from chart.js):
-    # DAY glyphs follow the ink/glow contrast verdict -- ink text wins
-    # where its contrast beats the glow family's by the 1.35 hysteresis.
-    # NIGHT glyphs always wear the painter's night palette (glow family):
-    # groundLight() bows to the night flag, so on grounds the glow cannot
-    # hold off (>= 0.30) they are design-accepted 'present', same rule as
-    # the matrix.
+    # the ink/glow contrast verdict -- ink text wins where its contrast
+    # beats the glow family's by the 1.35 hysteresis. NIGHT used to wear
+    # the painter's night palette everywhere; since the bright-foot moon
+    # report, a sampled ground at or above the ink bar (0.30) outranks
+    # the night flag -- those glyphs wear their ink twins and are graded
+    # for a dark core. Grounds below the bar keep night's glow; the
+    # narrow band where pickInk already says ink but the bar has not
+    # been crossed (~[0.27,0.30) at night) glows by design, so it is
+    # graded 'present' rather than promised either family.
     lum = wcag_lum(sampled_rgb)
     if spread > 0.07:
         # disc-glow / mixed ground: separation depends on WHERE in the box
@@ -202,12 +205,16 @@ def grade_grid(img, cell):
         x, y, s = (int(round(cell[k])) for k in ('x', 'y', 'size'))
         return grade_against_ground(
             img.crop((x, y, x + s, y + s)).convert('RGB'), cell, ground_rgb)
-    if cell['night']:
-        # card-scale glow strokes are thinner than the matrix's 44px tiles,
-        # so the design-acceptance floor erodes slightly at this scale
-        exp = 'present' if lum >= 0.25 else 'pale'
+    ink = contrast(INK_DARK, sampled_rgb) >= contrast((255, 255, 255), sampled_rgb) * 1.35
+    if cell['night'] and lum >= 0.45:
+        # bright foot (the milky card bottom that hid the clear-night
+        # moon): ink twins, graded for a dark core, night flag moot
+        exp = 'ink'
+    elif cell['night'] and ink:
+        # mid-gradient band [0.30, 0.45): night's glow veto holds by
+        # design (neither family's core survives there), graded present
+        exp = 'present'
     else:
-        ink = contrast(INK_DARK, sampled_rgb) >= contrast((255, 255, 255), sampled_rgb) * 1.35
         exp = 'ink' if ink else 'pale'
     cell = dict(cell, expected=exp)
     x, y, s = (int(round(cell[k])) for k in ('x', 'y', 'size'))

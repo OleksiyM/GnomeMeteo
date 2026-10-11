@@ -30,20 +30,31 @@ const SCENES = ['sun', 'moon', 'partly', 'cloud', 'fog', 'rain',
     'snow', 'sleet', 'hail', 'storm', 'wind'];
 const CELL = 44, PAD = 4;
 
-// The referee: night glyphs always glow; daytime glyphs follow the bar
-// (this mirrors menu.tileGlyphPale + painter.paleGround, restated here
-// on purpose: the expectation must be derivable without running the
-// production gate, so a broken gate is caught rather than imprinted).
-const expectPale = (night, wcag) => night || wcag < GLYPH_BAR;
+// The referee: a ground below the bar earns the glow family and one
+// high enough earns deep ink -- NIGHT INCLUDED, since the clear-night
+// strip moon at 1.0 contrast on a bright card foot proved "night always
+// glows" false. The night bar sits HIGHER than the day one (0.45 vs
+// the shared GLYPH_BAR): pixel grading showed mid-blue card gradients
+// at 0.30-0.45 defeat both families' cores, so night glows by design
+// there and those cells grade 'present'. (This mirrors
+// menu.tileGlyphPale + painter.groundLight/NIGHT_GLOW_MAX, restated
+// here on purpose: the expectation must be derivable without running
+// the production gate, so a broken gate is caught rather than imprinted.)
+const NIGHT_INK_MIN = 0.45;
+const expectPale = (night, wcag) => wcag < (night ? NIGHT_INK_MIN : GLYPH_BAR);
 
 // honest scenario pruning: cards never paint the moon glyph in a day
-// slot (sceneFor only yields moon at night), and night glyphs on
-// grounds brighter than the glow family itself (strip moons on a
-// bright day band) are a design-accepted low-contrast case -- graded
-// as 'present' (drawn, sane) rather than promised separation.
+// slot (sceneFor only yields moon at night). Night glyphs on bright
+// grounds are no longer a design-accepted low-contrast case -- they
+// wear the ink twins and are graded for real separation.
 const isRealistic = (scene, night) => !(scene === 'moon' && !night);
-const expectFamily = (scene, night, wcag) =>
-    (night && wcag >= 0.30) ? 'present' : (expectPale(night, wcag) ? 'pale' : 'ink');
+const expectFamily = (scene, night, wcag) => {
+    if (!expectPale(night, wcag))
+        return 'ink';
+    if (night && wcag >= GLYPH_BAR)
+        return 'present';
+    return 'pale';
+};
 
 const manifest = [];
 for (const scene of SCENES) {
