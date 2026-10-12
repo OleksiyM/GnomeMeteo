@@ -417,8 +417,14 @@ const MOON_INK = [0.38, 0.44, 0.55];
  * (moon.js early-returns below 1.2% illum), so the earthshine ghost is
  * the whole glyph -- and the pale 0.16-alpha ghost tuned for night sky
  * evaporates on milk. Hand the ghost the ink twin instead: a subtle
- * slate disc that reads as exactly what it is, a dark moon. */
-const MOON_GHOST_INK = [0.38, 0.44, 0.55, 0.62];
+ * slate disc that reads as exactly what it is, a dark moon.
+ * The ghost follows the DAY bar (0.30), not the night bar: it is a
+ * FULL DISC, so it carries mass a thin crescent lacks -- alpha-blend
+ * math puts 0.85-ink above the 0.10 separation floor across the whole
+ * 0.30-0.45 mid band, where the 0.16 pale whisper never exceeds 0.03.
+ * At 0.62 the disc was still 'hard to see' at strip scale; 0.85 is a
+ * dark moon, not a smudge. */
+const MOON_GHOST_INK = [0.38, 0.44, 0.55, 0.85];
 
 function moonBody(cr, centerX, centerY, radius, time, particles, phase) {
     const lunarPhase = Number.isFinite(phase) ? phase : moonPhase().phase;
@@ -435,10 +441,12 @@ function moonBody(cr, centerX, centerY, radius, time, particles, phase) {
         {
             outline: INK_MOON_EDGE(),
             face: brightHere ? (paleGround() ? MOON_INK : MOON_PORCELAIN) : null,
-            // both bright tiers need the ink ghost: at new moon the
-            // pale ghost would leave nothing visible on milk, and the
-            // unlit remainder of a crescent reads deeper than the face
-            ghost: brightHere ? MOON_GHOST_INK : null
+            // the ghost's ink twin follows the DAY bar: on any ground
+            // the ink verdict claims (and on unsampled light cards),
+            // the unlit disc reads deeper than the face; deliberate
+            // dark slabs (pale:true) keep the pale whisper
+            ghost: !_pale && (_groundLum >= GLYPH_INK_BAR ||
+                (_groundLum < 0 && _light)) ? MOON_GHOST_INK : null
         });
 
     const starColor = INK_STAR();
