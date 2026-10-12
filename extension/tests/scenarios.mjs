@@ -60,10 +60,12 @@ const manifest = [];
 // moon-bearing scenes earn a third row: TRUE NEW MOON (phase 0.005,
 // illum ~0.2% -- the user's 2026-10-11 card). Below 1.2% illum there
 // is no lit slice at all; the ghost disc is the whole glyph, and the
-// real report was that it vanished on the bright foot. On grounds the
-// ink referee hands it, the ghost's slate twin must hold a dark core;
-// below that bar the pale earthshine whisper is the designed cue and
-// grades 'present'.
+// real report was that it vanished on the bright foot. The ghost is a
+// FULL DISC, so it carries ink from the DAY bar (0.30), not the night
+// bar: alpha-blend math shows a 0.85-ghost holds >0.10 separation all
+// the way down, while the pale whisper (0.16) never exceeds 0.03 in
+// the mid band. Below the day bar the pale earthshine is genuinely
+// the stronger family and grades 'present'.
 const NEW_MOON_PHASE = 0.005;
 const newMoonScenes = ['moon', 'partly'];
 for (const scene of SCENES) {
@@ -88,15 +90,21 @@ for (const scene of SCENES) {
             paintWeather(cr, {
                 scene, time: 1.25, night, dark: true,
                 intensity: 4, windKmh: 14, phase: newMoon ? NEW_MOON_PHASE : 0.25, seed: 11,
-                groundLum: g.wcag, pale: expectPale(night, g.wcag),
+                groundLum: g.wcag,
+                // the CALLER's verdict, not the expected family: real
+                // strip/tile callers decide pale from the ink contrast
+                // pick alone (no night input), and the referee's split
+                // bar lives below that decision
+                pale: g.wcag < GLYPH_BAR,
                 staticPose: true, particles,
             });
             cr.restore();
             manifest.push({
                 png: `matrix-${scene}.png`, scene, night,
                 ground: g.name, wcag: g.wcag,
+                newMoon: newMoon || undefined,
                 expected: newMoon
-                    ? (g.wcag >= NIGHT_INK_MIN ? 'ink' : 'present')
+                    ? (g.wcag >= GLYPH_BAR ? 'ink' : 'present')
                     : expectFamily(scene, night, g.wcag),
                 x, y, size: CELL,
             });

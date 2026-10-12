@@ -86,8 +86,13 @@ def grade_against_ground(region, cell, ground_rgb):
     # separation magnitude only.
     # 'partly' is sun-dominated too: a big gold disc + a small deep cloud
     # shadow, so its ink evidence is the shadow's few px -- grade by
-    # magnitude, like the sun itself
-    gold_disc = cell.get('scene') in ('sun', 'clear', 'partly', 'moon')
+    # magnitude, like the sun itself.
+    # TRUE NEW MOON has no gold disc at all (the ghost is the whole glyph),
+    # so it never earns the warm-hue exemption -- signed family + dark-core
+    # evidence apply, or 'ink' cells pass on the blue chroma of a wrongly
+    # pale halo.
+    gold_disc = (cell.get('scene') in ('sun', 'clear', 'partly', 'moon')
+                 and not cell.get('newMoon'))
     sign = -1 if want == 'ink' else 1
 
     def deviation(p):
