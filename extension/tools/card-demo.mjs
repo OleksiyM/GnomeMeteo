@@ -750,6 +750,18 @@ function renderCoverage() {
         const markerX = 24 + 0.02 * (W - 48);
         for (const cell of info.cells)
             manifest.push({png: info.name, markerX, ...cell});
+        // mirror of the probe registry: the new-moon DAY card (ink ghost
+        // on the bright foot, the 2026-10-11 report case)
+        if (k === 0) {
+            const dayCells = [];
+            const dayInfo = renderCard({city: berlin.city, lat: berlin.lat,
+                lon: berlin.lon, ms: best.ms - 8 * 3600000, tzMin: berlin.tzMin,
+                condition: 'clear', units: 'metric',
+                slug: 'cov-moon-new-day',
+            }, outDir, dayCells);
+            for (const cell of dayInfo.cells)
+                manifest.push({png: dayInfo.name, markerX, ...cell});
+        }
     }
     if (!manifest.length)
         throw new Error('coverage produced zero graded glyphs');
