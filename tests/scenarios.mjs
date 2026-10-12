@@ -30,31 +30,54 @@ const SCENES = ['sun', 'moon', 'partly', 'cloud', 'fog', 'rain',
     'snow', 'sleet', 'hail', 'storm', 'wind'];
 const CELL = 44, PAD = 4;
 
-// The referee: night glyphs always glow; daytime glyphs follow the bar
-// (this mirrors menu.tileGlyphPale + painter.paleGround, restated here
-// on purpose: the expectation must be derivable without running the
-// production gate, so a broken gate is caught rather than imprinted).
-const expectPale = (night, wcag) => night || wcag < GLYPH_BAR;
+// The referee: a ground below the bar earns the glow family and one
+// high enough earns deep ink -- NIGHT INCLUDED, since the clear-night
+// strip moon at 1.0 contrast on a bright card foot proved "night always
+// glows" false. The night bar sits HIGHER than the day one (0.45 vs
+// the shared GLYPH_BAR): pixel grading showed mid-blue card gradients
+// at 0.30-0.45 defeat both families' cores, so night glows by design
+// there and those cells grade 'present'. (This mirrors
+// menu.tileGlyphPale + painter.groundLight/NIGHT_GLOW_MAX, restated
+// here on purpose: the expectation must be derivable without running
+// the production gate, so a broken gate is caught rather than imprinted.)
+const NIGHT_INK_MIN = 0.45;
+const expectPale = (night, wcag) => wcag < (night ? NIGHT_INK_MIN : GLYPH_BAR);
 
 // honest scenario pruning: cards never paint the moon glyph in a day
-// slot (sceneFor only yields moon at night), and night glyphs on
-// grounds brighter than the glow family itself (strip moons on a
-// bright day band) are a design-accepted low-contrast case -- graded
-// as 'present' (drawn, sane) rather than promised separation.
+// slot (sceneFor only yields moon at night). Night glyphs on bright
+// grounds are no longer a design-accepted low-contrast case -- they
+// wear the ink twins and are graded for real separation.
 const isRealistic = (scene, night) => !(scene === 'moon' && !night);
-const expectFamily = (scene, night, wcag) =>
-    (night && wcag >= 0.30) ? 'present' : (expectPale(night, wcag) ? 'pale' : 'ink');
+const expectFamily = (scene, night, wcag) => {
+    if (!expectPale(night, wcag))
+        return 'ink';
+    if (night && wcag >= GLYPH_BAR)
+        return 'present';
+    return 'pale';
+};
 
 const manifest = [];
+// moon-bearing scenes earn a third row: TRUE NEW MOON (phase 0.005,
+// illum ~0.2% -- the user's 2026-10-11 card). Below 1.2% illum there
+// is no lit slice at all; the ghost disc is the whole glyph, and the
+// real report was that it vanished on the bright foot. The ghost is a
+// FULL DISC, so it carries ink from the DAY bar (0.30), not the night
+// bar: alpha-blend math shows a 0.85-ghost holds >0.10 separation all
+// the way down, while the pale whisper (0.16) never exceeds 0.03 in
+// the mid band. Below the day bar the pale earthshine is genuinely
+// the stronger family and grades 'present'.
+const NEW_MOON_PHASE = 0.005;
+const newMoonScenes = ['moon', 'partly'];
 for (const scene of SCENES) {
     const cols = GROUNDS.length;
-    const rows = 2; // day, night
+    const rows = newMoonScenes.includes(scene) ? 3 : 2; // day, night, new moon
     const w = cols * (CELL + PAD) + PAD, h = rows * (CELL + PAD) + PAD;
     const surf = new Cairo.ImageSurface(Cairo.Format.ARGB32, w, h);
     const cr = new Cairo.Context(surf);
     const particles = createParticles();
     for (let row = 0; row < rows; row++) {
-        const night = row === 1;
+        const newMoon = row === 2;
+        const night = row >= 1;
         GROUNDS.forEach((g, col) => {
             if (!isRealistic(scene, night))
                 return;
@@ -66,15 +89,23 @@ for (const scene of SCENES) {
             cr.translate(x + (CELL - GRID) / 2, y + (CELL - GRID) / 2);
             paintWeather(cr, {
                 scene, time: 1.25, night, dark: true,
-                intensity: 4, windKmh: 14, phase: 0.25, seed: 11,
-                groundLum: g.wcag, pale: expectPale(night, g.wcag),
+                intensity: 4, windKmh: 14, phase: newMoon ? NEW_MOON_PHASE : 0.25, seed: 11,
+                groundLum: g.wcag,
+                // the CALLER's verdict, not the expected family: real
+                // strip/tile callers decide pale from the ink contrast
+                // pick alone (no night input), and the referee's split
+                // bar lives below that decision
+                pale: g.wcag < GLYPH_BAR,
                 staticPose: true, particles,
             });
             cr.restore();
             manifest.push({
                 png: `matrix-${scene}.png`, scene, night,
                 ground: g.name, wcag: g.wcag,
-                expected: expectFamily(scene, night, g.wcag),
+                newMoon: newMoon || undefined,
+                expected: newMoon
+                    ? (g.wcag >= GLYPH_BAR ? 'ink' : 'present')
+                    : expectFamily(scene, night, g.wcag),
                 x, y, size: CELL,
             });
         });

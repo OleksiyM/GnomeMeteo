@@ -112,12 +112,20 @@ export function paintMoon(cr, centerX, centerY, radius, phase, style = 'sky', op
     cr.save();
     cr.translate(centerX, centerY);
 
-    // Dark-side earthshine: sky keeps a whisper of the whole disc so a thin
-    // moon reads against the sky; the icon keeps a stronger ghost so the
-    // panel icon never vanishes at new moon.
+    // Dark-side earthshine: sky keeps a whisper of the whole disc so a
+    // thin moon reads against the sky; the icon keeps a stronger ghost
+    // so the panel icon never vanishes at new moon. opts.ghost lets the
+    // painter hand an ink twin: at new moon there is NO lit slice (the
+    // early return below), so on a bright ground the pale ghost alone
+    // would leave the glyph invisible -- the ghost IS the glyph there.
     if (illum < 0.99) {
-        const earthshineAlpha = style === 'icon' ? 0.16 : 0.03 + 0.10 * (1 - illum);
-        cr.setSourceRGBA(0.72, 0.74, 0.86, earthshineAlpha);
+        const ghost = opts.ghost;
+        if (ghost)
+            cr.setSourceRGBA(ghost[0], ghost[1], ghost[2], ghost[3]);
+        else {
+            const earthshineAlpha = style === 'icon' ? 0.16 : 0.03 + 0.10 * (1 - illum);
+            cr.setSourceRGBA(0.72, 0.74, 0.86, earthshineAlpha);
+        }
         cr.arc(0, 0, radius, 0, TWO_PI);
         cr.fill();
     }

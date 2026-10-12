@@ -17,7 +17,7 @@
 #   4c. golden lock, tier 2 (the ONLY golden lock): every golden-named
 #       fixture rendered as REAL St widgets inside a disposable headless
 #       gnome-shell, byte-diffed against BLESSED RENDERED TRUTH
-#       (tools/golden/shell/, one boot for all 47). Same engine, no
+#       (tools/golden/shell/, one boot for all 48). Same engine, no
 #       cross-rasterizer floor, no boot noise: the lock is byte-exact.
 #       bless = deliberate ceremony (tools/shell-golden.sh card bless).
 #       Host-gated: SKIPs (not fails) without gnome-shell.

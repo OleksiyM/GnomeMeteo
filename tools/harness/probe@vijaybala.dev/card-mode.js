@@ -68,7 +68,7 @@ function slotFx(city, slot) {
 
 let weatherRef = null;   // module handles for the roster math (set at boot)
 
-/** slug -> fixture, the full 47-slug registry the goldens are named for */
+/** slug -> fixture, the full 48-slug registry the goldens are named for */
 export function allFixtures(weather, moon) {
     weatherRef = weather;
     const all = {...PRESETS, ...FIXTURES};
@@ -103,6 +103,16 @@ export function allFixtures(weather, moon) {
         all[`cov-moon-${MOON_NAMES[j]}`] = {city: berlin.city,
             lat: berlin.lat, lon: berlin.lon, ms: best.ms,
             tzMin: berlin.tzMin, condition: 'clear'};
+        // the 2026-10-11 user report rendered at NEW MOON in DAYLIGHT.
+        // Every other phase card is a night card, so the glow tier was
+        // locked and the day tier unphotographed. This probe card's own
+        // foot samples the mid band at its hour (glow by design there);
+        // the ink ghost on milk is card-certified by the coverage grid
+        // and pixel-graded by the matrix's phase-0.005 row.
+        if (j === 0)
+            all['cov-moon-new-day'] = {city: berlin.city,
+                lat: berlin.lat, lon: berlin.lon, ms: best.ms - 8 * 3600000,
+                tzMin: berlin.tzMin, condition: 'clear'};
     }
     return all;
 }
