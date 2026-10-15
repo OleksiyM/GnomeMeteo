@@ -70,13 +70,30 @@ class TestApp extends WeatherGlassApp {
                 const parsed = JSON.parse(new TextDecoder().decode(GLib.file_get_contents(cfgPath)[1]));
                 check('config flushed to disk', parsed.cities.length === before.length,
                     `disk=${parsed.cities.length}`);
+                // sky backdrop preference persists like everything else
+                bus.config.setSky(false);
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 900, () => { // beat the 400 ms debounce
+                    try {
+                        const parsed2 = JSON.parse(new TextDecoder().decode(
+                            GLib.file_get_contents(cfgPath)[1]));
+                        check('sky=false persisted', parsed2.sky === false, JSON.stringify(parsed2.sky));
+                    } catch (e) {
+                        failures++;
+                        print(`FAIL sky persist: ${e.stack ?? e}`);
+                    }
+                    bus.config.setSky(true);
+                    print(failures ? `${failures} UI FAILURE(S)` : 'UI INTEGRATION PASSED');
+                    this.quit();
+                    return GLib.SOURCE_REMOVE;
+                });
+                return GLib.SOURCE_REMOVE;
             } catch (e) {
                 failures++;
                 print(`FAIL harness: ${e.stack ?? e}`);
+                print(`${failures} UI FAILURE(S)`);
+                this.quit();
+                return GLib.SOURCE_REMOVE;
             }
-            print(failures ? `${failures} UI FAILURE(S)` : 'UI INTEGRATION PASSED');
-            this.quit();
-            return GLib.SOURCE_REMOVE;
         });
     }
 });

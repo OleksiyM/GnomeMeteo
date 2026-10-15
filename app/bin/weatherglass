@@ -1,5 +1,5 @@
 #!/bin/sh
 # WeatherGlass launcher — runs the GJS module from wherever the repo lives.
 ROOT="$(CDPATH= cd -- "$(dirname -- "$(command -v -- "$0")")" && pwd)/.."
-[ -f "$ROOT/src/main.js" ] || ROOT="$HOME/Projects/weatherglass"
+[ -f "$ROOT/src/main.js" ] || ROOT="$HOME/Projects/weatherglassapp"
 exec gjs -m "$ROOT/src/main.js" "$@"

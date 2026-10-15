@@ -91,8 +91,7 @@ check('fmtTemp metric', W.fmtTemp(23.4, 'metric') === '23°');
 check('fmtTemp imperial', W.fmtTemp(23.4, 'imperial') === '74°');
 check('compass wraps', W.compass(359) === 'N' && W.compass(45) === 'NE' && W.compass(-90) === 'W');
 check('sceneFor night sun → moon', W.sceneFor(0, false).scene === 'moon');
-const stormByCape = W.deriveScene({ code: 63, cape: 2600, visibility: 20000, precip: 2, isDay: true });
-check('CAPE derives hail', stormByCape.scene === 'hail', stormByCape.scene);
+const stormByCape = W.deriveScene({ code: 63, cape: 2600, visibility: 20000, precip: 2, isDay: true });check('CAPE derives hail', stormByCape.scene === 'hail', stormByCape.scene);
 const fogByVis = W.deriveScene({ code: 1, cape: 0, visibility: 800, precip: 0, isDay: true });
 check('visibility derives fog', fogByVis.scene === 'fog');
 const windy = W.effectiveScene({ code: 0, cape: 0, visibility: 20000, precip: 0, isDay: true, wind: 40 });
@@ -103,6 +102,69 @@ check('relTime', W.relTime(Date.now() - 5 * 60000) === '5 min ago');
 check('dayName', W.dayName('2026-10-14') === 'Wed');
 check('fmtLocalIso 12h', /[AP]M/.test(W.fmtLocalIso('2026-10-14T15:30', true)));
 check('shortHourLabel 24h', W.shortHourLabel('2026-10-14T05:00', false) === '05');
+
+// --- adaptive ink + sky port (ink.js / sky.js) ------------------------------
+const I = await import('../src/ink.js');
+const S = await import('../src/sky.js');
+
+check('lumOf black/white', I.lumOf([0, 0, 0]) === 0 && Math.abs(I.lumOf([1, 1, 1]) - 1) < 1e-9);
+check('ratio white/black = 21', Math.abs(I.ratio([1, 1, 1], [0, 0, 0]) - 21) < 0.01);
+check('pickInk: white bg -> dark ink', I.pickInk([0.95, 0.95, 0.97]) === I.INK_DARK);
+check('pickInk: navy bg -> light ink', I.pickInk([0.05, 0.07, 0.19]) === I.INK_LIGHT);
+check('pickInk: mid grey -> light (1.35 bias)', I.pickInk([0.5, 0.5, 0.5]) === I.INK_LIGHT);
+// worst-of-samples: one bright flank drags a whole dark row to light ink
+const v = I.judgeInk([[0.05, 0.07, 0.19], [0.05, 0.07, 0.19], [1, 1, 1]]);
+// a white-hot sample sinks BOTH families: white survives numerically but
+// dips under 3:1 -> light ink WITH emboss (exactly the extension's behavior)
+check('judgeInk worst-sample rules group', v.ink === I.INK_LIGHT && v.emboss === true);
+check('judgeInk empty -> light', I.judgeInk([]).ink === I.INK_LIGHT);
+// contrastSafe pushes a washed accent until it clears 3.1:1
+const cs = I.contrastSafe([0.85, 0.8, 0.7], [0.9, 0.92, 0.95]);
+check('contrastSafe clears 3.1', I.ratio(cs, [0.9, 0.92, 0.95]) >= 3.09, `got ${I.ratio(cs, [0.9, 0.92, 0.95]).toFixed(2)}`);
+check('contrastSafe leaves strong accent alone',
+    String(I.contrastSafe([0.1, 0.1, 0.9], [1, 1, 1])) === String([0.1, 0.1, 0.9]));
+// lineInk keeps warm amber, deepens weak cool lines on light grounds
+check('lineInk amber exempt', String(I.lineInk([0.95, 0.72, 0.3], [[1, 1, 1]])) === String([0.95, 0.72, 0.3]));
+const deep = I.lineInk([0.6, 0.8, 0.9], [[1, 1, 1]]);
+check('lineInk deepens weak line', I.lumOf(deep) < I.lumOf([0.6, 0.8, 0.9])
+    && I.ratio(deep, [1, 1, 1]) >= 2.99, JSON.stringify(deep.map(x => +x.toFixed(2))));
+check('compositeOver glass over sky', (() => {
+    const c = I.compositeOver([1, 1, 1, 0.5], [0.2, 0.3, 0.4]);
+    return Math.abs(c[0] - 0.6) < 1e-9 && Math.abs(c[2] - 0.7) < 1e-9;
+})());
+check('boxSampleFractions clamps below card', (() => {
+    const fs = I.boxSampleFractions([10, 400, 100, 20], 300, 420);
+    return fs.every(([, fy]) => fy <= 1 && fy >= 0) && fs.length > 0;
+})());
+
+// sun almanac: Bengaluru noon IST is high, midnight is down
+const solsticeNoon = W.sunGeometry(12.97, 77.59, Date.UTC(2026, 6, 15, 6, 0)); // 11:30 IST
+check('sunGeometry noon altitude > 40°', solsticeNoon.altitude > 40, solsticeNoon.altitude.toFixed(1));
+const midnight = W.sunGeometry(12.97, 77.59, Date.UTC(2026, 6, 14, 18, 0)); // 23:30 IST
+check('sunGeometry midnight below horizon', midnight.altitude < -20, midnight.altitude.toFixed(1));
+const dawn = W.sunShade('test-dawn', 12.97, 77.59, Date.UTC(2026, 6, 15, 0, 20)); // ~05:50 IST, minutes before sunrise
+check('sunShade glows near horizon', dawn.glow > 0.3 && dawn.solar === null, JSON.stringify(dawn));
+const noonShade = W.sunShade('test-noon', 12.97, 77.59, Date.UTC(2026, 6, 15, 5, 50)); // ~11:20 IST
+check('sunShade noon: no glow, solar climbing', noonShade.glow === 0 && noonShade.solar > 0.95,
+    JSON.stringify(noonShade));
+
+// sampleSky: clear day lighter toward the bottom, night clear is dark overall
+check('sampleSky day gradient brightens downward',
+    I.lumOf(S.sampleSky('clear', false, 0.9)) > I.lumOf(S.sampleSky('clear', false, 0.05)));
+check('sampleSky night clear is dark', I.lumOf(S.sampleSky('clear', true, 0.5)) < 0.12);
+check('sampleSky twilight tints warmer than plain night at horizon', (() => {
+    const g = S.sampleSky('clear', true, 1.0, 1.0, null);
+    return g[0] > g[2] && g[0] > 0.4;
+})());
+check('bodyOf sunny day: sun disc reported', (() => {
+    const b = S.bodyOf('sun', false, 330, 430, 0, 0.5);
+    return b && b.x > 330 * 0.7 && b.r > 40;
+})());
+check('bodyOf new moon reports nothing', S.bodyOf('moon', true, 330, 430, 0, null, 0) === null);
+check('bodyOf full moon reports disc', S.bodyOf('moon', true, 330, 430, 0, null, 0.5) !== null);
+check('ink flip: hero ink over noon sun disc goes dark',
+    I.pickInk(S.bodyOf('sun', false, 330, 430, 0, 0.5).col) === I.INK_DARK);
+
 
 const rc = failures ? 1 : 0;
 print(failures ? `${failures} FAILURE(S)` : 'ALL CHECKS PASSED');

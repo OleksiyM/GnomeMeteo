@@ -273,6 +273,7 @@ class MainWindow extends Adw.ApplicationWindow {
         menu.append_submenu('Refresh every', refresh);
 
         const misc = new Gio.Menu();
+        misc.append('Sky Background', 'win.sky');
         misc.append('Animated Icons', 'win.animate');
         misc.append('Keyboard Shortcuts', 'win.shortcuts');
         misc.append('About WeatherGlass', 'win.about');
@@ -316,6 +317,17 @@ class MainWindow extends Adw.ApplicationWindow {
             this.#bus.emit('config-changed', 'animate');
         });
         this.add_action(animateAct);
+
+        const skyAct = new Gio.SimpleAction({
+            name: 'sky',
+            state: new GLib.Variant('b', cfg.sky),
+        });
+        skyAct.connect('activate', a => {
+            const on = !a.state.get_boolean();
+            cfg.setSky(on); // emits config-changed 'sky'; pages react
+            a.state = new GLib.Variant('b', on);
+        });
+        this.add_action(skyAct);
 
         const simple = (name, cb) => {
             const a = new Gio.SimpleAction({ name });

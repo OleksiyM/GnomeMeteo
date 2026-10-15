@@ -262,6 +262,12 @@ function windStreamlines(cr, pal, t = 0) {
 export const SCENES = ['sun', 'moon', 'partly', 'cloud', 'fog', 'wind',
     'rain', 'sleet', 'snow', 'hail', 'storm', 'loading', 'error'];
 
+/** Standalone moon disc at absolute coords (used by the sky backdrop's
+ * pushGroup/paintWithAlpha pass, same rules as inside glyphs). */
+export function paintMoonBody(cr, cx, cy, r, phase, night = true) {
+    moonDisc(cr, night ? PAL.night : PAL.day, cx, cy, r, phase);
+}
+
 /**
  * Paint one glyph into `cr`, assuming a `size`×`size` px target.
  * opts: { scene, night=false, intensity=1 (0..6), seed=0, phase=moon 0..1 }

@@ -99,6 +99,14 @@ export class Config {
     get refreshMinutes() { return this.#cfg.refreshMinutes; }
     get refreshChoices() { return [...REFRESH_CHOICES]; }
     get animate() { return this.#cfg.animate !== false; }
+    get sky() { return this.#cfg.sky !== false; }
+
+    setSky(on) {
+        on = !!on;
+        if (this.#cfg.sky === on) return;
+        this.#cfg.sky = on;
+        this.#bus.emit('config-changed', 'sky');
+    }
 
     setAnimate(on) {
         on = !!on;

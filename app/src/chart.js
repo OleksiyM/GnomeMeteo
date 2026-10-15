@@ -18,12 +18,6 @@ export const CHART_SERIES = {
 const PAD = { left: 26, right: 16, top: 30, bottom: 36 };
 const STRIP = 18; // condition glyph band height, above the hour labels
 
-function hexRgb(hex) {
-    const s = hex.replace('#', '');
-    return [parseInt(s.slice(0, 2), 16) / 255, parseInt(s.slice(2, 4), 16) / 255,
-        parseInt(s.slice(4, 6), 16) / 255];
-}
-
 function seriesValues(slice, metric) {
     switch (metric) {
     case 'precip': return slice.precipProb.map(v => v ?? 0);
@@ -42,23 +36,30 @@ function valueLabel(metric, v, units) {
 
 /**
  * Pure renderer used both by the widget and headless tests.
- * state: { slice, metric, units, h12, dark }
+ * state: { slice, metric, units, h12, dark, fgRgb?, seriesRgb? }
+ * fgRgb/seriesRgb come from the adaptive-ink judges (ink.js) when the chart
+ * sits over the animated sky; without them the classic dark/light fallback
+ * applies — the extension's own separation of judged vs themed ink.
  */
 export function paintChart(cr, w, h, state) {
-    const { slice, metric = 'temp', units = 'metric', h12 = false, dark = false } = state;
-    const fg = dark ? '#FFFFFF' : '#000000';
+    const { slice, metric = 'temp', units = 'metric', h12 = false, dark = false,
+        fgRgb = null, seriesRgb = null } = state;
+    const FG = fgRgb ?? (dark ? [1, 1, 1] : [0, 0, 0]);
+    const fg = (alpha = 1) => {
+        cr.setSourceRGBA(...FG, alpha);
+    };
 
     cr.selectFontFace('Cantarell', Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL);
 
     if (!slice || !slice.time?.length) {
-        cr.setSourceRGBA(...hexRgb(fg), 0.4);
+        fg(0.4);
         cr.setFontSize(11);
         cr.moveTo(12, h / 2);
         cr.showText('Waiting for the forecast…');
         return;
     }
 
-    const [sr, sg, sb] = CHART_SERIES[metric].rgb;
+    const [sr, sg, sb] = (seriesRgb ?? CHART_SERIES[metric].rgb);
     const vals = seriesValues(slice, metric);
     const n = vals.length;
     const plotW = w - PAD.left - PAD.right;
@@ -140,7 +141,7 @@ export function paintChart(cr, w, h, state) {
         if (labeled) {
             const txt = valueLabel(metric, vals[i], units);
             cr.setFontSize(10.5);
-            cr.setSourceRGBA(...hexRgb(fg), 0.9);
+            fg(0.9);
             const ext = cr.textExtents(txt);
             cr.moveTo(clamp(xs(i) - ext.width / 2, 2, w - ext.width - 2),
                 Math.max(PAD.top - 12, ys(vals[i]) - 11));
@@ -151,7 +152,7 @@ export function paintChart(cr, w, h, state) {
     // --- "now" marker -------------------------------------------------------------
     if (slice.dayIndex === 0 && slice.nowFrac > 0) {
         const nx = PAD.left + slice.nowFrac * plotW;
-        cr.setSourceRGBA(...hexRgb(fg), 0.30);
+        fg(0.30);
         cr.setDash([4, 4], 0);
         cr.setLineWidth(1);
         cr.moveTo(nx, PAD.top - 16);
@@ -168,7 +169,7 @@ export function paintChart(cr, w, h, state) {
             cr.fill();
         }
         cr.setFontSize(9);
-        cr.setSourceRGBA(...hexRgb(fg), 0.6);
+        fg(0.6);
         cr.moveTo(nx - 9, PAD.top - 18);
         cr.showText('now');
     }
@@ -186,7 +187,7 @@ export function paintChart(cr, w, h, state) {
         }
         const lbl = shortHourLabel(slice.time[i], h12);
         cr.setFontSize(9.5);
-        cr.setSourceRGBA(...hexRgb(fg), 0.55);
+        fg(0.55);
         const ext = cr.textExtents(lbl);
         cr.moveTo(clamp(x - ext.width / 2, 2, w - ext.width - 2), h - 4);
         cr.showText(lbl);
@@ -217,6 +218,8 @@ class HourlyChart extends Gtk.DrawingArea {
     #units = 'metric';
     #h12 = false;
     #dark = false;
+    #fgRgb = null;
+    #seriesRgb = null;
 
     constructor() {
         super();
@@ -228,6 +231,8 @@ class HourlyChart extends Gtk.DrawingArea {
             units: this.#units,
             h12: this.#h12,
             dark: this.#dark,
+            fgRgb: this.#fgRgb,
+            seriesRgb: this.#seriesRgb,
         }));
     }
 
@@ -243,6 +248,14 @@ class HourlyChart extends Gtk.DrawingArea {
     set units(v) { this.#units = v; this.queue_draw(); }
     set h12(v) { this.#h12 = !!v; this.queue_draw(); }
     set dark(v) { this.#dark = !!v; this.queue_draw(); }
+
+    /** Adaptive-ink injection from the sky judges (see ink.js). Passing
+     * null resets to the theme-derived fallback. */
+    setJudgedInk(fgRgb, seriesRgb) {
+        this.#fgRgb = fgRgb;
+        this.#seriesRgb = seriesRgb;
+        this.queue_draw();
+    }
 
     setData(slice) {
         this.#slice = slice;

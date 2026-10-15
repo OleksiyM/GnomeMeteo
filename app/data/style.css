@@ -88,3 +88,50 @@ entryrow.error {
 .sidebar-footer {
   border-top: 1px solid alpha(currentColor, 0.1);
 }
+
+/* ---- animated sky backdrop + adaptive ink --------------------------------
+ * The translucent card glass MUST match GLASS_LIGHT/GLASS_DARK in
+ * src/citypage.js — the ink judges composite with these exact alphas, so
+ * a verdict is always computed against the pixels the eye actually reads. */
+
+.sky-on scrolledwindow,
+.sky-on scrolledwindow > viewport {
+  background: none;
+  box-shadow: none;
+}
+
+@media (prefers-color-scheme: light) {
+  .sky-on card,
+  .sky-on .card {
+    background-color: alpha(#ffffff, 0.55);
+    box-shadow: none;
+    border: 1px solid alpha(#ffffff, 0.35);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .sky-on card,
+  .sky-on .card {
+    background-color: alpha(#0d0f17, 0.52);
+    box-shadow: none;
+    border: 1px solid alpha(#ffffff, 0.12);
+  }
+}
+
+/* judged ink families (ink.js applyInk toggles exactly one) */
+.ink-light { color: #ffffff; }
+.ink-dark { color: #101823; }
+
+/* sub-3:1 grounds: even the winning family earns an embossing shadow */
+.emboss-light { text-shadow: 0 1px 3px alpha(#000000, 0.75), 0 0 8px alpha(#000000, 0.35); }
+.emboss-dark { text-shadow: 0 1px 3px alpha(#ffffff, 0.85), 0 0 8px alpha(#ffffff, 0.4); }
+
+/* linked metric picker on glass: let the judged color carry the states */
+.sky-on .linked > button.toggle {
+  background: alpha(currentColor, 0.06);
+  border-color: alpha(currentColor, 0.25);
+  box-shadow: none;
+}
+.sky-on .linked > button.toggle:checked {
+  background: alpha(currentColor, 0.22);
+}

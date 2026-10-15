@@ -22,6 +22,19 @@ developer box already has: `gjs`, GTK 4, libadwaita, libsoup 3.
   20 fps particle animation (falling drops, drifting snow, rotating rays,
   blinking bolt) that runs only while the icon is on screen. Toggle in the
   ⋮ menu (*Animated Icons*).
+- **Animated sky backdrop** *(direct extension port)* — per-scene day/night
+  gradients, a golden-hour palette blended by real solar altitude (NOAA
+  almanac, solved against each city's wall clock), breathing sun with
+  rotating rays, phase-accurate moon with glow and maria, twinkling star
+  field, drifting cloud sprites, slanted rain, bouncing sleet stones, fog
+  hills and forked lightning — one 20 fps ticker per page, only while shown
+  and enabled. Toggle in the ⋮ menu (*Sky Background*).
+- **Adaptive ink** *(direct extension port)* — hero text, stat grids, the
+  metric picker and all chart ink are judged as families against the exact
+  composited ground they sit on (gradient + sun/moon disc + translucent
+  card glass), five samples per label box, WCAG contrast voting with the
+  extension's dark-ink bias (1.35×), 3.1:1 walk for accents and an emboss
+  shadow below 3:1. A passing sun disc flips whole label groups together.
 - **Hourly profile chart** — Temperature / Precipitation / Wind switcher,
   smooth spline with area fade, per-hour condition strip, sparse value
   labels, and a dashed **"now" marker inside a rolling 24-hour window with
@@ -69,7 +82,8 @@ load):
   "activeCityId": "…",
   "units": "metric",
   "refreshMinutes": 15,
-  "animate": true
+  "animate": true,
+  "sky": true
 }
 ```
 
@@ -83,6 +97,8 @@ src/
 ├── citypage.js      hero · stat tiles · chart card · day tiles
 ├── chart.js         pure paintChart() renderer + HourlyChart widget
 ├── painter.js       procedural glyph kit (drawScene) + icon widgets
+├── sky.js           animated backdrop (palettes · almanac · particles)
+├── ink.js           adaptive ink verdicts (WCAG · worst-of sampling)
 ├── weather.js       Open-Meteo client · WMO 4677 · daySlice · formatters
 ├── coordinator.js   serialized multi-city refresh cycles
 ├── store.js         JSON config store (atomic, sanitized)
@@ -101,6 +117,11 @@ Design carries from the extension:
 - Refresh discipline: coalesced fetches, 60 s retry cadence, data survives
   transient failures; here generalized to a **serial cycle** so warming N
   cities never bursts the free API.
+- Sky palettes, twilight/noon blending weights, particle budgets, and the
+  ink verdict thresholds (sampling grid, 1.35× dark bias, 3.1:1 accent walk,
+  <3:1 emboss) are **ported constant-for-constant** from the extension's
+  `sky.js` / `chart.js` / `ink-policy.js` — the app's verdicts match the
+  popup's pixel-for-pixel for the same weather and sun position.
 
 Deliberate deviations: static-by-default repaints with an opt-out animation
 layer (extensions must not burn battery; a window app should still be alive
@@ -123,7 +144,7 @@ Both exit non-zero on failure. Artifacts land in `$XDG_RUNTIME_DIR` or /tmp.
 - Auto-location (GeoClue → ipinfo/ipapi fallbacks, like the extension).
 - Provider plugs for MET Norway / NOAA NWS (shapes already compatible).
 - Radar/air-quality layers via other free endpoints.
-- Optional animated sky backdrop behind the hero card.
+- Menu-style backdrop variants (solid / accent) like the extension's popup.
 
 ## Credits
 
