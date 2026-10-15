@@ -12,7 +12,7 @@ import { Config } from './store.js';
 import { Forecasts } from './coordinator.js';
 import { MainWindow } from './window.js';
 
-export const APP_ID = 'dev.vijaybala.weatherglass';
+export const APP_ID = 'dev.vijaybala.weatherglassapp';
 
 function datadir() {
     const fromEnv = GLib.getenv('WEATHERGLASS_DATADIR');

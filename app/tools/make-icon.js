@@ -55,7 +55,7 @@ drawScene(cr, G, { scene: 'partly', night: false, intensity: 2, seed: 7 });
 cr.restore();
 
 surf.flush();
-surf.writeToPNG('data/icons/dev.vijaybala.weatherglass-1024.png');
+surf.writeToPNG('data/icons/dev.vijaybala.weatherglassapp-1024.png');
 
 // Downscale ladder (Gaussian via cairo's GOOD filter)
 for (const s of [512, 256, 128, 96, 64, 48, 32]) {
@@ -65,6 +65,6 @@ for (const s of [512, 256, 128, 96, 64, 48, 32]) {
     tc.setSourceSurface(surf, 0, 0);
     tc.paint();
     t.flush();
-    t.writeToPNG(`data/icons/dev.vijaybala.weatherglass-${s}.png`);
+    t.writeToPNG(`data/icons/dev.vijaybala.weatherglassapp-${s}.png`);
 }
 print('icons written to data/icons/');

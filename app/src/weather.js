@@ -10,14 +10,14 @@ import Soup from 'gi://Soup?version=3.0';
 
 export const OPEN_METEO_FORECAST_API = 'https://api.open-meteo.com/v1/forecast';
 export const OPEN_METEO_GEOCODING_API = 'https://geocoding-api.open-meteo.com/v1/search';
-export const USER_AGENT = 'dev.vijaybala.weatherglass/1.0 (standalone GJS app)';
+export const USER_AGENT = 'dev.vijaybala.weatherglassapp/1.0 (standalone GJS app)';
 
 // --- brand texture ------------------------------------------------------------
 // Loads the generated app icon straight from the checkout's data/icons so
 // the window icon and About logo ride a process-owned texture — immune to
 // the shell session's icon-theme cache lagging a file install until logout.
 
-const BRAND_ID = 'dev.vijaybala.weatherglass';
+const BRAND_ID = 'dev.vijaybala.weatherglassapp';
 
 export function brandTexture(px = 128) {
     try {

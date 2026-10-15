@@ -427,7 +427,7 @@ class MainWindow extends Adw.ApplicationWindow {
 function showAbout(window) {
     const about = new Adw.AboutDialog({
         application_name: 'WeatherGlass',
-        application_icon: 'dev.vijaybala.weatherglass',
+        application_icon: 'dev.vijaybala.weatherglassapp',
         version: '0.1.0',
         developer_name: 'vijaybala',
         license: Gtk.License.GPL_3_0,

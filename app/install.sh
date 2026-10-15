@@ -4,7 +4,7 @@
 # code updates, only for relocation.
 set -euo pipefail
 DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-APP_ID="dev.vijaybala.weatherglass"
+APP_ID="dev.vijaybala.weatherglassapp"
 
 BIN_DIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
 APPS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
