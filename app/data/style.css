@@ -1,0 +1,258 @@
+/* WeatherGlass — standalone app styles */
+
+/* .aw-current-temp: oversized THIN numeral (3em, weight 200) */
+.hero-temp {
+  font-size: 50px;
+  font-weight: 200;
+  font-feature-settings: "tnum";
+}
+
+/* .aw-desc: 0.85em, ordinary weight, theme-dimmed */
+.hero-cond {
+  font-size: 12.5px;
+  font-weight: 400;
+}
+
+.hero-feels {
+  font-size: 12.5px;
+  font-weight: 400;
+}
+
+.hero-clock {
+  font-size: 16px;
+  font-weight: 600;
+  font-feature-settings: "tnum";
+}
+
+.stat-tile {
+  min-width: 130px;
+}
+
+.stat-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.stat-value {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.astro-row {
+  padding: 10px 14px;
+}
+
+.day-summary {
+  font-weight: 600;
+  margin-left: 8px;
+  margin-bottom: 2px;
+}
+
+button.day-tile {
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid alpha(currentColor, 0.12);
+  background: alpha(currentColor, 0.03);
+}
+
+button.day-tile:checked {
+  border-color: alpha(@accent_bg_color, 0.65);
+  background: alpha(@accent_bg_color, 0.14);
+}
+
+/* Day tiles straight on the sky — the extension's .aw-day recipes verbatim:
+ * transparent until hovered (40% white / 28% dark glass) and a heavier
+ * glass slab when selected (68% white / 45% dark). Dark glass in the dark
+ * card is deliberate: white ink on white-tinted glass vanishes over bright
+ * skies. Alphas mirrored by SLAB_/HOVER_ constants in src/citypage.js. */
+.sky-on button.day-tile {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* hi-temperature + day-name inherit the family base ink straight from
+ * the tile button (.aw-day base): ink-light .95 white / ink-dark #101823 */
+
+/* Glass tone follows the JUDGED family on the tile (.ink-* = verdict of
+ * this tile's own ground, set by ink.applyInk), never the OS scheme: the
+ * media query was the source of "almost right" colours — white glare over
+ * a starry night, mud-slabs at noon. .ink-light (white ink, dark skies)
+ * takes the extension's .aw-day-sel/.aw-day:hover dark-glass pair;
+ * .ink-dark mirrors via .aw-light. Literal values byte-match the
+ * extension stylesheet. */
+.sky-on button.day-tile.ink-light:hover { background: rgba(16, 20, 28, 0.28); }
+.sky-on button.day-tile.ink-light:checked {
+  background: rgba(16, 20, 28, 0.45);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+.sky-on button.day-tile.ink-dark:hover { background: rgba(255, 255, 255, 0.40); }
+.sky-on button.day-tile.ink-dark:checked {
+  background: rgba(255, 255, 255, 0.68);
+  border-color: rgba(16, 24, 35, 0.35);
+  color: #0b1220;
+}
+
+.day-name {
+  font-weight: 700;
+  font-size: 11.7px;
+}
+
+/* hi/lo hierarchy by WEIGHT, never dimmed away — lows must survive
+ * sun-bright skies; the judged ink alpha does the subtle 0.82 lift */
+.day-hi {
+  font-weight: 600;
+  font-size: 11.7px;
+  font-feature-settings: "tnum";
+}
+
+.day-lo {
+  font-weight: 400;
+  font-size: 11.7px;
+  font-feature-settings: "tnum";
+  opacity: 0.85;
+}
+
+/* Full-bleed chart zone — curve, strip and hour rail lie on the open sky,
+ * no card, edge to edge (negative margins undo the page gutter, the
+ * extension's PADDING_X=2 feel). */
+.chart-zone {
+  padding: 0 0 2px;
+}
+
+/* .aw-desc tier for the day summary line riding over the sky */
+.day-summary {
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-left: 14px;
+  margin-right: 14px;
+}
+
+.city-temp {
+  font-weight: 800;
+  font-size: 15px;
+  font-feature-settings: "tnum";
+}
+
+.warning-banner {
+  border: 1px solid alpha(@warning_color, 0.5);
+  background: alpha(@warning_color, 0.12);
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+entryrow.error {
+  outline-color: @error_color;
+}
+
+.sidebar-footer {
+  border-top: 1px solid alpha(currentColor, 0.1);
+}
+
+/* ---- animated sky backdrop + adaptive ink --------------------------------
+ * The translucent card glass MUST match GLASS_LIGHT/GLASS_DARK in
+ * src/citypage.js — the ink judges composite with these exact alphas, so
+ * a verdict is always computed against the pixels the eye actually reads. */
+
+.sky-on scrolledwindow,
+.sky-on scrolledwindow > viewport {
+  background: none;
+  box-shadow: none;
+}
+
+.sky-on card,
+.sky-on .card { border-radius: 18px; }
+
+@media (prefers-color-scheme: light) {
+  .sky-on card,
+  .sky-on .card {
+    background-color: alpha(#ffffff, 0.55);
+    box-shadow: none;
+    border: 1px solid alpha(#ffffff, 0.35);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .sky-on card,
+  .sky-on .card {
+    background-color: alpha(#0d0f17, 0.52);
+    box-shadow: none;
+    border: 1px solid alpha(#ffffff, 0.12);
+  }
+}
+
+/* Judged ink families — values are the extension's .aw-dark/.aw-light
+ * ink plus the card-wide emboss every sky rider gets (.aw-content):
+ * dark ink takes a white halo, light ink a dark drop shadow. */
+.sky-on .ink-light {
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 4px rgba(0, 0, 10, 0.65);
+}
+.sky-on .ink-dark {
+  color: #101823;
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.6);
+}
+
+/* judged-emboss (sub-3:1 grounds) stacks a soft glow over the base shadow */
+.sky-on .emboss-light {
+  text-shadow: 0 1px 4px rgba(0, 0, 10, 0.65), 0 0 10px rgba(0, 0, 10, 0.6);
+}
+.sky-on .emboss-dark {
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.6), 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+/* Dim tiers are the extension's fixed COLOUR tokens (.aw-desc .62/.66,
+ * .aw-day-lo .85/.8), NOT element opacity: fading a widget also fades its
+ * emboss and multiplies against the family alpha (.95×.6 ≠ .62). */
+.sky-on .ink-light .hero-cond, .sky-on .ink-light .hero-feels,
+.sky-on .ink-light .day-summary { color: rgba(255, 255, 255, 0.62); }
+.sky-on .ink-dark .hero-cond, .sky-on .ink-dark .hero-feels,
+.sky-on .ink-dark .day-summary { color: rgba(16, 24, 35, 0.66); }
+.sky-on .ink-light .day-lo { color: rgba(255, 255, 255, 0.85); }
+.sky-on .ink-dark .day-lo { color: rgba(16, 24, 35, 0.80); }
+
+/* Metric tabs — the extension's pill style (aw-tab): transparent full pill,
+ * dim label, the ACTIVE one lights up with the day-tile glass. No linked
+ * box, no hairline. Inactive dims within the judged family via opacity. */
+.metric-tabs { padding: 2px 14px 4px 14px; }
+
+.metric-tab {
+  border-radius: 99px;
+  background-color: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
+  padding: 3px 10px;
+  min-height: 0;
+}
+
+/* Idle→hover text ramp and the checked pill ride the segBox verdict
+ * (.aw-tab colour tokens verbatim): ink-light ≙ .aw-dark, ink-dark ≙
+ * .aw-light. */
+.sky-on .metric-tabs.ink-light .metric-tab { color: rgba(255, 255, 255, 0.60); }
+.sky-on .metric-tabs.ink-light .metric-tab:hover { color: rgba(255, 255, 255, 0.85); }
+.sky-on .metric-tabs.ink-light .metric-tab:checked {
+  background-color: rgba(16, 20, 28, 0.45);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+.sky-on .metric-tabs.ink-dark .metric-tab { color: rgba(16, 24, 35, 0.55); }
+.sky-on .metric-tabs.ink-dark .metric-tab:hover { color: rgba(16, 24, 35, 0.80); }
+.sky-on .metric-tabs.ink-dark .metric-tab:checked {
+  background-color: rgba(255, 255, 255, 0.68);
+  border-color: rgba(16, 24, 35, 0.35);
+  color: #0b1220;
+}
+
+/* Sky OFF (no sampled ink to ride): selection takes the system accent wash,
+ * mirroring the extension's .aw-theme fallback. The .sky-on overrides above
+ * sit later in this file so they win when the backdrop is up. */
+button.metric-tab:checked {
+  background-color: alpha(@accent_bg_color, 0.16);
+  border-color: alpha(@accent_bg_color, 0.35);
+}
+
+

@@ -1,0 +1,168 @@
+# WeatherGlass
+
+A standalone multi-city weather app for GNOME, written in **GJS** (GTK 4 +
+Libadwaita), modeled on the [WeatherGlass GNOME Shell
+extension](https://extensions.gnome.org/extension/6126/weatherglass/) — same
+name, same procedural Cairo icon language, same Open-Meteo data pipeline,
+extended where the extension stopped at a single location: **saved cities
+and regions with instant switching**.
+
+No build step, no packaging, no dependencies beyond what a Fedora/GNOME
+developer box already has: `gjs`, GTK 4, libadwaita, libsoup 3.
+
+## Features
+
+- **Multiple cities & regions** — a sidebar of saved places (named cities,
+  provinces via the Open-Meteo geocoder, or raw lat/lon points). Rows show a
+  live weather glyph, the current temperature, and the **city-local clock**.
+  Add, remove (with inline confirm), and reorder from each row's menu.
+- **Procedural animated icons** — zero image assets. Every glyph (sun, moon,
+  partly, cloud, fog, wind, rain, sleet, snow, hail, storm, loading, error)
+  is Cairo on a 24-unit grid, seeded so static glyphs never shimmer, with
+  20 fps particle animation (falling drops, drifting snow, rotating rays,
+  blinking bolt) that runs only while the icon is on screen. Toggle in the
+  ⋮ menu (*Animated Icons*).
+- **Animated sky backdrop** *(direct extension port)* — per-scene day/night
+  gradients, a golden-hour palette blended by real solar altitude (NOAA
+  almanac, solved against each city's wall clock), breathing sun with
+  rotating rays, phase-accurate moon with glow and maria, twinkling star
+  field, drifting cloud sprites, slanted rain, bouncing sleet stones, fog
+  hills and forked lightning — one 20 fps ticker per page, only while shown
+  and enabled. Toggle in the ⋮ menu (*Sky Background*).
+- **Adaptive ink** *(direct extension port)* — hero text, stat grids, the
+  metric picker and all chart ink are judged as families against the exact
+  composited ground they sit on (gradient + sun/moon disc + translucent
+  card glass), five samples per label box, WCAG contrast voting with the
+  extension's dark-ink bias (1.35×), 3.1:1 walk for accents and an emboss
+  shadow below 3:1. A passing sun disc flips whole label groups together.
+- **Hourly profile chart** — Temperature / Precipitation / Wind switcher,
+  smooth spline with area fade, per-hour condition strip, sparse value
+  labels, and a dashed **"now" marker inside a rolling 24-hour window with
+  2 h backfill** (the extension's windowing model — future days are exact
+  calendar slices, so no timezone ever tips a day boundary).
+- **Day planner** — 8 selectable day tiles in the extension's anatomy
+  (name · code-pose glyph · weight-tiered hi/lo), sitting straight on the
+  sky: transparent by default, a thin glass slab on hover, a heavier one
+  when selected (the extension's exact 68%/45% recipes), each tile judged
+  against *its own* ground so a tile grazing the sun flips to dark ink
+  alone. Selecting a day re-targets the chart/day summary and
+  **re-skins the backdrop** — pick Friday's storm and storm clouds fill the page.
+- **Full-bleed hourly chart** — the curve, per-hour condition strip and
+  hour rail lie edge-to-edge on the open sky, exactly like the extension
+  popup; strip glyphs pale themselves per-cell against the ground beneath
+  them, and the whole plot's ink + series colors are judged worst-of-grid.
+
+- **What the extension parsed but never showed** — feels-like, humidity,
+  wind compass bearing, pressure, UV band, visibility, precipitation rate,
+  sunrise/sunset, and **moon phase with illumination %**.
+- **City-local clocks** — computed from the forecast payload's local
+  timestamps + a monotonic offset, so the clock is correct in any timezone
+  and 12-/24-h follows GNOME's `clock-format`.
+- Metric ⇄ imperial units, refresh cadence 5–60 min, dark-mode aware,
+  `Ctrl+R` refresh, `Ctrl+N` add city, single-instance.
+- Graceful degradation: failed refreshes keep the last good data with a
+  stale-data banner; a cold failure gets its own Try-Again page.
+
+## Run
+
+```sh
+./bin/weatherglass          # or: gjs -m src/main.js
+```
+
+## Install (launcher + app grid entry)
+
+```sh
+./install.sh                # symlinks ~/.local/bin/weatherglass, desktop entry, icon
+./uninstall.sh              # reverses it (keeps your city list)
+```
+
+## Configuration
+
+Stored at `~/.config/weatherglass/config.json` (atomic writes, validated on
+load):
+
+```json
+{
+  "version": 1,
+  "cities": [
+    { "id": "…", "name": "Bengaluru", "admin1": "Karnataka",
+      "country": "India", "countryCode": "IN",
+      "latitude": 12.9716, "longitude": 77.5946 }
+  ],
+  "activeCityId": "…",
+  "units": "metric",
+  "refreshMinutes": 15,
+  "animate": true,
+  "sky": true
+}
+```
+
+## Architecture
+
+```
+src/
+├── main.js          entry — gjs -m src/main.js
+├── application.js   Adw.Application, CSS, clock-format watcher, kickoff
+├── window.js        split view · sidebar rows · header menu · actions
+├── citypage.js      hero · stat tiles · chart card · day tiles
+├── chart.js         pure paintChart() renderer + HourlyChart widget
+├── painter.js       procedural glyph kit (drawScene) + icon widgets
+├── sky.js           animated backdrop (palettes · almanac · particles)
+├── ink.js           adaptive ink verdicts (WCAG · worst-of sampling)
+├── weather.js       Open-Meteo client · WMO 4677 · daySlice · formatters
+├── coordinator.js   serialized multi-city refresh cycles
+├── store.js         JSON config store (atomic, sanitized)
+└── addcity.js       geocoder search dialog + manual lat/lon entry
+data/style.css, data/*.desktop.in   (loaded from the checkout;
+WEATHERGLASS_DATADIR overrides)
+data/icons/          rendered app icons — regenerate: gjs -m tools/make-icon.js
+                     (paints the badge with the SAME sky + glyph pipeline)
+```
+
+Design carries from the extension:
+
+- **Canonical metric internally**; conversion happens only at display time.
+- The normalized `{current, hourly, daily}` forecast shape and the WMO →
+  scene vocabulary, including the physics-override derivation (CAPE ≥ 1200 +
+  liquid precip ⇒ storm, ≥ 2500 ⇒ hail, visibility < 1 km & dry ⇒ fog, wind
+  ≥ 30 km/h over calm scenes ⇒ wind).
+- Refresh discipline: coalesced fetches, 60 s retry cadence, data survives
+  transient failures; here generalized to a **serial cycle** so warming N
+  cities never bursts the free API.
+- Sky palettes, twilight/noon blending weights, particle budgets, and the
+  ink verdict thresholds (sampling grid, 1.35× dark bias, 3.1:1 accent walk,
+  <3:1 emboss) are **ported constant-for-constant** from the extension's
+  `sky.js` / `chart.js` / `ink-policy.js` — the app's verdicts match the
+  popup's pixel-for-pixel for the same weather and sun position.
+
+Deliberate deviations: static-by-default repaints with an opt-out animation
+layer (extensions must not burn battery; a window app should still be alive
+to look at), and no GeoClue/IP auto-location yet.
+
+## Development checks
+
+The data layer, painter, and chart render headless (no display needed); the
+integration harness boots the real app:
+
+```sh
+gjs -m tests/smoke.js       # logic + PNG render of every glyph & chart series
+gjs -m tests/ui-integration.js   # live app: fetch, CRUD, persistence  (~15 s)
+```
+
+Both exit non-zero on failure. Artifacts land in `$XDG_RUNTIME_DIR` or /tmp.
+
+## Roadmap
+
+- Auto-location (GeoClue → ipinfo/ipapi fallbacks, like the extension).
+- Provider plugs for MET Norway / NOAA NWS (shapes already compatible).
+- Radar/air-quality layers via other free endpoints.
+- Menu-style backdrop variants (solid / accent) like the extension's popup.
+
+## Credits
+
+- Weather model, data-layer concepts, icon vocabulary, and chart behavior:
+  the WeatherGlass GNOME Shell extension lineage.
+- Forecast & geocoding data: [Open-Meteo](https://open-meteo.com/) (no API
+  key required).
+
+License: GPLv3.
