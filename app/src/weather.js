@@ -4,11 +4,35 @@
 // Canonical units are always metric internally; only display code converts.
 
 import GLib from 'gi://GLib?version=2.0';
+import Gio from 'gi://Gio?version=2.0';
+import Gdk from 'gi://Gdk?version=4.0';
 import Soup from 'gi://Soup?version=3.0';
 
 export const OPEN_METEO_FORECAST_API = 'https://api.open-meteo.com/v1/forecast';
 export const OPEN_METEO_GEOCODING_API = 'https://geocoding-api.open-meteo.com/v1/search';
 export const USER_AGENT = 'dev.vijaybala.weatherglass/1.0 (standalone GJS app)';
+
+// --- brand texture ------------------------------------------------------------
+// Loads the generated app icon straight from the checkout's data/icons so
+// the window icon and About logo ride a process-owned texture — immune to
+// the shell session's icon-theme cache lagging a file install until logout.
+
+const BRAND_ID = 'dev.vijaybala.weatherglass';
+
+export function brandTexture(px = 128) {
+    try {
+        const env = GLib.getenv('WEATHERGLASS_DATADIR');
+        const dir = env
+            ? Gio.File.new_for_path(env).get_child('icons')
+            : Gio.File.new_for_uri(import.meta.url).get_parent() // src/
+                .get_parent().get_child('data').get_child('icons');
+        const f = dir.get_child(`${BRAND_ID}-${px}.png`);
+        return f.query_exists(null) ? Gdk.Texture.from_filename(f.get_path()) : null;
+    } catch (e) {
+        return null;
+    }
+}
+
 
 export const FORECAST_DAYS = 8;
 export const HTTP_TIMEOUT_SEC = 15;

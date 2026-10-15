@@ -7,7 +7,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
-import { Bus, logw } from './weather.js';
+import { Bus, logw, brandTexture } from './weather.js';
 import { Config } from './store.js';
 import { Forecasts } from './coordinator.js';
 import { MainWindow } from './window.js';
@@ -81,6 +81,14 @@ class WeatherGlassApp extends Adw.Application {
     _startUi() {
         this.#window = new MainWindow(this);
         this.window = this.#window; // public handle for debugging/tests
+        const tex = brandTexture(128);
+        if (tex) {
+            try {
+                this.#window.set_icon_list([tex]);
+            } catch (e) {
+                logw(`window icon unavailable (${e.message})`);
+            }
+        }
         this.#window.present();
 
         // Warm every configured city once, serially, then keep them fresh.

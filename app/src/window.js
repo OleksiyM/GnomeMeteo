@@ -10,7 +10,7 @@ import Adw from 'gi://Adw?version=1';
 import { CityPage } from './citypage.js';
 import { AddCityDialog } from './addcity.js';
 import { makeWeatherIcon } from './painter.js';
-import { fmtTemp, cityWallMs, fmtClock, sceneFor } from './weather.js';
+import { fmtTemp, cityWallMs, fmtClock, sceneFor, brandTexture } from './weather.js';
 
 function cityRowMenu() {
     const menu = new Gio.Menu();
@@ -437,6 +437,9 @@ function showAbout(window) {
             + 'Companion to the WeatherGlass GNOME Shell extension.',
         copyright: '© 2026 vijaybala',
     });
+    const brand = brandTexture(256);
+    if (brand)
+        about.set_logo(brand);
     about.present(window);
 }
 
