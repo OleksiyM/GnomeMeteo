@@ -169,7 +169,10 @@ function render(size, path) {
     log(`icon-render: wrote ${path}`);
 }
 
+/* == OUTPUT EMISSION: consumer-specific == */
 const root = ARGV[0] ?? GLib.build_filenamev([GLib.get_current_dir(), 'assets']);
 GLib.mkdir_with_parents(root, 0o755);
 render(512, GLib.build_filenamev([root, 'weatherglass-icon-512.png']));
 render(128, GLib.build_filenamev([root, 'weatherglass-icon-128.png']));
+
+export { render };
