@@ -32,3 +32,34 @@ const cr = new Cairo.Context(surf);
 });
 surf.writeToPNG('charts-preview.png');
 print('rendered charts-preview.png');
+
+// --- judged-ink pass (the sky path): fg triple + series dict + ground
+// sampler must all flow through paintChart for EVERY metric. Any TypeError
+// here (e.g. spreading the dict) aborts the suite — this exact hole once
+// blanked the chart in the live app while the themed path sailed on.
+const judged = new Cairo.ImageSurface(Cairo.Format.ARGB32, W, H * 3);
+const jc = new Cairo.Context(judged);
+[['temp', 0], ['precip', 1], ['wind', 2]].forEach(([m, row]) => {
+    jc.save();
+    jc.translate(0, row * H);
+    jc.rectangle(0, 0, W, H);
+    jc.clip();
+    jc.setSourceRGBA(0.22, 0.27, 0.36, 1); // storm-grey sky
+    jc.paint();
+    jc.restore();
+});
+['temp', 'precip', 'wind'].forEach(m => {
+    const row = ['temp', 'precip', 'wind'].indexOf(m);
+    jc.save();
+    jc.translate(0, row * H);
+    paintChart(jc, W, H, {
+        slice: daySlice(hourly, daily, 1, cityWall),
+        metric: m,
+        fgRgb: [1, 1, 1],
+        seriesRgb: { temp: [0.9, 0.55, 0.05], precip: [0.05, 0.35, 0.75], wind: [0.05, 0.45, 0.3] },
+        groundLum: () => 0.18, // dark sky -> day-hours strip glyphs must pale
+    });
+    jc.restore();
+});
+judged.writeToPNG('charts-judged-preview.png');
+print('rendered charts-judged-preview.png (judged ink + dict series + pale strip)');

@@ -59,7 +59,10 @@ export function paintChart(cr, w, h, state) {
         return;
     }
 
-    const [sr, sg, sb] = (seriesRgb ?? CHART_SERIES[metric].rgb);
+    // seriesRgb arrives as the judged dict {temp:[..], precip:[..], wind:[..]}
+    // — unwrap THIS metric's triple (spreading the dict would throw)
+    const judgedSeries = seriesRgb?.[metric];
+    const [sr, sg, sb] = judgedSeries ?? CHART_SERIES[metric].rgb;
     const vals = seriesValues(slice, metric);
     const n = vals.length;
     const plotW = w - PAD.left - PAD.right;
