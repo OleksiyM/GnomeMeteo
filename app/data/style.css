@@ -1,18 +1,26 @@
 /* WeatherGlass — standalone app styles */
 
+/* .aw-current-temp: oversized THIN numeral (3em, weight 200) */
 .hero-temp {
-  font-size: 54px;
-  font-weight: 800;
+  font-size: 50px;
+  font-weight: 200;
+  font-feature-settings: "tnum";
 }
 
+/* .aw-desc: 0.85em, ordinary weight, theme-dimmed */
 .hero-cond {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 12.5px;
+  font-weight: 400;
+}
+
+.hero-feels {
+  font-size: 12.5px;
+  font-weight: 400;
 }
 
 .hero-clock {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
   font-feature-settings: "tnum";
 }
 
@@ -84,20 +92,20 @@ button.day-tile:checked {
 
 .day-name {
   font-weight: 700;
-  font-size: 11.5px;
+  font-size: 11.7px;
 }
 
 /* hi/lo hierarchy by WEIGHT, never dimmed away — lows must survive
  * sun-bright skies; the judged ink alpha does the subtle 0.82 lift */
 .day-hi {
   font-weight: 600;
-  font-size: 12.5px;
+  font-size: 11.7px;
   font-feature-settings: "tnum";
 }
 
 .day-lo {
   font-weight: 400;
-  font-size: 12.5px;
+  font-size: 11.7px;
   font-feature-settings: "tnum";
   opacity: 0.85;
 }
@@ -107,6 +115,14 @@ button.day-tile:checked {
  * extension's PADDING_X=2 feel). */
 .chart-zone {
   padding: 0 0 2px;
+}
+
+/* .aw-desc tier for the day summary line riding over the sky */
+.day-summary {
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-left: 14px;
+  margin-right: 14px;
 }
 
 .city-temp {
@@ -141,6 +157,9 @@ entryrow.error {
   box-shadow: none;
 }
 
+.sky-on card,
+.sky-on .card { border-radius: 18px; }
+
 @media (prefers-color-scheme: light) {
   .sky-on card,
   .sky-on .card {
@@ -159,20 +178,88 @@ entryrow.error {
   }
 }
 
-/* judged ink families (ink.js applyInk toggles exactly one) */
-.ink-light { color: #ffffff; }
-.ink-dark { color: #101823; }
-
-/* sub-3:1 grounds: even the winning family earns an embossing shadow */
-.emboss-light { text-shadow: 0 1px 3px alpha(#000000, 0.75), 0 0 8px alpha(#000000, 0.35); }
-.emboss-dark { text-shadow: 0 1px 3px alpha(#ffffff, 0.85), 0 0 8px alpha(#ffffff, 0.4); }
-
-/* linked metric picker on glass: let the judged color carry the states */
-.sky-on .linked > button.toggle {
-  background: alpha(currentColor, 0.06);
-  border-color: alpha(currentColor, 0.25);
-  box-shadow: none;
+/* Judged ink families — values are the extension's .aw-dark/.aw-light
+ * ink plus the card-wide emboss every sky rider gets (.aw-content):
+ * dark ink takes a white halo, light ink a dark drop shadow. */
+.sky-on .ink-light {
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 4px rgba(0, 0, 10, 0.65);
 }
-.sky-on .linked > button.toggle:checked {
-  background: alpha(currentColor, 0.22);
+.sky-on .ink-dark {
+  color: #101823;
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.6);
+}
+
+/* judged-emboss (sub-3:1 grounds) stacks a soft glow over the base shadow */
+.sky-on .emboss-light {
+  text-shadow: 0 1px 4px rgba(0, 0, 10, 0.65), 0 0 10px rgba(0, 0, 10, 0.6);
+}
+.sky-on .emboss-dark {
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.6), 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+/* .aw-desc / .aw-clockline dim tiers on the sky */
+.sky-on .hero-cond, .sky-on .hero-feels { opacity: 0.7; }
+.sky-on .day-lo { opacity: 0.85; }
+
+/* Metric tabs — the extension's pill style (aw-tab): transparent full pill,
+ * dim label, the ACTIVE one lights up with the day-tile glass. No linked
+ * box, no hairline. Inactive dims within the judged family via opacity. */
+.metric-tabs { padding: 2px 14px 4px 14px; }
+
+.metric-tab {
+  border-radius: 99px;
+  background-color: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
+  padding: 3px 10px;
+  min-height: 0;
+  color: inherit;
+  opacity: 0.6;
+}
+
+.metric-tab:hover { opacity: 0.85; }
+
+.metric-tab:checked { opacity: 1; }
+
+@media (prefers-color-scheme: light) {
+  .sky-on .metric-tab:checked {
+    background-color: rgba(255, 255, 255, 0.68);
+    border-color: rgba(16, 24, 35, 0.35);
+    color: #0b1220;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .sky-on .metric-tab:checked {
+    background-color: rgba(16, 20, 28, 0.45);
+    border-color: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+  }
+}
+
+/* Sky OFF (no sampled ink to ride): selection takes the system accent wash,
+ * mirroring the extension's .aw-theme fallback. The .sky-on overrides above
+ * sit later in this file so they win when the backdrop is up. */
+button.metric-tab:checked {
+  background-color: alpha(@accent_bg_color, 0.16);
+  border-color: alpha(@accent_bg_color, 0.35);
+}
+
+
+/* Theme glass wins over the accent fallback on the sky (later = tie-break) */
+@media (prefers-color-scheme: light) {
+  .sky-on .metric-tab:checked {
+    background-color: rgba(255, 255, 255, 0.68);
+    border-color: rgba(16, 24, 35, 0.35);
+    color: #0b1220;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .sky-on .metric-tab:checked {
+    background-color: rgba(16, 20, 28, 0.45);
+    border-color: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+  }
 }

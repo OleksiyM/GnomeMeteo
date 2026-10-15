@@ -337,20 +337,20 @@ class CityPage extends Gtk.Box {
         const outer = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 0 });
         const top = new Gtk.Box({
             orientation: Gtk.Orientation.VERTICAL,
-            spacing: 14,
-            margin_top: 18, margin_start: 14, margin_end: 14,
+            spacing: 10,
+            margin_top: 12, margin_start: 14, margin_end: 14,
         });
         const bottom = new Gtk.Box({
             orientation: Gtk.Orientation.VERTICAL,
             spacing: 8,
-            margin_top: 4, margin_bottom: 20,
+            margin_top: 7, margin_bottom: 14,
             margin_start: 14, margin_end: 14,
         });
         outer.append(top);
         clamp.set_child(outer);
 
         // hero --------------------------------------------------------------------
-        const hero = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 18 });
+        const hero = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 10 });
         this.#heroGlyphWrap = new Gtk.Box();
         this.#heroGlyphWrap.append(makeWeatherIcon(92, () => this.#glyphState,
             () => this.#bus.config.animate));
@@ -361,7 +361,9 @@ class CityPage extends Gtk.Box {
             valign: Gtk.Align.CENTER,
         });
         this.#tempLabel = new Gtk.Label({ label: '—', css_classes: ['hero-temp'] });
-        this.#condLabel = new Gtk.Label({ xalign: 0, css_classes: ['hero-cond'] });
+        this.#condLabel = new Gtk.Label({
+            xalign: 0, css_classes: ['dim-label', 'hero-cond'],
+        });
         this.#feelsLabel = new Gtk.Label({ xalign: 0, css_classes: ['hero-feels'] });
         this.#heroLeft.append(this.#tempLabel);
         this.#heroLeft.append(this.#condLabel);
@@ -441,7 +443,8 @@ class CityPage extends Gtk.Box {
             css_classes: ['chart-zone'],
         });
         this.#segBox = new Gtk.Box({
-            css_classes: ['linked'],
+            css_classes: ['metric-tabs'],
+            spacing: 8,
             halign: Gtk.Align.CENTER,
         });
         {
@@ -451,6 +454,7 @@ class CityPage extends Gtk.Box {
                 const btn = new Gtk.ToggleButton({
                     label: CHART_SERIES[key].label.split(' ')[0],
                     tooltip_text: CHART_SERIES[key].label,
+                    css_classes: ['metric-tab'],
                 });
                 if (i === 0) btn.set_active(true);
                 else btn.set_group(btns[i - 1]);
@@ -477,8 +481,8 @@ class CityPage extends Gtk.Box {
         this.#tilesFlow.set_selection_mode(Gtk.SelectionMode.NONE);
         this.#tilesFlow.set_homogeneous(true);
         this.#tilesFlow.set_max_children_per_line(4);
-        this.#tilesFlow.set_row_spacing(8);
-        this.#tilesFlow.set_column_spacing(8);
+        this.#tilesFlow.set_row_spacing(4);
+        this.#tilesFlow.set_column_spacing(5);
         bottom.append(this.#tilesFlow);
 
         bottom.append(new Gtk.LinkButton({
