@@ -402,6 +402,42 @@ export function drawScene(cr, size, opts = {}) {
  * the glyph animates at the extension's 20 fps cadence — but only while the
  * widget is mapped, so hidden tabs cost nothing.
  */
+// --- shared animation heart ---------------------------------------------------
+// One 50 ms source drives EVERY animated glyph and the sky backdrop instead
+// of one GSource per widget: a single wakeup per tick, and the batch of
+// queue_draw()s lands as one frame commit (one damage pass, one GPU upload)
+// instead of N. Subscribers pay only while mapped; the heart stops entirely
+// when the last one leaves or animations are switched off.
+
+const _subs = new Map();
+let _seq = 1;
+let _heart = 0;
+
+function _ensureHeart() {
+    if (_heart)
+        return;
+    _heart = GLib.timeout_add(GLib.PRIORITY_LOW, 50, () => {
+        for (const fn of _subs.values())
+            fn();
+        return GLib.SOURCE_CONTINUE;
+    });
+}
+
+export function addFrameSubscriber(fn) {
+    const id = _seq++;
+    _subs.set(id, fn);
+    _ensureHeart();
+    return id;
+}
+
+export function removeFrameSubscriber(id) {
+    _subs.delete(id);
+    if (!_subs.size && _heart) {
+        GLib.Source.remove(_heart);
+        _heart = 0;
+    }
+}
+
 export function makeWeatherIcon(size, getOpts = null, animate = () => true) {
     const area = new Gtk.DrawingArea();
     area.set_size_request(size, size);
@@ -428,18 +464,19 @@ export function makeWeatherIcon(size, getOpts = null, animate = () => true) {
     area.connect('map', () => {
         if (timer || !animate())
             return;
-        timer = GLib.timeout_add(GLib.PRIORITY_LOW, 50, () => {
+        timer = addFrameSubscriber(() => {
             if (!animate()) {
+                removeFrameSubscriber(timer);
                 timer = 0;
-                return GLib.SOURCE_REMOVE;
+                area.queue_draw();
+                return;
             }
             area.queue_draw();
-            return GLib.SOURCE_CONTINUE;
         });
     });
     area.connect('unmap', () => {
         if (timer) {
-            GLib.Source.remove(timer);
+            removeFrameSubscriber(timer);
             timer = 0;
         }
     });

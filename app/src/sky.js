@@ -9,7 +9,7 @@ import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Cairo from 'gi://cairo?version=1.0';
 import { moonPhase } from './weather.js';
-import { paintMoonBody } from './painter.js';
+import { paintMoonBody, addFrameSubscriber, removeFrameSubscriber } from './painter.js';
 
 const TWO_PI = Math.PI * 2;
 const rand = (min, max) => min + Math.random() * (max - min);
@@ -155,6 +155,8 @@ export function createSky() {
         lastTime: null, lastT: null,
         drops: [], flakes: [], hail: [], clouds: [], stars: [],
         streaks: [], fog: [],
+        // static-layer surface cache (see paintSky) + counters for tests
+        cache: null, cacheKey: '', builds: 0, blits: 0,
     };
 }
 
@@ -392,20 +394,16 @@ function drawStars(cr, stars, time, twilight = 0, keepOut = null) {
     }
 }
 
-function drawCelestial(cr, width, height, scale, features, sky, time, night, phase,
+/** Celestial bodies ONLY (into the cached layer). The star twinkle rides
+ * separately per-frame, honoring the moon keep-out. */
+function drawBodies(cr, width, height, scale, features, time, night, phase,
     twilight, solar, noon) {
     const [sunX, sunY] = sunSpot(width, height, night, solar);
     const radius = 64 * scale;
-    if ((features.sun || features.moon) && !night) {
+    if ((features.sun || features.moon) && !night)
         drawSun(cr, sunX, sunY, radius, scale, time, twilight, noon);
-    } else if (features.stars || features.moon) {
-        if (features.moon)
-            drawStars(cr, sky.stars, time, twilight, { x: sunX, y: sunY, r: radius * 0.85 });
-        else
-            drawStars(cr, sky.stars, time, twilight);
-        if (features.moon)
-            drawMoon(cr, sunX, sunY, radius, phase);
-    }
+    else if (features.moon)
+        drawMoon(cr, sunX, sunY, radius, phase);
 }
 
 function drawClouds(cr, sky, width, scale, dt, time, scene, night, twilight) {
@@ -579,6 +577,14 @@ function drawLightning(cr, width, height, scale, time) {
 /**
  * Paint one frame. `getState()` -> {scene, night, phase, glow, solar} and
  * `animate()` gates motion (paused frames advance time by 0 via dt clamp).
+ *
+ * Layered for throughput: everything that changes slowly (sky gradient,
+ * horizon glow, sun/moon with its breathing and ray rotation, fog ridges)
+ * builds ONCE onto an offscreen surface — celestial breathing quantizes to
+ * eighth-seconds, so the rebuild runs a few times a second at most and
+ * never for body-less scenes until a resize. Every frame is then a single
+ * opaque blit plus the genuinely dynamic list: stars, clouds, particles,
+ * lightning, scrim.
  */
 export function paintSky(cr, { w: width, h: height, time, scene, night, sky,
     scrim = null, radius = 0, phase = null, glow = 0, solar = null }) {
@@ -594,6 +600,39 @@ export function paintSky(cr, { w: width, h: height, time, scene, night, sky,
     const twilight = twilightOf(scene, glow);
     const noon = noonOf(scene, night, solar);
     const scale = height / 420;
+
+    // Quantum per scene class: sun bodies breathe/rotate (rebuild <=4/s),
+    // a timeless moon needs ZERO time-based rebuilds, and only a moon
+    // UNDER twilight pays a 1 Hz breath step. Body-less scenes never move
+    // their cache at all until a resize or the minute tick.
+    const anim = !night && (features.sun || features.moon)
+        ? 4 : night && features.moon && glow > 0.011 ? 1 : 0;
+    const qt = anim ? Math.floor(time * anim) / anim : 0;
+    const key = `${scene}|${night ? 'n' : 'd'}|${Number(glow).toFixed(3)}`
+        + `|${Number.isFinite(solar) ? solar.toFixed(3) : '-'}|`
+        + `${phase == null ? '-' : Number(phase).toFixed(4)}|${qt}|${rw}x${rh}`;
+    if (!sky.cache || sky.cacheKey !== key) {
+        const reuse = sky.cache
+            && sky.cache.getWidth() === rw && sky.cache.getHeight() === rh;
+        const surface = reuse
+            ? sky.cache
+            : new Cairo.ImageSurface(Cairo.Format.ARGB32, rw, rh);
+        const sc = new Cairo.Context(surface);
+        sc.setOperator(Cairo.Operator.CLEAR);
+        sc.paint();
+        sc.setOperator(Cairo.Operator.OVER);
+        drawBackdrop(sc, rh, skyStops(scene, night, glow, solar));
+        drawHorizonGlow(sc, rw, rh, twilight, night, qt);
+        drawBodies(sc, rw, rh, scale, features, qt, night, phase,
+            twilight, solar, noon);
+        if (scene === 'fog')
+            drawFogHills(sc, rw, rh, night);
+        sc.$dispose();
+        surface.flush();
+        sky.cache = surface;
+        sky.cacheKey = key;
+        sky.builds++;
+    }
 
     cr.save();
     cr.rectangle(0, 0, width, height);
@@ -613,13 +652,19 @@ export function paintSky(cr, { w: width, h: height, time, scene, night, sky,
     }
     cr.clip();
 
-    drawBackdrop(cr, height, skyStops(scene, night, glow, solar));
-    drawHorizonGlow(cr, width, height, twilight, night, time);
-    drawCelestial(cr, width, height, scale, features, sky, time, night, phase,
-        twilight, solar, noon);
+    cr.setOperator(Cairo.Operator.SOURCE);
+    cr.setSourceSurface(sky.cache, 0, 0);
+    cr.paint();
+    cr.setOperator(Cairo.Operator.OVER);
+    sky.blits++;
+
+    const hasMoon = features.moon && night;
+    if (night && (features.stars || features.moon)) {
+        const [sx, sy] = sunSpot(rw, rh, night, solar);
+        drawStars(cr, sky.stars, time, twilight,
+            hasMoon ? { x: sx, y: sy, r: 64 * scale * 0.85 } : null);
+    }
     drawClouds(cr, sky, width, scale, dt, time, scene, night, twilight);
-    if (scene === 'fog')
-        drawFogHills(cr, width, height, night);
     drawFog(cr, sky, width, dt, time, night);
     drawRain(cr, sky, width, height, scale, dt, scene);
     drawSnow(cr, sky, width, height, scale, dt, time);
@@ -644,7 +689,6 @@ export function makeSkyBackdrop(getState, animate = () => true) {
     const sky = createSky();
     const t0 = GLib.get_monotonic_time();
     const tPauseStatic = 42; // frozen-frame time for animate() === false
-    let timer = 0;
 
     area.set_hexpand(true);
     area.set_vexpand(true);
@@ -664,21 +708,23 @@ export function makeSkyBackdrop(getState, animate = () => true) {
         });
     });
 
+    let sub = 0;
     area.connect('map', () => {
-        if (timer || !animate()) return;
-        timer = GLib.timeout_add(GLib.PRIORITY_LOW, 50, () => {
+        if (sub || !animate()) return;
+        sub = addFrameSubscriber(() => {
             if (!animate()) {
-                timer = 0;
-                return GLib.SOURCE_REMOVE;
+                removeFrameSubscriber(sub);
+                sub = 0;
+                area.queue_draw(); // settle on the static frame
+                return;
             }
             area.queue_draw();
-            return GLib.SOURCE_CONTINUE;
         });
     });
     area.connect('unmap', () => {
-        if (timer) {
-            GLib.Source.remove(timer);
-            timer = 0;
+        if (sub) {
+            removeFrameSubscriber(sub);
+            sub = 0;
         }
     });
     area.invalidateState = () => area.queue_draw();

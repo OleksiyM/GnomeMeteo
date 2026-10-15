@@ -181,6 +181,29 @@ check('bodyOf full moon reports disc', S.bodyOf('moon', true, 330, 430, 0, null,
 check('ink flip: hero ink over noon sun disc goes dark',
     I.pickInk(S.bodyOf('sun', false, 330, 430, 0, 0.5).col) === I.INK_DARK);
 
+// the layered cache: body-less skies build once & blit forever; a timeless
+// moon NEVER rebuilds on time alone; the sun steps at <=4 Hz
+{
+    const shoot = (opts, frames) => {
+        const sky = S.createSky();
+        const sf = new Cairo.ImageSurface(Cairo.Format.ARGB32, 400, 300);
+        const cc = new Cairo.Context(sf);
+        for (let i = 0; i < frames; i++)
+            S.paintSky(cc, { ...opts, w: 400, h: 300, time: i / 20, sky });
+        return sky;
+    };
+    const rainy = shoot({ scene: 'rain', night: false }, 30); // 1.5 s
+    check('body-less sky: one build, blits frames',
+        rainy.builds === 1 && rainy.blits === 30, `b=${rainy.builds} l=${rainy.blits}`);
+    const moony = shoot({ scene: 'moon', night: true, phase: 0.5 }, 60); // 3 s
+    check('moon cache ignores time (zero rebuilds)',
+        moony.builds === 1 && moony.blits === 60, `b=${moony.builds}`);
+    const sunny = shoot({ scene: 'clear', night: false, solar: 1 }, 60);
+    check('sun rebuilds at <=4 Hz',
+        sunny.builds <= 4 * 3 + 1 && sunny.blits === 60, `b=${sunny.builds}`);
+}
+
+
 
 const rc = failures ? 1 : 0;
 print(failures ? `${failures} FAILURE(S)` : 'ALL CHECKS PASSED');
