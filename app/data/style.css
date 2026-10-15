@@ -74,20 +74,27 @@ button.day-tile:checked {
   box-shadow: none;
 }
 
-@media (prefers-color-scheme: light) {
-  .sky-on button.day-tile:hover { background: alpha(#ffffff, 0.40); }
-  .sky-on button.day-tile:checked {
-    background: alpha(#ffffff, 0.68);
-    border-color: alpha(#101823, 0.35);
-  }
-}
+/* hi-temperature + day-name inherit the family base ink straight from
+ * the tile button (.aw-day base): ink-light .95 white / ink-dark #101823 */
 
-@media (prefers-color-scheme: dark) {
-  .sky-on button.day-tile:hover { background: alpha(#10141c, 0.28); }
-  .sky-on button.day-tile:checked {
-    background: alpha(#10141c, 0.45);
-    border-color: alpha(#ffffff, 0.18);
-  }
+/* Glass tone follows the JUDGED family on the tile (.ink-* = verdict of
+ * this tile's own ground, set by ink.applyInk), never the OS scheme: the
+ * media query was the source of "almost right" colours — white glare over
+ * a starry night, mud-slabs at noon. .ink-light (white ink, dark skies)
+ * takes the extension's .aw-day-sel/.aw-day:hover dark-glass pair;
+ * .ink-dark mirrors via .aw-light. Literal values byte-match the
+ * extension stylesheet. */
+.sky-on button.day-tile.ink-light:hover { background: rgba(16, 20, 28, 0.28); }
+.sky-on button.day-tile.ink-light:checked {
+  background: rgba(16, 20, 28, 0.45);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+.sky-on button.day-tile.ink-dark:hover { background: rgba(255, 255, 255, 0.40); }
+.sky-on button.day-tile.ink-dark:checked {
+  background: rgba(255, 255, 255, 0.68);
+  border-color: rgba(16, 24, 35, 0.35);
+  color: #0b1220;
 }
 
 .day-name {
@@ -198,9 +205,15 @@ entryrow.error {
   text-shadow: 0 1px 3px rgba(255, 255, 255, 0.6), 0 0 8px rgba(255, 255, 255, 0.5);
 }
 
-/* .aw-desc / .aw-clockline dim tiers on the sky */
-.sky-on .hero-cond, .sky-on .hero-feels { opacity: 0.7; }
-.sky-on .day-lo { opacity: 0.85; }
+/* Dim tiers are the extension's fixed COLOUR tokens (.aw-desc .62/.66,
+ * .aw-day-lo .85/.8), NOT element opacity: fading a widget also fades its
+ * emboss and multiplies against the family alpha (.95×.6 ≠ .62). */
+.sky-on .ink-light .hero-cond, .sky-on .ink-light .hero-feels,
+.sky-on .ink-light .day-summary { color: rgba(255, 255, 255, 0.62); }
+.sky-on .ink-dark .hero-cond, .sky-on .ink-dark .hero-feels,
+.sky-on .ink-dark .day-summary { color: rgba(16, 24, 35, 0.66); }
+.sky-on .ink-light .day-lo { color: rgba(255, 255, 255, 0.85); }
+.sky-on .ink-dark .day-lo { color: rgba(16, 24, 35, 0.80); }
 
 /* Metric tabs — the extension's pill style (aw-tab): transparent full pill,
  * dim label, the ACTIVE one lights up with the day-tile glass. No linked
@@ -214,28 +227,24 @@ entryrow.error {
   box-shadow: none;
   padding: 3px 10px;
   min-height: 0;
-  color: inherit;
-  opacity: 0.6;
 }
 
-.metric-tab:hover { opacity: 0.85; }
-
-.metric-tab:checked { opacity: 1; }
-
-@media (prefers-color-scheme: light) {
-  .sky-on .metric-tab:checked {
-    background-color: rgba(255, 255, 255, 0.68);
-    border-color: rgba(16, 24, 35, 0.35);
-    color: #0b1220;
-  }
+/* Idle→hover text ramp and the checked pill ride the segBox verdict
+ * (.aw-tab colour tokens verbatim): ink-light ≙ .aw-dark, ink-dark ≙
+ * .aw-light. */
+.sky-on .metric-tabs.ink-light .metric-tab { color: rgba(255, 255, 255, 0.60); }
+.sky-on .metric-tabs.ink-light .metric-tab:hover { color: rgba(255, 255, 255, 0.85); }
+.sky-on .metric-tabs.ink-light .metric-tab:checked {
+  background-color: rgba(16, 20, 28, 0.45);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
 }
-
-@media (prefers-color-scheme: dark) {
-  .sky-on .metric-tab:checked {
-    background-color: rgba(16, 20, 28, 0.45);
-    border-color: rgba(255, 255, 255, 0.18);
-    color: #ffffff;
-  }
+.sky-on .metric-tabs.ink-dark .metric-tab { color: rgba(16, 24, 35, 0.55); }
+.sky-on .metric-tabs.ink-dark .metric-tab:hover { color: rgba(16, 24, 35, 0.80); }
+.sky-on .metric-tabs.ink-dark .metric-tab:checked {
+  background-color: rgba(255, 255, 255, 0.68);
+  border-color: rgba(16, 24, 35, 0.35);
+  color: #0b1220;
 }
 
 /* Sky OFF (no sampled ink to ride): selection takes the system accent wash,
@@ -247,19 +256,3 @@ button.metric-tab:checked {
 }
 
 
-/* Theme glass wins over the accent fallback on the sky (later = tie-break) */
-@media (prefers-color-scheme: light) {
-  .sky-on .metric-tab:checked {
-    background-color: rgba(255, 255, 255, 0.68);
-    border-color: rgba(16, 24, 35, 0.35);
-    color: #0b1220;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  .sky-on .metric-tab:checked {
-    background-color: rgba(16, 20, 28, 0.45);
-    border-color: rgba(255, 255, 255, 0.18);
-    color: #ffffff;
-  }
-}

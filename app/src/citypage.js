@@ -36,7 +36,7 @@ const GLASS_DARK = [0.05, 0.06, 0.09, 0.52];
 // Day-tile slabs — the extension's exact recipes (menu.js compGlass/
 // hoverGlass + stylesheet .aw-day-sel): a selected tile wears DARK glass
 // in the dark card (white-on-white vanishes over bright skies). Mirrored
-// by .sky-on button.day-tile rules in data/style.css.
+// by .sky-on .ink-light/.ink-dark button.day-tile rules in data/style.css.
 const SLAB_LIGHT = [1, 1, 1, 0.68];
 const SLAB_DARK = [16 / 255, 20 / 255, 28 / 255, 0.45];
 const HOVER_LIGHT = [1, 1, 1, 0.40];
@@ -272,14 +272,19 @@ class CityPage extends Gtk.Box {
         // tile against ITS OWN ground — selected tiles add the glass slab,
         // hovered tiles the thinner one; the glyph pales with its labels
         // ("one verdict, drawn twice, never apart").
-        const darkTheme = Adw.StyleManager.get_default().dark;
-        const slab = darkTheme ? SLAB_DARK : SLAB_LIGHT;
-        const hoverSlab = darkTheme ? HOVER_DARK : HOVER_LIGHT;
+        // Slab family follows the tile's RAW-ground verdict (same source of
+        // truth as the CSS .ink-* pairing), NOT the OS theme: dark glass
+        // under white ink, light glass under dark ink — per tile, per sky.
         this.#dayTiles.forEach((t, i) => {
             const box = this.#boxOf(t.btn);
             if (!box) return;
             const selected = i === this.#dayIndex;
             const hovered = !selected && i === this.#hoverTile;
+            const rawBg = boxSampleFractions(box, W, H)
+                .map(([fx, fy]) => bgPoint(fx, fy));
+            const fam = judgeInk(rawBg).ink === INK_LIGHT
+                ? [SLAB_DARK, HOVER_DARK] : [SLAB_LIGHT, HOVER_LIGHT];
+            const [slab, hoverSlab] = fam;
             const comp = selected ? rgb => compositeOver(slab, rgb)
                 : hovered ? rgb => compositeOver(hoverSlab, rgb) : raw;
             const bgs = boxSampleFractions(box, W, H)
