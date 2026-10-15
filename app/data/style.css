@@ -212,8 +212,6 @@ entryrow.error {
 .sky-on .ink-light .day-summary { color: rgba(255, 255, 255, 0.62); }
 .sky-on .ink-dark .hero-cond, .sky-on .ink-dark .hero-feels,
 .sky-on .ink-dark .day-summary { color: rgba(16, 24, 35, 0.66); }
-.sky-on .ink-light .day-lo { color: rgba(255, 255, 255, 0.85); }
-.sky-on .ink-dark .day-lo { color: rgba(16, 24, 35, 0.80); }
 
 /* Metric tabs — the extension's pill style (aw-tab): transparent full pill,
  * dim label, the ACTIVE one lights up with the day-tile glass. No linked
@@ -242,9 +240,9 @@ entryrow.error {
 .sky-on .metric-tabs.ink-dark .metric-tab { color: rgba(16, 24, 35, 0.55); }
 .sky-on .metric-tabs.ink-dark .metric-tab:hover { color: rgba(16, 24, 35, 0.80); }
 .sky-on .metric-tabs.ink-dark .metric-tab:checked {
-  background-color: rgba(255, 255, 255, 0.68);
-  border-color: rgba(16, 24, 35, 0.35);
-  color: #0b1220;
+  background-color: rgba(16, 20, 28, 0.45);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
 }
 
 /* Sky OFF (no sampled ink to ride): selection takes the system accent wash,

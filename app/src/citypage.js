@@ -15,10 +15,7 @@ import Adw from 'gi://Adw?version=1';
 import { makeWeatherIcon } from './painter.js';
 import { makeSkyBackdrop, sampleSky, bodyOf } from './sky.js';
 import { HourlyChart, CHART_SERIES } from './chart.js';
-import {
-    judgeBoxes, judgeInk, lineInk, compositeOver, applyInk,
-    lumOf, boxSampleFractions, GLYPH_INK_BAR, INK_LIGHT,
-} from './ink.js';
+import { judgeBoxes, judgeInk, lineInk, applyInk, lumOf } from './ink.js';
 import {
     effectiveScene, precipIntensity, sceneFor, moonPhase, daySlice, cityWallMs,
     sunShade, dayName, fmtTemp, fmtWind, fmtPressure, fmtVisibility, fmtPrecipRate,
@@ -27,20 +24,13 @@ import {
 
 const METRIC_KEYS = ['temp', 'precip', 'wind'];
 
-// Translucent card glass over the sky. THESE ALPHA VALUES ARE MIRRORED IN
-// data/style.css (.sky-on card) — the ink judge composites with exactly the
-// tint the eye sees; drift here would decouple verdict from pixels.
-const GLASS_LIGHT = [1, 1, 1, 0.55];
-const GLASS_DARK = [0.05, 0.06, 0.09, 0.52];
-
-// Day-tile slabs — the extension's exact recipes (menu.js compGlass/
-// hoverGlass + stylesheet .aw-day-sel): a selected tile wears DARK glass
-// in the dark card (white-on-white vanishes over bright skies). Mirrored
-// by .sky-on .ink-light/.ink-dark button.day-tile rules in data/style.css.
-const SLAB_LIGHT = [1, 1, 1, 0.68];
-const SLAB_DARK = [16 / 255, 20 / 255, 28 / 255, 0.45];
-const HOVER_LIGHT = [1, 1, 1, 0.40];
-const HOVER_DARK = [16 / 255, 20 / 255, 28 / 255, 0.28];
+// ANIMATED-SKY FURNITURE DOCTRINE (extension menu.js THEME_CONFIG): "the
+// animated sky carries its own contrast — the ink judge reads the painted
+// pixels — so it ALWAYS presents the dark treatment regardless of the
+// system theme; only the solid style needs a per-theme wash." Slabs, chips,
+// tab pills and card glass under .sky-on are fixed dark glass in
+// data/style.css; NO canvas mirroring is needed because no furniture ground
+// feeds a verdict anymore. scripts/check-design-parity.py pins the literals.
 
 function statTile(title) {
     const titleLbl = new Gtk.Label({ label: title, css_classes: ['stat-title'] });
@@ -82,12 +72,12 @@ class CityPage extends Gtk.Box {
     #skyNight = false;
     #moonPhase = 0.62;
 
-    #stack; #overlay; #backdrop; #vadj; #heroGlyphWrap;
+    #stack; #overlay; #backdrop; #vadj;
     #errorBanner; #errorBannerLabel; #coldErrorLabel;
     #tempLabel; #condLabel; #feelsLabel; #clockLabel; #dateLabel; #updatedLabel;
     #heroSpinner; #updRow;
     #chart; #daySummary; #segBox; #moonGlyph; #moonLabel; #sunLabel;
-    #tilesFlow; #dayTiles = []; #hoverTile = -1; #metricBtns = [];
+    #tilesFlow; #dayTiles = []; #metricBtns = [];
     #tiles = {};
     #heroLeft; #heroRight; #statFlow; #astroBox;
 
@@ -204,10 +194,6 @@ class CityPage extends Gtk.Box {
         if (this.#skyOn) this.#backdrop.invalidateState?.();
     }
 
-    #glassTint() {
-        return Adw.StyleManager.get_default().dark ? GLASS_DARK : GLASS_LIGHT;
-    }
-
     /** Composited ground rgb at page-space px (sky + celestial disc). */
     #groundAtPx(x, y, W, H) {
         const v = this.#skyView();
@@ -251,55 +237,27 @@ class CityPage extends Gtk.Box {
         if (!this.#skyOn || !this.get_mapped()) return;
         const W = this.#overlay.get_width(), H = this.#overlay.get_height();
         if (W < 50 || H < 50) return;
-        const glass = this.#glassTint();
         const bgPoint = (fx, fy) => this.#groundAtPx(fx * W, fy * H, W, H);
         const judge = (widgets, comp) => {
             const boxes = widgets.map(w => this.#boxOf(w)).filter(Boolean);
             if (!boxes.length) return null;
             return judgeBoxes(boxes, W, H, bgPoint, comp);
         };
-        const raw = rgb => rgb, compGlass = rgb => compositeOver(glass, rgb);
+        const raw = rgb => rgb;
         const on = true;
 
         applyInk(this.#heroLeft, judge([this.#heroLeft], raw), on);
         applyInk(this.#heroRight, judge([this.#heroRight], raw), on);
         applyInk(this.#updRow, judge([this.#updRow], raw), on);
-        const cardsVerdict = judge([this.#statFlow, this.#astroBox], compGlass);
-        applyInk(this.#statFlow, cardsVerdict, on);
-        applyInk(this.#astroBox, cardsVerdict, on);
+        // Stats cards + astro bar: fixed dark-glass furniture (extension
+        // _paintDark doctrine) — strip verdict classes; the static .sky-on
+        // card rules in style.css own their ink.
+        applyInk(this.#statFlow, null, false);
+        applyInk(this.#astroBox, null, false);
 
-        // day tiles sit straight on the sky (extension layout): judge EACH
-        // tile against ITS OWN ground — selected tiles add the glass slab,
-        // hovered tiles the thinner one; the glyph pales with its labels
-        // ("one verdict, drawn twice, never apart").
-        // Slab family follows the tile's RAW-ground verdict (same source of
-        // truth as the CSS .ink-* pairing), NOT the OS theme: dark glass
-        // under white ink, light glass under dark ink — per tile, per sky.
-        this.#dayTiles.forEach((t, i) => {
-            const box = this.#boxOf(t.btn);
-            if (!box) return;
-            const selected = i === this.#dayIndex;
-            const hovered = !selected && i === this.#hoverTile;
-            const rawBg = boxSampleFractions(box, W, H)
-                .map(([fx, fy]) => bgPoint(fx, fy));
-            const fam = judgeInk(rawBg).ink === INK_LIGHT
-                ? [SLAB_DARK, HOVER_DARK] : [SLAB_LIGHT, HOVER_LIGHT];
-            const [slab, hoverSlab] = fam;
-            const comp = selected ? rgb => compositeOver(slab, rgb)
-                : hovered ? rgb => compositeOver(hoverSlab, rgb) : raw;
-            const bgs = boxSampleFractions(box, W, H)
-                .map(([fx, fy]) => comp(bgPoint(fx, fy)));
-            const verdict = judgeInk(bgs);
-            applyInk(t.btn, verdict, on);
-            const center = comp(this.#groundAtPx(
-                box[0] + box[2] / 2, box[1] + box[3] / 2, W, H));
-            const pale = selected || verdict.ink === INK_LIGHT
-                || lumOf(center) < GLYPH_INK_BAR;
-            if (t.glyphState.pale !== pale) {
-                t.glyphState.pale = pale;
-                t.icon.queue_draw();
-            }
-        });
+        // Day tiles NEVER re-ink: transparent / dark-slab / dark-pill states
+        // are static CSS furniture with white ink + emboss, exactly like the
+        // extension's un-judged .aw-day row.
 
         // full-bleed chart zone sits on the OPEN sky — no glass comp
         applyInk(this.#daySummary, judge([this.#daySummary], raw), on);
@@ -356,11 +314,6 @@ class CityPage extends Gtk.Box {
 
         // hero --------------------------------------------------------------------
         const hero = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 10 });
-        this.#heroGlyphWrap = new Gtk.Box();
-        this.#heroGlyphWrap.append(makeWeatherIcon(92, () => this.#glyphState,
-            () => this.#bus.config.animate));
-        hero.append(this.#heroGlyphWrap);
-
         this.#heroLeft = new Gtk.Box({
             orientation: Gtk.Orientation.VERTICAL,
             valign: Gtk.Align.CENTER,
@@ -709,17 +662,6 @@ class CityPage extends Gtk.Box {
                 this.#dayIndex = i;
                 this.#rerender();
             });
-            // the ink judge must see the glass the cursor brings
-            const motion = new Gtk.EventControllerMotion();
-            motion.connect('enter', () => {
-                this.#hoverTile = i;
-                this.#scheduleRejudge(0);
-            });
-            motion.connect('leave', () => {
-                if (this.#hoverTile === i) this.#hoverTile = -1;
-                this.#scheduleRejudge(0);
-            });
-            btn.add_controller(motion);
             this.#tilesFlow.insert(btn, -1);
             this.#dayTiles.push({ btn, glyphState, icon });
         });

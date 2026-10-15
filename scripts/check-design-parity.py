@@ -53,23 +53,21 @@ missing = [t for t in TOKENS if norm_lit(t) not in have]
 if missing:
     fails.append(f'app stylesheet lost extension glass tokens: {missing}')
 
-# 3 -- canvas mirror constants --------------------------------------------
+# 3 -- static furniture literals (no canvas mirrors any more) --------------
+# The animated-sky furniture is static CSS (extension _paintDark doctrine):
+# citypage must NOT reintroduce ground-mirror constants, and the stylesheet
+# must carry the dark glass literals verbatim.
 cp = (ROOT/'app/src/citypage.js').read_text()
-triplets = {}
-for m in re.finditer(r'(SLAB_LIGHT|SLAB_DARK|HOVER_LIGHT|HOVER_DARK|GLASS_LIGHT|GLASS_DARK)\s*=\s*\[([^\]]+)\]', cp):
-    name, vals = m.group(1), m.group(2)
-    parsed = []
-    toks = [t.strip() for t in vals.split(',') if t.strip()]
-    for t in toks[:3]:
-        parsed.append(round(eval(t), 6) if '/' in t else float(t))
-    parsed.append(float(toks[3]))
-    triplets[name] = parsed
-want = {'SLAB_DARK':[16/255,20/255,28/255,0.45],'HOVER_DARK':[16/255,20/255,28/255,0.28],
-        'SLAB_LIGHT':[1,1,1,0.68],'HOVER_LIGHT':[1,1,1,0.40]}
-for k, v in want.items():
-    got = triplets.get(k)
-    if got is None or [round(x,6) for x in got] != [round(x,6) for x in v]:
-        fails.append(f'citypage.js {k} = {got} no longer mirrors stylesheet {v}')
+ghost = [c for c in re.findall(r'\b(SLAB_|HOVER_|GLASS_)[A-Z_]*', cp)]
+if ghost:
+    fails.append(f'citypage.js reintroduces furniture mirror constants ({set(ghost)}); '
+                 'animated-sky furniture lives ONLY in data/style.css')
+must = ['rgba(16, 20, 28, 0.28)', 'rgba(16, 20, 28, 0.45)',
+        'rgba(255, 255, 255, 0.18)', 'rgba(255, 255, 255, 0.95)',
+        'rgba(255, 255, 255, 0.85)', 'rgba(255, 255, 255, 0.62)']
+lack = [t for t in must if norm_lit(re.sub(r'\s','',t)) not in have]
+if lack:
+    fails.append(f'app stylesheet furniture literals missing: {lack}')
 
 if fails:
     print('DESIGN PARITY FAILED:'); [print(' -', f) for f in fails]; sys.exit(1)
