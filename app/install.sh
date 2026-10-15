@@ -20,10 +20,13 @@ sed "s|@PREFIX@|$DIR|" "$DIR/data/$APP_ID.desktop.in" > "$APPS_DIR/$APP_ID.deskt
 # (paintSky + drawScene), installed at every hicolor size; the retired
 # hand-drawn SVG is removed so theme lookup can't prefer it.
 rm -f "$ICON_DIR/$APP_ID.svg"
-for sz in 32 48 64 96 128 256 512 1024; do
+# Sizes come from what tools/branding-icon.mjs emitted (16..1024), not a
+# hardcoded list: adding a rung to the ladder is one render, no installer edit.
+for f in "$DIR"/data/icons/"$APP_ID"-*.png; do
+    sz="$(basename "$f" | sed "s/.*-\([0-9]\+\)\.png/\1/")"
     d="${ICON_DIR%/scalable/apps}/${sz}x${sz}/apps"
     mkdir -p "$d"
-    cp "$DIR/data/icons/$APP_ID-$sz.png" "$d/$APP_ID.png"
+    cp "$f" "$d/$APP_ID.png"
 done
 
 command -v update-desktop-database >/dev/null && update-desktop-database "$APPS_DIR" || true
