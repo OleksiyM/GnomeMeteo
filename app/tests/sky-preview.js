@@ -118,4 +118,83 @@ render('tests/out/sky-snow.png',
     cr.$dispose(); surf.flush(); surf.writeToPNG('tests/out/sky-rainnight.png');
     print('wrote tests/out/sky-rainnight.png');
 }
+
+const PAINTER = await import('../src/painter.js');
+
+// -- day tiles straight on the sky (extension slab anatomy) --------------------
+{
+    void 0;
+}
+function tilesMock(file, o, theme) {
+    const sky = createSky();
+    const surf = new Cairo.ImageSurface(Cairo.Format.ARGB32, W, H);
+    const cr = new Cairo.Context(surf);
+    for (let t = 0; t <= 8; t += 0.05)
+        paintSky(cr, { ...o, w: W, h: H, time: t, sky });
+    const names = ['Today', 'Thu', 'Fri', 'Sat'];
+    const scenes = ['sun', 'rain', 'cloud', 'storm'];
+    const X0 = 14, GAP = 5, TW = (W - 2 * X0 - 3 * GAP) / 4, TY = 248, TH = 64;
+    const slab = theme === 'dark' ? [16 / 255, 20 / 255, 28 / 255, 0.45] : [1, 1, 1, 0.68];
+    for (let i = 0; i < 4; i++) {
+        const tx = X0 + i * (TW + GAP);
+        const cx = tx + TW / 2, cy = TY + TH / 2;
+        const sel = i === 1;
+        const ground = groundAt(cx, cy, o);
+        const bg = sel ? composite(slab, ground) : ground;
+        if (sel) {
+            const rr = 12, k = 0.5523 * rr;
+            cr.save();
+            cr.newPath();
+            cr.moveTo(tx + rr, TY);
+            cr.lineTo(tx + TW - rr, TY); cr.curveTo(tx + TW - rr + k, TY, tx + TW, TY + rr - k, tx + TW, TY + rr);
+            cr.lineTo(tx + TW, TY + TH - rr); cr.curveTo(tx + TW, TY + TH, tx + TW - rr + k, TY + TH, tx + TW - rr, TY + TH);
+            cr.lineTo(tx + rr, TY + TH); cr.curveTo(tx, TY + TH, tx, TY + TH - rr + k, tx, TY + TH - rr);
+            cr.lineTo(tx, TY + rr); cr.curveTo(tx, TY + rr - k, tx + rr - k, TY, tx + rr, TY);
+            cr.closePath();
+            cr.setSourceRGBA(...slab);
+            cr.fillPreserve();
+            cr.setSourceRGBA(theme === 'dark' ? 1 : 16 / 255, theme === 'dark' ? 1 : 24 / 255, theme === 'dark' ? 1 : 35 / 255, theme === 'dark' ? 0.18 : 0.35);
+            cr.setLineWidth(1);
+            cr.stroke();
+            cr.restore();
+        }
+        const ink = pickInk(bg);
+        const [ir, ig, ib] = ink;
+        const lum = 0.2126 * bg[0] + 0.7152 * bg[1] + 0.0722 * bg[2];
+        const pale = sel || ink === INK_LIGHT || lum < 0.30;
+        cr.selectFontFace('Sans', Cairo.FontSlant.NORMAL, Cairo.FontWeight.BOLD);
+        cr.setFontSize(10);
+        const nm = names[i];
+        let ext = cr.textExtents(nm);
+        cr.setSourceRGBA(ir, ig, ib, 1);
+        cr.moveTo(cx - ext.width / 2, TY + 6); cr.showText(nm);
+        // glyph 26px centered
+        cr.save();
+        cr.translate(cx - 13, TY + 20);
+        PAINTER.drawScene(cr, 26, { scene: scenes[i], night: false, pale, intensity: 2, seed: i * 13 + 5 });
+        cr.restore();
+        cr.setFontSize(10.5);
+        const hi = ['29\u00b0', '21\u00b0', '24\u00b0', '18\u00b0'][i];
+        const lo = ['19\u00b0', '15\u00b0', '17\u00b0', '11\u00b0'][i];
+        const e1 = cr.textExtents(hi), e2 = cr.textExtents(lo);
+        const tot = e1.width + 5 + e2.width;
+        let x = cx - tot / 2;
+        cr.setSourceRGBA(ir, ig, ib, 1);
+        cr.moveTo(x, TY + TH - 15); cr.showText(hi); x += e1.width + 5;
+        cr.setSourceRGBA(ir, ig, ib, 0.85);
+        cr.moveTo(x, TY + TH - 15); cr.showText(lo);
+    }
+    cr.$dispose(); surf.flush(); surf.writeToPNG(file);
+    print('wrote', file);
+}
+
+function composite(tint, dst) {
+    const a = tint[3];
+    return [0, 1, 2].map(i => tint[i] * a + dst[i] * (1 - a));
+}
+
+tilesMock('tests/out/sky-tiles-day.png',
+    { scene: 'clear', night: false, glow: 0.35, solar: 0.75, phase: null }, 'light');
+tilesMock('tests/out/sky-tiles-night.png',
+    { scene: 'clear', night: true, glow: 0.9, solar: null, phase: 0.5 }, 'dark');
 print('done');

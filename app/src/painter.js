@@ -270,14 +270,18 @@ export function paintMoonBody(cr, cx, cy, r, phase, night = true) {
 
 /**
  * Paint one glyph into `cr`, assuming a `size`×`size` px target.
- * opts: { scene, night=false, intensity=1 (0..6), seed=0, phase=moon 0..1 }
+ * opts: { scene, night=false, intensity=1 (0..6), seed=0, phase=moon 0..1,
+ *         pale=false }
+ * `pale` picks the glow palette without swapping day→night shapes — the
+ * day-tile verdict of the sky port (a daytime glyph whose composited
+ * ground went dark joins the glow family, sun stays a sun).
  */
 export function drawScene(cr, size, opts = {}) {
     const { scene = 'partly', night = false, intensity = 1, seed = 3,
-        phase = 0.62 } = opts;
+        phase = 0.62, pale = false } = opts;
     // t advances only when the caller animates; static callers stay frozen.
     const t = opts.timeSec ?? 0;
-    const pal = night ? PAL.night : PAL.day;
+    const pal = night || pale ? PAL.night : PAL.day;
     cr.scale(size / 24, size / 24);
     cr.setLineJoin(Cairo.LineJoin.ROUND);
 

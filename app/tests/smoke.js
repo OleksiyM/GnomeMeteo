@@ -54,6 +54,22 @@ for (const scene of SCENES) {
     check(`scene ${scene} paints pixels`, diff);
 }
 
+// `pale` must flip a day-shape glyph to the glow palette (sky day-tile verdict)
+{
+    const shoot = opts => {
+        const sf = new Cairo.ImageSurface(Cairo.Format.ARGB32, 48, 48);
+        const cc = new Cairo.Context(sf);
+        drawScene(cc, 48, opts);
+        sf.writeToPNG('_pale_shot.png');
+        return GLib.file_get_contents('_pale_shot.png')[1];
+    };
+    const dayShot = shoot({ scene: 'cloud' });
+    const paleShot = shoot({ scene: 'cloud', pale: true });
+    check('pale repaints the glyph',
+        dayShot.length !== paleShot.length
+        || dayShot.some((v, i) => v !== paleShot[i]));
+}
+
 // --- weather logic ------------------------------------------------------------
 const mkHourly = () => {
     const times = [];

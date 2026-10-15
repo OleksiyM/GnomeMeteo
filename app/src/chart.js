@@ -180,9 +180,15 @@ export function paintChart(cr, w, h, state) {
         const x = clamp(xs(i), 8, w - 8);
         if (slice.code?.[i] != null) {
             const sc = sceneFor(slice.code[i], !!slice.isDay?.[i]);
+            // over the sky, a day-hours glyph whose composited ground is
+            // dark joins the glow family (tileGlyphPale bar, 0.30) without
+            // losing its day shapes
+            const ground = state.groundLum?.(x, stripTop + 9);
+            const pale = ground != null && ground < 0.30 && !sc.night;
             cr.save();
             cr.translate(x - 8, stripTop);
-            drawScene(cr, 16, { scene: sc.scene, night: sc.night, intensity: 2, seed: i });
+            drawScene(cr, 16, { scene: sc.scene, night: sc.night,
+                pale, intensity: 2, seed: i });
             cr.restore();
         }
         const lbl = shortHourLabel(slice.time[i], h12);
@@ -220,6 +226,7 @@ class HourlyChart extends Gtk.DrawingArea {
     #dark = false;
     #fgRgb = null;
     #seriesRgb = null;
+    #groundLum = null;
 
     constructor() {
         super();
@@ -233,6 +240,7 @@ class HourlyChart extends Gtk.DrawingArea {
             dark: this.#dark,
             fgRgb: this.#fgRgb,
             seriesRgb: this.#seriesRgb,
+            groundLum: this.#groundLum,
         }));
     }
 
@@ -254,6 +262,12 @@ class HourlyChart extends Gtk.DrawingArea {
     setJudgedInk(fgRgb, seriesRgb) {
         this.#fgRgb = fgRgb;
         this.#seriesRgb = seriesRgb;
+        this.queue_draw();
+    }
+
+    /** (px, py) -> composited ground luminance under the strip glyphs. */
+    setGroundSampler(fn) {
+        this.#groundLum = fn;
         this.queue_draw();
     }
 

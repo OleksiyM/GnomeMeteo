@@ -37,10 +37,6 @@
   padding: 10px 14px;
 }
 
-.chart-card {
-  padding: 10px 6px 6px;
-}
-
 .day-summary {
   font-weight: 600;
   margin-left: 8px;
@@ -59,13 +55,58 @@ button.day-tile:checked {
   background: alpha(@accent_bg_color, 0.14);
 }
 
-.day-name {
-  font-weight: 700;
+/* Day tiles straight on the sky — the extension's .aw-day recipes verbatim:
+ * transparent until hovered (40% white / 28% dark glass) and a heavier
+ * glass slab when selected (68% white / 45% dark). Dark glass in the dark
+ * card is deliberate: white ink on white-tinted glass vanishes over bright
+ * skies. Alphas mirrored by SLAB_/HOVER_ constants in src/citypage.js. */
+.sky-on button.day-tile {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
 }
 
-.day-hilo {
+@media (prefers-color-scheme: light) {
+  .sky-on button.day-tile:hover { background: alpha(#ffffff, 0.40); }
+  .sky-on button.day-tile:checked {
+    background: alpha(#ffffff, 0.68);
+    border-color: alpha(#101823, 0.35);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .sky-on button.day-tile:hover { background: alpha(#10141c, 0.28); }
+  .sky-on button.day-tile:checked {
+    background: alpha(#10141c, 0.45);
+    border-color: alpha(#ffffff, 0.18);
+  }
+}
+
+.day-name {
+  font-weight: 700;
+  font-size: 11.5px;
+}
+
+/* hi/lo hierarchy by WEIGHT, never dimmed away — lows must survive
+ * sun-bright skies; the judged ink alpha does the subtle 0.82 lift */
+.day-hi {
+  font-weight: 600;
   font-size: 12.5px;
   font-feature-settings: "tnum";
+}
+
+.day-lo {
+  font-weight: 400;
+  font-size: 12.5px;
+  font-feature-settings: "tnum";
+  opacity: 0.85;
+}
+
+/* Full-bleed chart zone — curve, strip and hour rail lie on the open sky,
+ * no card, edge to edge (negative margins undo the page gutter, the
+ * extension's PADDING_X=2 feel). */
+.chart-zone {
+  padding: 0 0 2px;
 }
 
 .city-temp {

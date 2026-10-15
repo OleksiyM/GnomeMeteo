@@ -40,8 +40,18 @@ developer box already has: `gjs`, GTK 4, libadwaita, libsoup 3.
   labels, and a dashed **"now" marker inside a rolling 24-hour window with
   2 h backfill** (the extension's windowing model — future days are exact
   calendar slices, so no timezone ever tips a day boundary).
-- **Day planner** — 8 selectable day tiles; selecting one retargets the
-  chart and summary line (the extension's day-tab idea).
+- **Day planner** — 8 selectable day tiles in the extension's anatomy
+  (name · code-pose glyph · weight-tiered hi/lo), sitting straight on the
+  sky: transparent by default, a thin glass slab on hover, a heavier one
+  when selected (the extension's exact 68%/45% recipes), each tile judged
+  against *its own* ground so a tile grazing the sun flips to dark ink
+  alone. Selecting a day re-targets the chart/day summary and
+  **re-skins the backdrop** — pick Friday's storm and storm clouds fill the page.
+- **Full-bleed hourly chart** — the curve, per-hour condition strip and
+  hour rail lie edge-to-edge on the open sky, exactly like the extension
+  popup; strip glyphs pale themselves per-cell against the ground beneath
+  them, and the whole plot's ink + series colors are judged worst-of-grid.
+
 - **What the extension parsed but never showed** — feels-like, humidity,
   wind compass bearing, pressure, UV band, visibility, precipitation rate,
   sunrise/sunset, and **moon phase with illumination %**.

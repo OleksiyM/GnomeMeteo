@@ -17,6 +17,7 @@ import { makeSkyBackdrop, sampleSky, bodyOf } from './sky.js';
 import { HourlyChart, CHART_SERIES } from './chart.js';
 import {
     judgeBoxes, judgeInk, lineInk, compositeOver, applyInk,
+    lumOf, boxSampleFractions, GLYPH_INK_BAR, INK_LIGHT,
 } from './ink.js';
 import {
     effectiveScene, precipIntensity, sceneFor, moonPhase, daySlice, cityWallMs,
@@ -31,6 +32,15 @@ const METRIC_KEYS = ['temp', 'precip', 'wind'];
 // tint the eye sees; drift here would decouple verdict from pixels.
 const GLASS_LIGHT = [1, 1, 1, 0.55];
 const GLASS_DARK = [0.05, 0.06, 0.09, 0.52];
+
+// Day-tile slabs — the extension's exact recipes (menu.js compGlass/
+// hoverGlass + stylesheet .aw-day-sel): a selected tile wears DARK glass
+// in the dark card (white-on-white vanishes over bright skies). Mirrored
+// by .sky-on button.day-tile rules in data/style.css.
+const SLAB_LIGHT = [1, 1, 1, 0.68];
+const SLAB_DARK = [16 / 255, 20 / 255, 28 / 255, 0.45];
+const HOVER_LIGHT = [1, 1, 1, 0.40];
+const HOVER_DARK = [16 / 255, 20 / 255, 28 / 255, 0.28];
 
 function statTile(title) {
     const titleLbl = new Gtk.Label({ label: title, css_classes: ['stat-title'] });
@@ -77,7 +87,7 @@ class CityPage extends Gtk.Box {
     #tempLabel; #condLabel; #feelsLabel; #clockLabel; #dateLabel; #updatedLabel;
     #heroSpinner; #updRow;
     #chart; #daySummary; #segBox; #moonGlyph; #moonLabel; #sunLabel;
-    #tilesFlow; #dayBtns = []; #metricBtns = [];
+    #tilesFlow; #dayTiles = []; #hoverTile = -1; #metricBtns = [];
     #tiles = {};
     #heroLeft; #heroRight; #statFlow; #astroBox;
 
@@ -257,10 +267,38 @@ class CityPage extends Gtk.Box {
         const cardsVerdict = judge([this.#statFlow, this.#astroBox], compGlass);
         applyInk(this.#statFlow, cardsVerdict, on);
         applyInk(this.#astroBox, cardsVerdict, on);
-        applyInk(this.#tilesFlow, cardsVerdict, on);
-        for (const btn of this.#dayBtns) applyInk(btn, cardsVerdict, on);
-        applyInk(this.#daySummary, judge([this.#daySummary], compGlass), on);
-        applyInk(this.#segBox, judge([this.#segBox], compGlass), on);
+
+        // day tiles sit straight on the sky (extension layout): judge EACH
+        // tile against ITS OWN ground — selected tiles add the glass slab,
+        // hovered tiles the thinner one; the glyph pales with its labels
+        // ("one verdict, drawn twice, never apart").
+        const darkTheme = Adw.StyleManager.get_default().dark;
+        const slab = darkTheme ? SLAB_DARK : SLAB_LIGHT;
+        const hoverSlab = darkTheme ? HOVER_DARK : HOVER_LIGHT;
+        this.#dayTiles.forEach((t, i) => {
+            const box = this.#boxOf(t.btn);
+            if (!box) return;
+            const selected = i === this.#dayIndex;
+            const hovered = !selected && i === this.#hoverTile;
+            const comp = selected ? rgb => compositeOver(slab, rgb)
+                : hovered ? rgb => compositeOver(hoverSlab, rgb) : raw;
+            const bgs = boxSampleFractions(box, W, H)
+                .map(([fx, fy]) => comp(bgPoint(fx, fy)));
+            const verdict = judgeInk(bgs);
+            applyInk(t.btn, verdict, on);
+            const center = comp(this.#groundAtPx(
+                box[0] + box[2] / 2, box[1] + box[3] / 2, W, H));
+            const pale = selected || verdict.ink === INK_LIGHT
+                || lumOf(center) < GLYPH_INK_BAR;
+            if (t.glyphState.pale !== pale) {
+                t.glyphState.pale = pale;
+                t.icon.queue_draw();
+            }
+        });
+
+        // full-bleed chart zone sits on the OPEN sky — no glass comp
+        applyInk(this.#daySummary, judge([this.#daySummary], raw), on);
+        applyInk(this.#segBox, judge([this.#segBox], raw), on);
 
         // chart internals: the plot crosses many grounds — one ink family
         // survives the WORST sample of the grid; series lines get walked
@@ -271,7 +309,7 @@ class CityPage extends Gtk.Box {
             const bgs = [];
             for (let fy = 0.08; fy <= 0.95; fy += 0.145)
                 for (let fx = 0.08; fx <= 0.95; fx += 0.145)
-                    bgs.push(compGlass(this.#groundAtPx(bx + fx * bw, by + fy * bh, W, H)));
+                    bgs.push(raw(this.#groundAtPx(bx + fx * bw, by + fy * bh, W, H)));
             const series = {};
             for (const k of Object.keys(CHART_SERIES))
                 series[k] = lineInk(CHART_SERIES[k].rgb, bgs);
@@ -279,17 +317,37 @@ class CityPage extends Gtk.Box {
         }
     }
 
+    /** (chart-local px,py) -> composited sky luminance, for the strip's
+     * per-glyph pale verdict. Null when the sky is off (fallback palettes). */
+    #chartGroundLum(px, py) {
+        if (!this.#skyOn) return null;
+        const box = this.#boxOf(this.#chart);
+        const W = this.#overlay.get_width(), H = this.#overlay.get_height();
+        if (!box || W < 50 || H < 50) return null;
+        return lumOf(this.#groundAtPx(box[0] + px, box[1] + py, W, H));
+    }
+
     // ---- construction -------------------------------------------------------------
 
     #buildReady() {
         const clamp = new Adw.Clamp({ maximum_size: 780, tightening_threshold: 620 });
-        const root = new Gtk.Box({
+        // THREE bands: a padded top column, the FULL-BLEED chart zone (GTK
+        // forbids negative margins, so the bleed is structural — the middle
+        // band simply carries no side gutters), and a padded bottom column.
+        const outer = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 0 });
+        const top = new Gtk.Box({
             orientation: Gtk.Orientation.VERTICAL,
             spacing: 14,
-            margin_top: 18, margin_bottom: 20,
+            margin_top: 18, margin_start: 14, margin_end: 14,
+        });
+        const bottom = new Gtk.Box({
+            orientation: Gtk.Orientation.VERTICAL,
+            spacing: 8,
+            margin_top: 4, margin_bottom: 20,
             margin_start: 14, margin_end: 14,
         });
-        clamp.set_child(root);
+        outer.append(top);
+        clamp.set_child(outer);
 
         // hero --------------------------------------------------------------------
         const hero = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 18 });
@@ -323,7 +381,7 @@ class CityPage extends Gtk.Box {
         this.#heroRight.append(this.#clockLabel);
         this.#heroRight.append(this.#dateLabel);
         hero.append(this.#heroRight);
-        root.append(hero);
+        top.append(hero);
 
         // error banner (refresh failed, stale data shown) ---------------------------
         this.#errorBanner = new Gtk.Box({
@@ -335,7 +393,7 @@ class CityPage extends Gtk.Box {
         this.#errorBanner.append(new Gtk.Image({ icon_name: 'dialog-warning-symbolic' }));
         this.#errorBannerLabel = new Gtk.Label({ label: '', xalign: 0, wrap: true });
         this.#errorBanner.append(this.#errorBannerLabel);
-        root.append(this.#errorBanner);
+        top.append(this.#errorBanner);
 
         // stat tiles ------------------------------------------------------------------
         this.#statFlow = new Gtk.FlowBox();
@@ -351,7 +409,7 @@ class CityPage extends Gtk.Box {
             this.#statFlow.insert(t.box, -1);
             this.#tiles[key] = t.valueLbl;
         }
-        root.append(this.#statFlow);
+        top.append(this.#statFlow);
 
         // sun & moon -----------------------------------------------------------------
         this.#astroBox = new Gtk.Box({
@@ -372,15 +430,15 @@ class CityPage extends Gtk.Box {
         this.#astroBox.append(sunCol);
         this.#moonLabel = new Gtk.Label({ label: 'Moon', css_classes: ['dim-label'] });
         this.#astroBox.append(this.#moonLabel);
-        root.append(this.#astroBox);
+        top.append(this.#astroBox);
 
-        // chart card (metric picker lives INSIDE for a shared ink verdict) -----------
+        // FULL-BLEED chart zone, like the extension popup: the curve, the
+        // condition strip and the hour rail lie straight on the sky with no
+        // card behind them, bleeding to the page edges.
         const chartCard = new Gtk.Box({
             orientation: Gtk.Orientation.VERTICAL,
-            spacing: 6,
-            css_classes: ['card', 'chart-card'],
-            margin_start: 6, margin_end: 6,
-            margin_top: 2, margin_bottom: 2,
+            spacing: 4,
+            css_classes: ['chart-zone'],
         });
         this.#segBox = new Gtk.Box({
             css_classes: ['linked'],
@@ -411,7 +469,8 @@ class CityPage extends Gtk.Box {
         chartCard.append(this.#daySummary);
         this.#chart = new HourlyChart();
         chartCard.append(this.#chart);
-        root.append(chartCard);
+        outer.append(chartCard);
+        outer.append(bottom);
 
         // day tiles ---------------------------------------------------------------------
         this.#tilesFlow = new Gtk.FlowBox();
@@ -420,9 +479,9 @@ class CityPage extends Gtk.Box {
         this.#tilesFlow.set_max_children_per_line(4);
         this.#tilesFlow.set_row_spacing(8);
         this.#tilesFlow.set_column_spacing(8);
-        root.append(this.#tilesFlow);
+        bottom.append(this.#tilesFlow);
 
-        root.append(new Gtk.LinkButton({
+        bottom.append(new Gtk.LinkButton({
             uri: 'https://open-meteo.com/',
             label: 'Weather data by Open-Meteo.com',
             css_classes: ['flat', 'caption'],
@@ -474,15 +533,23 @@ class CityPage extends Gtk.Box {
         if (on) {
             this.add_css_class('sky-on');
             this.#backdrop.set_visible(true);
+            this.#chart.setGroundSampler((x, y) => this.#chartGroundLum(x, y));
         } else {
             this.remove_css_class('sky-on');
             this.#backdrop.set_visible(false);
             for (const w of [this.#heroLeft, this.#heroRight, this.#updRow,
-                this.#statFlow, this.#astroBox, this.#tilesFlow, this.#daySummary,
+                this.#statFlow, this.#astroBox, this.#daySummary,
                 this.#segBox])
                 applyInk(w, null, false);
-            for (const btn of this.#dayBtns) applyInk(btn, null, false);
+            for (const t of this.#dayTiles) {
+                applyInk(t.btn, null, false);
+                if (t.glyphState.pale) {
+                    t.glyphState.pale = false;
+                    t.icon.queue_draw();
+                }
+            }
             this.#chart.setJudgedInk(null, null);
+            this.#chart.setGroundSampler(null);
         }
     }
 
@@ -497,6 +564,23 @@ class CityPage extends Gtk.Box {
     set dark(v) {
         this.#chart.dark = v;
         this.#scheduleRejudge(0);
+    }
+
+    /** The backdrop WEARS the selected day: picking Wednesday's storm puts
+     * Wednesday's clouds and drops behind everything (day-of-week scenes
+     * are daytime codes, so the sun and its glow stay truthful). Today
+     * rides live conditions. */
+    #syncSkyScene() {
+        if (!this.#data) return;
+        if (this.#dayIndex > 0 && this.#data.daily[this.#dayIndex]) {
+            const info = sceneFor(this.#data.daily[this.#dayIndex].code, true);
+            this.#skyScene = info.scene;
+            this.#skyNight = false;
+        } else {
+            const eff = effectiveScene(this.#data.current);
+            this.#skyScene = eff.scene;
+            this.#skyNight = eff.night;
+        }
     }
 
     #goLoading() {
@@ -519,8 +603,7 @@ class CityPage extends Gtk.Box {
             intensity: precipIntensity(c.code),
             phase: mp.phase,
         };
-        this.#skyScene = scene.scene;
-        this.#skyNight = scene.night;
+        this.#syncSkyScene();
 
         this.#tempLabel.label = fmtTemp(c.temp, units);
         this.#condLabel.label = scene.desc;
@@ -570,45 +653,74 @@ class CityPage extends Gtk.Box {
     }
 
     #buildDayTiles() {
+        // extension tile anatomy: name · 26px code-pose glyph · hi/lo pair,
+        // hierarchy by WEIGHT (lo is never faded away, only lighter)
         this.#tilesFlow.remove_all();
-        this.#dayBtns = [];
+        this.#dayTiles = [];
         const units = this.#bus.config.units;
         this.#data.daily.forEach((day, i) => {
             const info = sceneFor(day.code, true);
             const btn = new Gtk.ToggleButton({ css_classes: ['day-tile'] });
             if (i === this.#dayIndex) btn.set_active(true);
-            if (i > 0) btn.set_group(this.#dayBtns[i - 1]);
+            if (i > 0) btn.set_group(this.#dayTiles[i - 1].btn);
 
-            const box = new Gtk.Box({
+            const col = new Gtk.Box({
                 orientation: Gtk.Orientation.VERTICAL,
-                spacing: 3,
-                margin_top: 8, margin_bottom: 8,
+                spacing: 2,
+                margin_top: 5, margin_bottom: 4,
             });
-            box.append(new Gtk.Label({
+            col.append(new Gtk.Label({
                 label: i === 0 ? 'Today' : dayName(day.date),
                 css_classes: ['day-name'],
             }));
-            box.append(makeWeatherIcon(30,
-                () => ({ scene: info.scene, night: false, intensity: 2, seed: i * 13 + 5 }),
-                () => false));
-            box.append(new Gtk.Label({
-                label: `${fmtTemp(day.tmax, units)} / ${fmtTemp(day.tmin, units)}`,
-                css_classes: ['day-hilo'],
+            const glyphState = {
+                scene: info.scene,
+                night: false,
+                intensity: precipIntensity(day.code),
+                seed: i * 13 + 5,
+                pale: false,
+            };
+            const icon = makeWeatherIcon(26, () => glyphState, () => false);
+            col.append(icon);
+            const hl = new Gtk.Box({
+                orientation: Gtk.Orientation.HORIZONTAL,
+                spacing: 5,
+                halign: Gtk.Align.CENTER,
+            });
+            hl.append(new Gtk.Label({
+                label: fmtTemp(day.tmax, units), css_classes: ['day-hi'],
             }));
-            btn.set_child(box);
+            hl.append(new Gtk.Label({
+                label: fmtTemp(day.tmin, units), css_classes: ['day-lo'],
+            }));
+            col.append(hl);
+            btn.set_child(col);
             btn.connect('toggled', () => {
                 if (!btn.active) return;
                 this.#dayIndex = i;
                 this.#rerender();
             });
+            // the ink judge must see the glass the cursor brings
+            const motion = new Gtk.EventControllerMotion();
+            motion.connect('enter', () => {
+                this.#hoverTile = i;
+                this.#scheduleRejudge(0);
+            });
+            motion.connect('leave', () => {
+                if (this.#hoverTile === i) this.#hoverTile = -1;
+                this.#scheduleRejudge(0);
+            });
+            btn.add_controller(motion);
             this.#tilesFlow.insert(btn, -1);
-            this.#dayBtns.push(btn);
+            this.#dayTiles.push({ btn, glyphState, icon });
         });
         this.#rerender();
     }
 
     #rerender() {
         if (!this.#data) return;
+        this.#syncSkyScene();
+        this.#invalidateSky();
         const units = this.#bus.config.units;
         const slice = daySlice(this.#data.hourly, this.#data.daily, this.#dayIndex,
             cityWallMs(this.#data));
