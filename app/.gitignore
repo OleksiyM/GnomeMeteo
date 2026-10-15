@@ -1,0 +1,5 @@
+# previews produced by tests
+*.png
+*.src-switcher
+.idea/
+.vscode/

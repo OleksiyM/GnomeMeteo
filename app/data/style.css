@@ -1,0 +1,90 @@
+/* WeatherGlass — standalone app styles */
+
+.hero-temp {
+  font-size: 54px;
+  font-weight: 800;
+}
+
+.hero-cond {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.hero-clock {
+  font-size: 22px;
+  font-weight: 700;
+  font-feature-settings: "tnum";
+}
+
+.stat-tile {
+  min-width: 130px;
+}
+
+.stat-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.stat-value {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.astro-row {
+  padding: 10px 14px;
+}
+
+.chart-card {
+  padding: 10px 6px 6px;
+}
+
+.day-summary {
+  font-weight: 600;
+  margin-left: 8px;
+  margin-bottom: 2px;
+}
+
+button.day-tile {
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid alpha(currentColor, 0.12);
+  background: alpha(currentColor, 0.03);
+}
+
+button.day-tile:checked {
+  border-color: alpha(@accent_bg_color, 0.65);
+  background: alpha(@accent_bg_color, 0.14);
+}
+
+.day-name {
+  font-weight: 700;
+}
+
+.day-hilo {
+  font-size: 12.5px;
+  font-feature-settings: "tnum";
+}
+
+.city-temp {
+  font-weight: 800;
+  font-size: 15px;
+  font-feature-settings: "tnum";
+}
+
+.warning-banner {
+  border: 1px solid alpha(@warning_color, 0.5);
+  background: alpha(@warning_color, 0.12);
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+entryrow.error {
+  outline-color: @error_color;
+}
+
+.sidebar-footer {
+  border-top: 1px solid alpha(currentColor, 0.1);
+}
