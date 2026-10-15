@@ -16,7 +16,15 @@ ln -sf "$DIR/bin/weatherglass" "$BIN_DIR/weatherglass"
 chmod +x "$DIR/bin/weatherglass"
 
 sed "s|@PREFIX@|$DIR|" "$DIR/data/$APP_ID.desktop.in" > "$APPS_DIR/$APP_ID.desktop"
-cp "$DIR/data/$APP_ID.svg" "$ICON_DIR/$APP_ID.svg"
+# App icon: rendered by tools/make-icon.js FROM the extension art pipeline
+# (paintSky + drawScene), installed at every hicolor size; the retired
+# hand-drawn SVG is removed so theme lookup can't prefer it.
+rm -f "$ICON_DIR/$APP_ID.svg"
+for sz in 32 48 64 96 128 256 512 1024; do
+    d="${ICON_DIR%/scalable/apps}/${sz}x${sz}/apps"
+    mkdir -p "$d"
+    cp "$DIR/data/icons/$APP_ID-$sz.png" "$d/$APP_ID.png"
+done
 
 command -v update-desktop-database >/dev/null && update-desktop-database "$APPS_DIR" || true
 command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache "${ICON_DIR%/scalable/apps}" || true

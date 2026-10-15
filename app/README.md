@@ -113,8 +113,10 @@ src/
 ├── coordinator.js   serialized multi-city refresh cycles
 ├── store.js         JSON config store (atomic, sanitized)
 └── addcity.js       geocoder search dialog + manual lat/lon entry
-data/style.css, data/*.desktop.in, data/*.svg   (loaded from the checkout;
+data/style.css, data/*.desktop.in   (loaded from the checkout;
 WEATHERGLASS_DATADIR overrides)
+data/icons/          rendered app icons — regenerate: gjs -m tools/make-icon.js
+                     (paints the badge with the SAME sky + glyph pipeline)
 ```
 
 Design carries from the extension:

@@ -6,6 +6,6 @@ Comment=Multi-city weather forecasts for GNOME
 Exec=@PREFIX@/bin/weatherglass
 Icon=dev.vijaybala.weatherglass
 Terminal=false
-Categories=Utility;Visualization;Monitor;
+Categories=Utility;Monitor;
 Keywords=weather;forecast;temperature;cities;rain;snow;
 StartupWMClass=dev.vijaybala.weatherglass

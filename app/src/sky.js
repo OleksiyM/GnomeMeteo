@@ -587,7 +587,8 @@ function drawLightning(cr, width, height, scale, time) {
  * lightning, scrim.
  */
 export function paintSky(cr, { w: width, h: height, time, scene, night, sky,
-    scrim = null, radius = 0, phase = null, glow = 0, solar = null }) {
+    scrim = null, radius = 0, phase = null, glow = 0, solar = null,
+    quiet = false }) {
     const rw = Math.round(width), rh = Math.round(height);
     if (sky.scene !== scene || sky.w !== rw || sky.h !== rh)
         rebuild(sky, rw, rh, scene);
@@ -610,21 +611,24 @@ export function paintSky(cr, { w: width, h: height, time, scene, night, sky,
     const qt = anim ? Math.floor(time * anim) / anim : 0;
     const key = `${scene}|${night ? 'n' : 'd'}|${Number(glow).toFixed(3)}`
         + `|${Number.isFinite(solar) ? solar.toFixed(3) : '-'}|`
-        + `${phase == null ? '-' : Number(phase).toFixed(4)}|${qt}|${rw}x${rh}`;
+        + `${phase == null ? '-' : Number(phase).toFixed(4)}|${qt}|${rw}x${rh}`
+        + `|${quiet ? 'q' : 'a'}`;
     if (!sky.cache || sky.cacheKey !== key) {
         const reuse = sky.cache
             && sky.cache.getWidth() === rw && sky.cache.getHeight() === rh;
         const surface = reuse
             ? sky.cache
             : new Cairo.ImageSurface(Cairo.Format.ARGB32, rw, rh);
+
         const sc = new Cairo.Context(surface);
         sc.setOperator(Cairo.Operator.CLEAR);
         sc.paint();
         sc.setOperator(Cairo.Operator.OVER);
         drawBackdrop(sc, rh, skyStops(scene, night, glow, solar));
         drawHorizonGlow(sc, rw, rh, twilight, night, qt);
-        drawBodies(sc, rw, rh, scale, features, qt, night, phase,
-            twilight, solar, noon);
+        if (!quiet)
+            drawBodies(sc, rw, rh, scale, features, qt, night, phase,
+                twilight, solar, noon);
         if (scene === 'fog')
             drawFogHills(sc, rw, rh, night);
         sc.$dispose();
@@ -657,6 +661,15 @@ export function paintSky(cr, { w: width, h: height, time, scene, night, sky,
     cr.paint();
     cr.setOperator(Cairo.Operator.OVER);
     sky.blits++;
+
+    if (quiet) {
+        if (scrim) {
+            cr.setSourceRGBA(...scrim);
+            cr.paint();
+        }
+        cr.restore();
+        return;
+    }
 
     const hasMoon = features.moon && night;
     if (night && (features.stars || features.moon)) {
