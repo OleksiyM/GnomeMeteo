@@ -1,3 +1,4 @@
+/* == SYNCHED DESIGN BRAIN (byte-identity enforced by scripts/check-design-parity.py) == */
 /* painter.js -- pure Cairo weather scene painter. */
 
 import Cairo from 'gi://cairo';

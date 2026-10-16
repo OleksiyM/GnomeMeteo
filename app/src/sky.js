@@ -9,7 +9,7 @@ import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Cairo from 'gi://cairo?version=1.0';
 import { moonPhase } from './weather.js';
-import { paintMoonBody, addFrameSubscriber, removeFrameSubscriber } from './painter.js';
+import { paintMoonBody, addFrameSubscriber, removeFrameSubscriber } from './glyph.js';
 
 const TWO_PI = Math.PI * 2;
 const rand = (min, max) => min + Math.random() * (max - min);

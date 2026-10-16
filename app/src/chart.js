@@ -6,7 +6,7 @@
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Cairo from 'gi://cairo?version=1.0';
-import { drawScene } from './painter.js';
+import { drawScene } from './glyph.js';
 import { fmtTemp, shortHourLabel, sceneFor } from './weather.js';
 
 export const CHART_SERIES = {
@@ -188,9 +188,10 @@ export function paintChart(cr, w, h, state) {
             // losing its day shapes
             const ground = state.groundLum?.(x, stripTop + 9);
             const pale = ground != null && ground < 0.30 && !sc.night;
+            // extension anatomy: 34 px hour glyphs, centred on the tick
             cr.save();
-            cr.translate(x - 8, stripTop);
-            drawScene(cr, 16, { scene: sc.scene, night: sc.night,
+            cr.translate(x - 17, stripTop);
+            drawScene(cr, 34, { scene: sc.scene, night: sc.night,
                 pale, intensity: 2, seed: i });
             cr.restore();
         }

@@ -12,7 +12,7 @@ import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import GObject from 'gi://GObject?version=2.0';
 import Adw from 'gi://Adw?version=1';
-import { makeWeatherIcon } from './painter.js';
+import { makeWeatherIcon } from './glyph.js';
 import { makeSkyBackdrop, sampleSky, bodyOf } from './sky.js';
 import { HourlyChart, CHART_SERIES } from './chart.js';
 import { judgeBoxes, judgeInk, lineInk, applyInk, lumOf } from './ink.js';

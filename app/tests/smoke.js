@@ -2,7 +2,7 @@
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
 import Cairo from 'gi://cairo?version=1.0';
-import { drawScene, SCENES } from '../src/painter.js';
+import { drawScene, SCENES } from '../src/glyph.js';
 import * as W from '../src/weather.js';
 
 let failures = 0;
@@ -63,8 +63,11 @@ for (const scene of SCENES) {
         sf.writeToPNG('_pale_shot.png');
         return GLib.file_get_contents('_pale_shot.png')[1];
     };
-    const dayShot = shoot({ scene: 'cloud' });
-    const paleShot = shoot({ scene: 'cloud', pale: true });
+    // canonical painter tiers pale against SAMPLED grounds (line 449);
+    // an unsampled ground (-1) takes the always-on branch and both shots
+    // legitimately coincide. Give the cloud a bright sampled ground.
+    const dayShot = shoot({ scene: 'cloud', groundLum: 0.8 });
+    const paleShot = shoot({ scene: 'cloud', groundLum: 0.8, pale: true });
     check('pale repaints the glyph',
         dayShot.length !== paleShot.length
         || dayShot.some((v, i) => v !== paleShot[i]));

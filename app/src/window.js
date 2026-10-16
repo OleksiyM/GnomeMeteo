@@ -9,7 +9,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import { CityPage } from './citypage.js';
 import { AddCityDialog } from './addcity.js';
-import { makeWeatherIcon } from './painter.js';
+import { makeWeatherIcon } from './glyph.js';
 import { fmtTemp, cityWallMs, fmtClock, sceneFor, brandTexture } from './weather.js';
 
 function cityRowMenu() {

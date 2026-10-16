@@ -1,484 +1,719 @@
-// painter.js — procedural weather glyphs on a 24×24 grid, Cairo-only, zero
-// image assets (the visual signature of the WeatherGlass extension, redrawn
-// for static use: icons draw once per state change, no per-frame timers).
-//
-// Scene vocabulary: sun moon partly cloud fog wind rain sleet snow hail storm
+/* == SYNCHED DESIGN BRAIN (byte-identity enforced by scripts/check-design-parity.py) == */
+/* painter.js -- pure Cairo weather scene painter. */
 
-import GLib from 'gi://GLib?version=2.0';
-import Gtk from 'gi://Gtk?version=4.0';
-import Cairo from 'gi://cairo?version=1.0';
+import Cairo from 'gi://cairo';
+import { paintMoon, moonPhase, illumOf } from './moon.js';
 
-function rgb(hex) {
-    return [
-        parseInt(hex.slice(1, 3), 16) / 255,
-        parseInt(hex.slice(3, 5), 16) / 255,
-        parseInt(hex.slice(5, 7), 16) / 255,
+export const GRID = 24;
+
+const TWO_PI = Math.PI * 2;
+
+function rand(min, max) {
+    return min + Math.random() * (max - min);
+}
+
+export function createParticles() {
+    const drops = [];
+    for (let i = 0; i < 16; i++)
+        drops.push({ x: rand(3, 21), y: rand(9, 24), length: rand(1.6, 3.2), speed: rand(11, 18) });
+    const flakes = [];
+    for (let i = 0; i < 12; i++)
+        flakes.push({
+            x: rand(3, 21), y: rand(9, 24), radius: rand(0.8, 1.4),
+            speed: rand(2.5, 4.5), phase: rand(0, TWO_PI)
+        });
+    const hail = [];
+    for (let i = 0; i < 10; i++) {
+        // scatter initial heights so the first cycle doesn't fall in unison
+        hail.push(Object.assign(newHailStone(), { y: rand(9, FLOOR), vy: rand(2, 9) }));
+    }
+    const stars = [
+        { x: 19.5, y: 4.5, phase: 0.0 }, { x: 21.5, y: 9, phase: 1.7 },
+        { x: 17.5, y: 8, phase: 3.1 }, { x: 20.5, y: 13.5, phase: 4.4 },
     ];
+    return { drops, flakes, hail, stars, lastTime: null, lastT: null };
 }
 
-const PAL = {
-    day: {
-        sunInner: '#FFF3B0', sunMid: '#FFC233', sunOuter: '#FF9800', ray: '#FBA41B',
-        moon: '#E8EDF5', crater: 'rgba(96,108,130,0.22)',
-        cloudHi: '#FFFFFF', cloudLo: '#C9D2DF',
-        cloudStormHi: '#8A93A3', cloudStormLo: '#57606F',
-        rain: '#4FA3E8', sleet: '#79C0E6', snow: '#EAF4FF', snowLine: '#AEc2D6',
-        hail: '#DCEBF7', bolt: '#FFD42B', fog: '#B9C3CF', wind: '#9FB0C2',
-    },
-    night: {
-        sunInner: '#FFE9A8', sunMid: '#F0A93C', sunOuter: '#DB7F1F', ray: '#DB8A26',
-        moon: '#DFE6F2', crater: 'rgba(70,82,104,0.25)',
-        cloudHi: '#95A2B6', cloudLo: '#57647A',
-        cloudStormHi: '#6B7488', cloudStormLo: '#3A4250',
-        rain: '#63AEE8', sleet: '#8AC8E4', snow: '#DDEAFF', snowLine: '#8DA3BC',
-        hail: '#C4D8EA', bolt: '#FFDE59', fog: '#7C8798', wind: '#8CA0B8',
-    },
-};
+const FLOOR = 21.8;   // where hailstones bounce
 
-// Deterministic pseudo-random in [0,1) — seeded so static glyphs never
-// rearrange themselves between repaints (the extension's golden-seed trick).
-function rnd(seed, n) {
-    const x = Math.sin((n + 1) * 127.1 + (seed + 1) * 311.7) * 43758.5453;
-    return x - Math.floor(x);
-}
-
-function col(cr, token, alpha = 1) {
-    if (token.startsWith('rgba')) {
-        const [r, g, b, a] = token.match(/[\d.]+/g).map(Number);
-        cr.setSourceRGBA(r / 255, g / 255, b / 255, a * alpha);
-    } else {
-        const [r, g, b] = rgb(token);
-        cr.setSourceRGBA(r, g, b, alpha);
-    }
-}
-
-// --- primitives ---------------------------------------------------------------
-
-function sunDisc(cr, pal, cx, cy, r, rays, seed, spin = 0) {
-    // halo
-    const glow = new Cairo.RadialGradient(cx, cy, r * 0.2, cx, cy, r * 2.3);
-    glow.addColorStopRGBA(0, ...rgb(pal.sunOuter), 0.30);
-    glow.addColorStopRGBA(1, ...rgb(pal.sunOuter), 0);
-    cr.setSource(glow);
-    cr.arc(cx, cy, r * 2.3, 0, 2 * Math.PI);
-    cr.fill();
-
-    // rays
-    col(cr, pal.ray, 0.95);
-    cr.setLineWidth(1.25);
-    cr.setLineCap(Cairo.LineCap.ROUND);
-    for (let i = 0; i < rays; i++) {
-        const a = (i / rays) * 2 * Math.PI + rnd(seed, 1) * 0.35 + spin;
-        const jitter = 0.9 + rnd(seed, 10 + i) * 0.2;
-        cr.moveTo(cx + Math.cos(a) * r * 1.30, cy + Math.sin(a) * r * 1.30);
-        cr.lineTo(cx + Math.cos(a) * r * 1.85 * jitter, cy + Math.sin(a) * r * 1.85 * jitter);
-    }
-    cr.stroke();
-
-    // disc
-    const face = new Cairo.RadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.1, cx, cy, r);
-    face.addColorStopRGB(0, ...rgb(pal.sunInner));
-    face.addColorStopRGB(0.55, ...rgb(pal.sunMid));
-    face.addColorStopRGB(1, ...rgb(pal.sunOuter));
-    cr.setSource(face);
-    cr.arc(cx, cy, r, 0, 2 * Math.PI);
-    cr.fill();
-}
-
-function moonDisc(cr, pal, cx, cy, r, phase = 0.62) {
-    const illum = (1 - Math.cos(2 * Math.PI * phase)) / 2;
-    const waxing = phase <= 0.5;
-    const litSide = waxing ? 1 : -1;
-
-    cr.save();
-    // base disc (opaque, so the CLEAR pass below behaves predictably)
-    col(cr, pal.moon, 1);
-    cr.arc(cx, cy, r, 0, 2 * Math.PI);
-    cr.fillPreserve();
-    cr.clip();
-    cr.newPath();
-
-    // maria speckles go down *before* the CLEAR pass so the shadow trims them
-    if (illum > 0.15) {
-        col(cr, pal.crater, 1);
-        cr.newSubPath();
-        cr.arc(cx + r * 0.30 * litSide, cy - r * 0.18, r * 0.20, 0, 2 * Math.PI);
-        cr.newSubPath();
-        cr.arc(cx + r * 0.05 * litSide, cy + r * 0.34, r * 0.13, 0, 2 * Math.PI);
-        cr.fill();
-    }
-
-    // Crescent regime (illum ≤ ~0.5): punch an equal-radius shadow disc
-    // offset away from the lit limb (CLEAR, clipped to the base disc).
-    // Gibbous regime: lay a translucent dusk-toned disc over the dark side —
-    // reads as shading on any card color.
-    if (illum <= 0.52) {
-        const dx = 2 * r * illum * -litSide;
-        cr.setOperator(Cairo.Operator.CLEAR);
-        cr.newPath();
-        cr.arc(cx + dx, cy, r, 0, 2 * Math.PI);
-        cr.fill();
-        cr.setOperator(Cairo.Operator.OVER);
-    } else {
-        col(cr, 'rgba(14,18,28,0.55)', 1);
-        cr.newPath();
-        cr.arc(cx - 2 * r * (1 - illum) * litSide, cy, r * 1.06, 0, 2 * Math.PI);
-        cr.fill();
-    }
-    cr.restore();
-}
-
-// Union-fill cloud: three lobes + a rounded slab, one nonzero path.
-function cloudShape(cr, cx, cy, s) {
-    const rr = (x0, y0, x1, y1, rad) => {
-        cr.newSubPath();
-        cr.arc(x1 - rad, y0 + rad, rad, -Math.PI / 2, 0);
-        cr.arc(x1 - rad, y1 - rad, rad, 0, Math.PI / 2);
-        cr.arc(x0 + rad, y1 - rad, rad, Math.PI / 2, Math.PI);
-        cr.arc(x0 + rad, y0 + rad, rad, Math.PI, 3 * Math.PI / 2);
-        cr.closePath();
+function newHailStone() {
+    return {
+        x: rand(3, 21), y: rand(8.5, 11),
+        vx: rand(-1, 1.5), vy: rand(6, 10),
+        radius: rand(0.7, 1.25), bounces: 0,
     };
-    cr.arc(cx, cy - s * 0.12, s * 0.46, 0, 2 * Math.PI);                      // crown lobe
-    cr.newSubPath();
-    cr.arc(cx - s * 0.40, cy + s * 0.05, s * 0.32, 0, 2 * Math.PI);           // left lobe
-    cr.newSubPath();
-    cr.arc(cx + s * 0.42, cy + s * 0.01, s * 0.36, 0, 2 * Math.PI);           // right lobe
-    const bw = s * 0.72, bh = s * 0.24, br = s * 0.16;                        // slab
-    rr(cx - bw, cy + s * 0.14, cx + bw, cy + bh + s * 0.14, Math.min(br, bh / 2));
 }
 
-function cloudFill(cr, pal, cx, cy, s, { storm = false, alpha = 1 } = {}) {
-    const grad = new Cairo.LinearGradient(0, cy - s * 0.6, 0, cy + s * 0.4);
-    grad.addColorStopRGB(0, ...rgb(storm ? pal.cloudStormHi : pal.cloudHi));
-    grad.addColorStopRGB(1, ...rgb(storm ? pal.cloudStormLo : pal.cloudLo));
-    cr.save();
-    cr.opacity = alpha;
-    cloudShape(cr, cx, cy, s);
-    cr.setSource(grad);
-    cr.setFillRule(Cairo.FillRule.WINDING);
+function circle(cr, x, y, radius) {
+    cr.newSubPath();
+    cr.arc(x, y, radius, 0, TWO_PI);
+}
+
+function line(cr, x1, y1, x2, y2) {
+    cr.moveTo(x1, y1);
+    cr.lineTo(x2, y2);
+}
+
+/** Teardrop droplet: round bottom, pointed tip, always upright.
+ *  (x, y) is the centre of the round bottom; s the drop scale. */
+function teardrop(cr, x, y, s) {
+    cr.moveTo(x, y - 2.35 * s);
+    cr.curveTo(x + 0.62 * s, y - 1.35 * s, x + 0.95 * s, y - 0.72 * s,
+        x + 0.95 * s, y - 0.05 * s);
+    cr.arc(x, y - 0.05 * s, 0.95 * s, 0, Math.PI);
+    cr.curveTo(x - 0.95 * s, y - 0.72 * s, x - 0.62 * s, y - 1.35 * s,
+        x, y - 2.35 * s);
+    cr.closePath();
+}
+
+/** Organic-but-safe scatter under the cloud for static poses. Golden-
+ *  ratio steps land every drop at a fresh, never-repeating spot --
+ *  naturally uneven, yet spread with no clumps and no ruler-straight
+ *  columns -- and a hard distance check keeps neighbours from ever
+ *  touching. Seeded per glyph, so each icon paints identically across
+ *  repaints (no shimmer) while neighbouring icons differ. */
+function seededSpots(count, seed, x0, x1, y0, y1, minDx, minDy) {
+    const golden = 0.6180339887;
+    let u = (seed % 977) * golden;
+    const spots = [];
+    for (let i = 0; i < count; i++) {
+        let x = x0, y = y0, ok = false;
+        for (let k = 0; k < 24 && !ok; k++) {
+            u += golden;
+            x = x0 + (u % 1) * (x1 - x0);
+            u += golden;
+            y = y0 + (u % 1) * (y1 - y0);
+            ok = spots.every(([ox, oy]) =>
+                Math.abs(ox - x) >= minDx || Math.abs(oy - y) >= minDy);
+        }
+        if (!ok) {
+            x = x0 + (i % 3) * ((x1 - x0) / 2);
+            y = y0 + Math.floor(i / 3) * minDy;
+        }
+        spots.push([x, y]);
+    }
+    return spots;
+}
+
+/** Puffy cloud made of three bumps over a flat base, one gradient fill. */
+function cloud(cr, centerX, centerY, scale, topColor, bottomColor, alpha = 1) {
+    const gradient = new Cairo.LinearGradient(0, centerY - 5 * scale, 0, centerY + 2.4 * scale);
+    gradient.addColorStopRGBA(0, topColor[0], topColor[1], topColor[2], alpha);
+    gradient.addColorStopRGBA(1, bottomColor[0], bottomColor[1], bottomColor[2], alpha);
+    cr.setSource(gradient);
+    circle(cr, centerX - 3.2 * scale, centerY - 0.3 * scale, 2.4 * scale);
+    circle(cr, centerX + 3.1 * scale, centerY - 0.1 * scale, 2.6 * scale);
+    circle(cr, centerX, centerY - 1.8 * scale, 3.2 * scale);
+    cr.rectangle(centerX - 5.6 * scale, centerY - 0.5 * scale, 11.2 * scale, 2.9 * scale);
     cr.fill();
+}
+
+const CLOUD_LIGHT = [[0.76, 0.82, 0.87], [0.60, 0.68, 0.75]];
+const CLOUD_RAIN = [[0.58, 0.60, 0.64], [0.40, 0.43, 0.48]];
+/* grounds at or above the 0.30 tile bar (WCAG luminance -- an overcast
+   card foot at plain 0.66 / WCAG 0.39): the 0.58 rain-cloud top measured
+   only 0.07 of separation there, so grounds this pale earn the deepest
+   cloud ink. Unsampled surfaces never tier: _groundLum stays -1 */
+const CLOUD_DEEP = [[0.51, 0.56, 0.63], [0.33, 0.37, 0.45]];
+/* overcast on bright grounds: pale enough to stay 'plain cloud' but
+   deep enough for tile-size legs against a milky sky -- the 0.66 top
+   vanished on the card's own background tone */
+const CLOUD_OVERCAST = [[0.58, 0.60, 0.65], [0.42, 0.45, 0.50]];
+const CLOUD_DARK = [[0.48, 0.52, 0.59], [0.32, 0.36, 0.43]];
+/* the precipitation clouds follow the referee too: rain keeps its deep
+ * gray while the glyph stands on bright ground, and joins the glow
+ * family over dark ones (night tiles, hover/selected slabs) instead of
+ * sinking into them -- it was the last hardcoded pale-blind cloud */
+const precipCloud = () => groundLight() ? (paleGround() ? CLOUD_DEEP : CLOUD_RAIN) : CLOUD_LIGHT;
+const stormCloud = () => groundLight() ? CLOUD_DARK : CLOUD_LIGHT;
+/* the overcast/cloud body shared by the cloud, partly and fog poses */
+const overcastBody = () =>
+    !groundLight() ? CLOUD_LIGHT : paleGround() ? CLOUD_DEEP : CLOUD_OVERCAST;
+
+/** Precipitation clouds come as a pair: a smaller companion behind and
+ *  right of the main cloud, dimmer and lower, so the icon reads as a
+ *  bank rather than a single blob. Drift is shared but softer on the
+ *  companion -- a parallax whisper between the layers. */
+function cloudPair(cr, centerX, centerY, scale, topColor, bottomColor, time) {
+    const drift = Math.sin(time * 0.5) * 0.5;
+    cloud(cr, centerX + 3.6 * scale + drift * 0.6, centerY + 0.9 * scale,
+        scale * 0.66, topColor, bottomColor, 0.8);
+    cloud(cr, centerX + drift, centerY, scale, topColor, bottomColor);
+}
+
+/* Palette variants for light and dark backgrounds */
+let _light = false;
+/* luminance of the composited ground under the glyph (-1 = unknown),
+ * handed in by the strip referee and the tile icons */
+let _groundLum = -1;
+let _night = false;
+let _pale = false;
+/* palette referee: the icon's OWN day/night flag decides whenever the
+ * surface is sampled (any surface that passes groundLum also passes the
+ * per-hour night flag it paints under). Pixel forensics over three
+ * full days proved luminance sampling useless here: the ground under
+ * a glyph is sky + glass + blur + chart fill composited, and no gate
+ * survived contact with it -- rain passed while clouds failed on the
+ * SAME pixels at [0.23,0.25), storm day at [0.248] flipped one gate
+ * per scene drift. What never lies is time of day: every day icon
+ * measured a 0.40-0.90 mid-bright ground (even the storm card), so
+ * day earns ink; night keeps the pale glow. One exception measured from
+ * the shipped cards: a bright-enough ground cannot hold off the glow
+ * family no matter what the clock says -- the milky foot of a clear-sky
+ * card (WCAG ~0.66) put the pale strip moon at ~1.0 contrast (invisible
+ * to its own user). Pixel grading then proved the night bar sits HIGHER
+ * than the day one: mid-blue card gradients at WCAG 0.30-0.45 defeat
+ * BOTH families' cores, so night keeps its glow veto until
+ * NIGHT_GLOW_MAX and only unambiguous milk earns the ink twins. The
+ * forensics mid-tones ([0.23,0.30)) and the unsampled surfaces (panel,
+ * accent style, preview) keep the old chain: night's veto and the
+ * caller's light/dark flag respectively.
+ * `pale: true` is the caller's hand on the palette: the day-tile
+ * selection scrim is a deliberate dark slab no sky model sees, so the
+ * selected tile claims the night glow for its glyph (same for solid-
+ * style dark cards). */
+export const NIGHT_GLOW_MAX = 0.45;
+const groundLight = () =>
+    _pale ? false
+        : _groundLum >= (_night ? NIGHT_GLOW_MAX : GLYPH_INK_BAR) ? true
+        : _groundLum >= 0 ? !_night : _light;
+/* same bar as the day-tile glyph legibility rule, mirrored: WCAG-space
+ * grounds below it push the glyph to the pale glow (menu's setPale),
+ * grounds at or above it can afford the deepest ink. lumOf is
+ * gamma-corrected, so "0.30" here means an ordinary daylight ground.
+ * Exported (chart.js re-exports as GLYPH_BAR) so the tile verdict, the
+ * strip gate, this tier and the certification matrix share one number */
+export const GLYPH_INK_BAR = 0.30;
+const paleGround = () => _groundLum >= GLYPH_INK_BAR;
+// water rides the SAME referee as the glyph palette (painter's dark
+// flag, chosen from the live ground under the icon): over bright sky a
+// deep navy that holds contrast against luminance ~0.55, over night a
+// light aqua that glows off the dark
+/* water keeps deep navy down through mid-tone skies -- pale aqua on a
+ * 0.5-luminance overcast card is invisible, and such grounds are too
+ * bright for the glow-at-night palette to earn its keep */
+const INK_WATER = () => groundLight()
+    ? (paleGround() ? [0.10, 0.38, 0.80] : [0.05, 0.33, 0.68])
+    : [0.38, 0.82, 1.00];
+const INK_FLAKE = () => groundLight() ? [0.45, 0.56, 0.72] : [0.92, 0.96, 1.00];
+const INK_STONE = () => groundLight() ? [0.55, 0.64, 0.76] : [0.91, 0.94, 0.97];
+const INK_STREAK = () => groundLight()
+    ? (paleGround() ? [0.24, 0.50, 0.85] : [0.24, 0.50, 0.78])
+    : [0.50, 0.83, 1.00];
+const INK_FOG = () => groundLight() ? [0.36, 0.44, 0.54] : [0.72, 0.76, 0.80];
+const INK_STAR = () => groundLight() ? [0.55, 0.62, 0.74] : [0.95, 0.97, 1.00];
+const INK_SPIN = () => _light ? [0.28, 0.33, 0.40] : [0.85, 0.88, 0.92];
+/* the porcelain face is the only moon tier that needs a drawn edge;
+ * the bright-ground ink tier separates by depth, the glow tier by halo */
+const INK_MOON_EDGE = () =>
+    groundLight() && !paleGround() ? [0.24, 0.30, 0.40, 0.85] : null;
+
+/** Flowing dash "wind streak" across the full width of the scene. */
+function streak(cr, y, lineWidth, alpha, dashOn, dashOff, offset, color = null) {
+    const chosenColor = color ?? INK_STREAK();
+    cr.save();
+    cr.setSourceRGBA(chosenColor[0], chosenColor[1], chosenColor[2], alpha);
+    cr.setLineWidth(lineWidth);
+    cr.setLineCap(Cairo.LineCap.ROUND);
+    cr.setDash([dashOn, dashOff], offset);
+    cr.moveTo(-2, y);
+    cr.curveTo(6, y - 1.1, 14, y + 1.1, 26, y);
+    cr.stroke();
     cr.restore();
 }
 
-function dropOne(cr, pal, x, y, seed, i, lean = -0.12) {
-    void seed;
-    col(cr, pal.rain, 0.95);
-    const len = 1.05 + rnd(seed + i, 40) * 0.45;
+/** A few wind streaks, used for the windy scene and as an overlay. */
+function windStreaks(cr, time, alphaScale, count = 3) {
+    for (let i = 0; i < count; i++) {
+        const y = 5.5 + i * (13 / Math.max(count - 1, 1));
+        const speed = 3.2 + i * 0.9;
+        streak(cr, y + Math.sin(time * 0.8 + i * 2.1) * 0.5,
+            0.9 + (i % 2) * 0.35,
+            (0.45 + 0.25 * ((i + 1) % 3)) * alphaScale,
+            5 + i, 4.5 + i * 0.7,
+            -(time * speed) % 9.5);
+    }
+}
+
+/** Raindrops. Animated falls ride the shared particle clock; static poses
+ *  (strip glyphs, day tiles) sit in an even staggered grid. Either way the
+ *  shape is a teardrop, and intensity decides the COUNT -- heavier rain,
+ *  more drops. */
+function rainDrops(cr, particles, time, count, slant, alpha, band = [13.4, 22.3]) {
+    const lastTime = particles.lastTime ?? particles.lastT;
+    const dt = lastTime === null ? 0 : Math.min(0.06, time - lastTime);
+    const waterColor = INK_WATER();
+    cr.setSourceRGBA(waterColor[0], waterColor[1], waterColor[2], alpha);
+    const total = Math.min(count, particles.drops.length);
+    const spots = particles.static
+        ? seededSpots(total, particles.seed ?? 7, 7.3, 16.6, band[0], band[1], 2.6, 4.4)
+        : null;
+    for (let i = 0; i < total; i++) {
+        let x, y, s;
+        if (particles.static) {
+            [x, y] = spots[i];
+            s = i % 2 ? 1.05 : 1.25;
+        } else {
+            const drop = particles.drops[i];
+            drop.y += (drop.speed ?? drop.sp) * dt;
+            if (drop.y > 23.5) {
+                drop.y = rand(9.3, 11);
+                drop.x = rand(2.5, 21.5);
+            }
+            x = drop.x;
+            y = drop.y;
+            s = Math.min(1.4, 0.75 + (drop.length ?? drop.len) * 0.22);
+        }
+        teardrop(cr, x - slant * (y - 10) * 0.18, y, s);
+    }
+    cr.fill();
+}
+
+/** Snowflakes (six spokes), drifting side to side. */
+function snowFlakes(cr, particles, time, count, flakeBand = [13.4, 22.3]) {
+    const lastTime = particles.lastTime ?? particles.lastT;
+    const dt = lastTime === null ? 0 : Math.min(0.06, time - lastTime);
+    cr.setLineCap(Cairo.LineCap.ROUND);
+    cr.setLineWidth(0.55);
+    const total = Math.min(count, particles.flakes.length);
+    const flakeSpots = particles.static
+        ? seededSpots(total, (particles.seed ?? 7) + 37, 6.6, 17.2,
+            flakeBand[0], flakeBand[1], 2.5, 2.9)
+        : null;
+    for (let i = 0; i < total; i++) {
+        let x, y, rot, radius;
+        if (particles.static) {
+            [x, y] = flakeSpots[i];
+            radius = 1.05;
+            rot = i * 1.1;
+        } else {
+            const flake = particles.flakes[i];
+            const phase = flake.phase ?? flake.ph;
+            flake.y += (flake.speed ?? flake.sp) * dt;
+            if (flake.y > 23.5) {
+                flake.y = rand(9.3, 11);
+                flake.x = rand(3, 21);
+            }
+            x = flake.x + Math.sin(time * 1.4 + phase) * 1.1;
+            y = flake.y;
+            rot = time * 1.2 + phase;
+            radius = flake.radius ?? flake.r;
+        }
+        cr.save();
+        cr.translate(x, y);
+        cr.rotate(rot);
+        const flakeColor = INK_FLAKE();
+        cr.setSourceRGBA(flakeColor[0], flakeColor[1], flakeColor[2], 0.95);
+        for (let k = 0; k < 6; k++) {
+            const angle = (k / 6) * TWO_PI;
+            line(cr, 0, 0, Math.cos(angle) * radius, Math.sin(angle) * radius);
+        }
+        cr.stroke();
+        cr.restore();
+    }
+}
+
+/** Hailstones: fall under gravity, bounce & scatter on the floor, respawn. */
+function hailStones(cr, particles, time, count) {
+    const lastTime = particles.lastTime ?? particles.lastT;
+    const dt = lastTime === null ? 0 : Math.min(0.06, time - lastTime);
+    for (let i = 0; i < count; i++) {
+        const stone = particles.hail[i];
+        const radius = stone.radius ?? stone.r;
+        stone.vy += 24 * dt;
+        stone.x += stone.vx * dt;
+        stone.y += stone.vy * dt;
+        if (stone.y >= FLOOR && stone.vy > 0) {
+            stone.y = FLOOR;
+            stone.vy *= -0.42;
+            stone.vx = rand(-3, 3);
+            stone.bounces++;
+        }
+        if (stone.bounces > 2 || (Math.abs(stone.vy) < 0.6 && stone.bounces > 0) ||
+            stone.x < -1 || stone.x > 25)
+            Object.assign(stone, newHailStone());
+        const stoneColor = INK_STONE();
+        cr.setSourceRGBA(stoneColor[0], stoneColor[1], stoneColor[2], 0.95);
+        circle(cr, stone.x, stone.y, radius);
+        cr.fill();
+        cr.setSourceRGBA(1, 1, 1, 0.55);
+        circle(cr, stone.x - radius * 0.3, stone.y - radius * 0.35, radius * 0.35);
+        cr.fill();
+    }
+}
+
+function sunBody(cr, centerX, centerY, radius, time, rayLength) {
+    const outerGlowRadius = radius * 2.35;
+    const outerGlow = new Cairo.RadialGradient(centerX, centerY, radius * 0.4, centerX, centerY, outerGlowRadius);
+    const outerAlpha = _light ? 0.28 : 0.40;
+    outerGlow.addColorStopRGBA(0, 1.0, 0.76, 0.16, outerAlpha);
+    outerGlow.addColorStopRGBA(0.55, 1.0, 0.60, 0.08, outerAlpha * 0.45);
+    outerGlow.addColorStopRGBA(1, 1.0, 0.50, 0.0, 0);
+    cr.setSource(outerGlow);
+    cr.paintWithAlpha(0.70 + 0.30 * Math.sin(time * 1.3));
+
+    const innerGlowRadius = radius * 1.55;
+    const innerGlow = new Cairo.RadialGradient(centerX, centerY, radius * 0.5, centerX, centerY, innerGlowRadius);
+    const innerAlpha = _light ? 0.32 : 0.45;
+    innerGlow.addColorStopRGBA(0, 1.0, 0.92, 0.45, innerAlpha);
+    innerGlow.addColorStopRGBA(1, 1.0, 0.75, 0.15, 0);
+    cr.setSource(innerGlow);
+    cr.paintWithAlpha(0.75 + 0.25 * Math.sin(time * 2.1));
+
+    cr.save();
+    cr.translate(centerX, centerY);
+    cr.rotate(time * 0.14);
+    cr.setLineCap(Cairo.LineCap.ROUND);
+
+    for (let i = 0; i < 8; i++) {
+        const isCardinal = (i % 2 === 0);
+        const angle = (i / 8) * TWO_PI;
+        const cosAngle = Math.cos(angle), sinAngle = Math.sin(angle);
+
+        let dynamicLength, alpha, lineWidth;
+        if (isCardinal) {
+            const wave = Math.sin(time * 1.9 + i * 0.35);
+            dynamicLength = rayLength * (1.04 + 0.14 * wave);
+            alpha = 0.92 + 0.08 * wave;
+            lineWidth = 1.55;
+            cr.setSourceRGBA(1.0, 0.76, 0.12, alpha);
+        } else {
+            const wave = Math.sin(time * 1.9 + Math.PI * 0.6 + i * 0.35);
+            dynamicLength = rayLength * (0.76 + 0.12 * wave);
+            alpha = 0.78 + 0.12 * wave;
+            lineWidth = 1.35;
+            cr.setSourceRGBA(1.0, 0.68, 0.08, alpha);
+        }
+
+        cr.setLineWidth(lineWidth);
+        cr.newSubPath();
+        cr.moveTo(cosAngle * (radius + 1.1), sinAngle * (radius + 1.1));
+        cr.lineTo(cosAngle * (radius + 1.1 + dynamicLength), sinAngle * (radius + 1.1 + dynamicLength));
+        cr.stroke();
+    }
+    cr.restore();
+
+    const core = new Cairo.RadialGradient(
+        centerX - radius * 0.35, centerY - radius * 0.35, radius * 0.15,
+        centerX, centerY, radius
+    );
+    core.addColorStopRGB(0, 1.0, 0.97, 0.68);
+    core.addColorStopRGB(0.5, 1.0, 0.83, 0.18);
+    core.addColorStopRGB(1, 0.98, 0.58, 0.08);
+    cr.setSource(core);
+    circle(cr, centerX, centerY, radius);
+    cr.fill();
+}
+
+/* the moon's three grounds: over dark sky it glows (halo, bare disc);
+ * over an unsampled light surface it wears porcelain + a drawn edge;
+ * over a BRIGHT sampled ground the porcelain is the ground -- an
+ * [0.84,0.86,0.90] face on the card's [0.80,0.85,0.90] milky foot is
+ * 1.0 contrast, and the night strip moons vanished there. Same
+ * silhouette, slate twin deep enough for a dark core on any ground
+ * the ink referee accepts. */
+const MOON_PORCELAIN = [0.84, 0.86, 0.90];
+const MOON_INK = [0.38, 0.44, 0.55];
+/* new moon over a bright ground: the lit slice is gone entirely
+ * (moon.js early-returns below 1.2% illum), so the earthshine ghost is
+ * the whole glyph -- and the pale 0.16-alpha ghost tuned for night sky
+ * evaporates on milk. Hand the ghost the ink twin instead: a subtle
+ * slate disc that reads as exactly what it is, a dark moon.
+ * The ghost follows the DAY bar (0.30), not the night bar: it is a
+ * FULL DISC, so it carries mass a thin crescent lacks -- alpha-blend
+ * math puts 0.85-ink above the 0.10 separation floor across the whole
+ * 0.30-0.45 mid band, where the 0.16 pale whisper never exceeds 0.03.
+ * At 0.62 the disc was still 'hard to see' at strip scale; 0.85 is a
+ * dark moon, not a smudge. */
+const MOON_GHOST_INK = [0.38, 0.44, 0.55, 0.85];
+
+function moonBody(cr, centerX, centerY, radius, time, particles, phase) {
+    const lunarPhase = Number.isFinite(phase) ? phase : moonPhase().phase;
+    const brightHere = groundLight();
+    if (!brightHere) {
+        const glow = new Cairo.RadialGradient(centerX, centerY, radius * 0.5, centerX, centerY, radius * 2.2);
+        glow.addColorStopRGBA(0, 0.86, 0.87, 0.97, 0.30 * (0.25 + 0.75 * illumOf(lunarPhase)));
+        glow.addColorStopRGBA(1, 0.86, 0.87, 0.97, 0);
+        cr.setSource(glow);
+        cr.paint();
+    }
+
+    paintMoon(cr, centerX, centerY, radius, lunarPhase, 'icon',
+        {
+            outline: INK_MOON_EDGE(),
+            face: brightHere ? (paleGround() ? MOON_INK : MOON_PORCELAIN) : null,
+            // the ghost's ink twin follows the DAY bar: on any ground
+            // the ink verdict claims (and on unsampled light cards),
+            // the unlit disc reads deeper than the face; deliberate
+            // dark slabs (pale:true) keep the pale whisper
+            ghost: !_pale && (_groundLum >= GLYPH_INK_BAR ||
+                (_groundLum < 0 && _light)) ? MOON_GHOST_INK : null
+        });
+
+    const starColor = INK_STAR();
+    // stars orbiting the drawn disc would dot the moon itself (worst on
+    // the dark side); those inside disc + star size stay hidden
+    const keepOut = radius + 1.4;
+    for (const star of particles.stars) {
+        if (Math.hypot(star.x - centerX, star.y - centerY) < keepOut)
+            continue;
+        const starPhase = star.phase ?? star.ph;
+        const alpha = 0.35 + 0.6 * Math.abs(Math.sin(time * 1.3 + starPhase));
+        cr.setSourceRGBA(starColor[0], starColor[1], starColor[2], alpha);
+        circle(cr, star.x, star.y, 0.55);
+        cr.fill();
+    }
+}
+
+function sceneSun(cr, ctx) {
+    const { time, windy } = ctx;
+    sunBody(cr, 12, 12, 4.6, time, 3.6);
+    if (windy)
+        windStreaks(cr, time, 0.45, 2);
+}
+
+function sceneMoon(cr, ctx) {
+    const { time, particles, windy, phase } = ctx;
+    moonBody(cr, 12, 12, 4.8, time, particles, phase);
+    if (windy)
+        windStreaks(cr, time, 0.45, 2);
+}
+
+function scenePartly(cr, ctx) {
+    const { time, windy, night, particles, phase } = ctx;
+    if (night)
+        moonBody(cr, 8.5, 8, 3.6, time, particles, phase);
+    else
+        sunBody(cr, 8.5, 8, 3.6, time, 2.6);
+    const dx = Math.sin(time * 0.7) * 0.7;
+    // the partly-cloudy cloud follows the same ground rule: it was the
+    // one cloud body still hardcoded to the always-pale palette
+    const body = overcastBody();
+    cloud(cr, 13.5 + dx, 15, 0.85, body[0], body[1]);
+    if (windy)
+        windStreaks(cr, time, 0.4, 2);
+}
+
+function sceneCloud(cr, ctx) {
+    const { time, windy } = ctx;
+    // overcast earns its silhouette: mid-gray over bright skies (the pale
+    // cloud vanished into overcast white), pale body over night skies --
+    // same light/dark referee as the INK_* family
+    const overcast = overcastBody();
+    cloud(cr, 9.5 - Math.sin(time * 0.5) * 0.8, 8.5, 0.62, overcast[0], overcast[1], 0.65);
+    cloud(cr, 13 + Math.sin(time * 0.6) * 0.7, 14, 0.95, overcast[0], overcast[1]);
+    if (windy)
+        windStreaks(cr, time, 0.4, 2);
+}
+
+function sceneFog(cr, ctx) {
+    const { time } = ctx;
+    // the fog cloud keeps a pale body on night grounds and deepens to
+    // the overcast gray on bright ones -- and its bands carry more ink
+    const body = overcastBody();
+    cloud(cr, 12 + Math.sin(time * 0.5) * 0.5, 8, 0.7, body[0], body[1], 0.85);
+    for (let i = 0; i < 3; i++) {
+        const fogColor = INK_FOG();
+        streak(cr, 14.5 + i * 3.2, 1.7, (groundLight() ? 0.55 : 0.40) - i * 0.06, 7, 3.5,
+            -(time * (2.4 + i)) % 10.5, fogColor);
+    }
+}
+
+function sceneRain(cr, ctx) {
+    const { time, particles, intensity, windKmh, windy } = ctx;
+    cloudPair(cr, 11.5, 7.5, 0.9, precipCloud()[0], precipCloud()[1], time);
+    const dropCount = Math.max(2, Math.ceil((4 + Math.min(12, intensity * 2.4)) / 3));
+    const slant = Math.min(0.9, windKmh / 45);
+    rainDrops(cr, particles, time, dropCount, slant, 0.9);
+    if (windy)
+        windStreaks(cr, time, 0.35, 2);
+}
+
+function sceneSnow(cr, ctx) {
+    const { time, particles, intensity, windy } = ctx;
+    cloudPair(cr, 11.5, 7.5, 0.88, precipCloud()[0], precipCloud()[1], time);
+    const flakeCount = 6 + Math.min(6, Math.round(intensity * 1.8));
+    snowFlakes(cr, particles, time, flakeCount);
+    if (windy)
+        windStreaks(cr, time, 0.35, 2);
+}
+
+/** Sleet / freezing rain: half drops, half flakes, extra slant. */
+function sceneSleet(cr, ctx) {
+    const { time, particles, intensity, windKmh, windy } = ctx;
+    cloudPair(cr, 11.5, 7.5, 0.88, precipCloud()[0], precipCloud()[1], time);
+    const count = Math.max(2, Math.ceil((5 + Math.min(5, intensity * 1.4)) / 3));
+    rainDrops(cr, particles, time, count, Math.min(1.1, windKmh / 36 + 0.25), 0.8,
+        [13.4, 17.1]);
+    snowFlakes(cr, particles, time, Math.max(3, count), [17.9, 22.3]);
+    if (windy)
+        windStreaks(cr, time, 0.35, 2);
+}
+
+/** Hail: dark storm cloud, a few hard rain streaks, bouncing ice stones. */
+function sceneHail(cr, ctx) {
+    const { time, particles, windKmh, windy } = ctx;
+    cloudPair(cr, 11.5, 7.2, 0.9, stormCloud()[0], stormCloud()[1], time);
+    rainDrops(cr, particles, time, 2, Math.min(0.9, windKmh / 45), 0.5);
+    hailStones(cr, particles, time, particles.hail.length);
+    if (windy)
+        windStreaks(cr, time, 0.35, 2);
+}
+
+const BOLTS = [
+    [[13, 10.8], [10.8, 14.6], [12.7, 14.6], [10.2, 19.6]],
+    [[10.6, 10.4], [13.2, 14.0], [11.4, 14.2], [13.8, 19.8]],
+];
+
+function sceneStorm(cr, ctx) {
+    const { time, particles, intensity, windKmh, windy } = ctx;
+    cloudPair(cr, 11.5, 7.2, 0.92, stormCloud()[0], stormCloud()[1], time);
+    rainDrops(cr, particles, time, Math.max(2, Math.ceil((3 + Math.min(9, intensity * 1.6)) / 3)), Math.min(0.9, windKmh / 45), 0.85);
+
+    // double-flick lightning every ~2.8 s, alternating bolt shape;
+    // static poses (tiles, strip glyphs) can't wait for the flicker
+    // window -- the bolt IS the scene, so it burns at full brightness
+    const cycle = Math.floor(time / 2.8);
+    const cycleFraction = time % 2.8;
+    let flash = 0;
+    if (particles.static) flash = 1;
+    else if (cycleFraction < 0.07) flash = cycleFraction / 0.07;
+    else if (cycleFraction < 0.14) flash = 1 - (cycleFraction - 0.07) / 0.07;
+    else if (cycleFraction < 0.20) flash = 0.6 * (cycleFraction - 0.14) / 0.06;
+    else if (cycleFraction < 0.28) flash = 0.6 * (1 - (cycleFraction - 0.20) / 0.08);
+    if (flash > 0) {
+        // soft sky glow behind the bolt
+        const glow = new Cairo.RadialGradient(12, 12, 2, 12, 12, 15);
+        glow.addColorStopRGBA(0, 1, 1, 0.94, 0.22 * flash);
+        glow.addColorStopRGBA(1, 1, 1, 0.94, 0);
+        cr.setSource(glow);
+        cr.paint();
+
+        cr.save();
+        cr.setLineJoin(Cairo.LineJoin.ROUND);
+        cr.setLineCap(Cairo.LineCap.ROUND);
+        const bolt = BOLTS[particles.static ? 0 : cycle % BOLTS.length];
+        cr.setSourceRGBA(1, 0.92, 0.23, flash);
+        cr.setLineWidth(2.4);
+        cr.moveTo(bolt[0][0], bolt[0][1]);
+        for (let i = 1; i < bolt.length; i++)
+            cr.lineTo(bolt[i][0], bolt[i][1]);
+        cr.stroke();
+        cr.setSourceRGBA(1, 1, 1, flash);
+        cr.setLineWidth(0.9);
+        cr.stroke();
+        cr.restore();
+    }
+    if (windy)
+        windStreaks(cr, time, 0.3, 2);
+}
+
+/** Curling gust that travels across the scene (wind-scene garnish). */
+function gustCurl(cr, x, y, scale, alpha) {
     cr.save();
     cr.translate(x, y);
-    cr.rotate(lean * 3);
-    cr.scale(0.42, len);
-    cr.arc(0, 0, 0.62, 0, 2 * Math.PI);
-    cr.fill();
+    cr.setSourceRGBA(0.55, 0.85, 1.0, alpha);
+    cr.setLineCap(Cairo.LineCap.ROUND);
+    cr.setLineWidth(0.8);
+    cr.newPath();
+    cr.arc(0, 0, scale, Math.PI * 0.9, Math.PI * 2.2);
+    cr.stroke();
+    cr.newPath();
+    cr.arc(scale * 0.5, scale * 0.4, scale * 0.45, Math.PI * 1.1, Math.PI * 2.5);
+    cr.stroke();
     cr.restore();
 }
 
-function snowOne(cr, pal, x, y, i, seed, t) {
-    void i;
-    void t;
-    col(cr, pal.snow, 0.95);
-    cr.setLineWidth(0.55);
-    cr.setLineCap(Cairo.LineCap.ROUND);
-    const rad = 0.62 + rnd(seed, 40 + i) * 0.30;
-    const spin = rnd(seed, 60 + i) * Math.PI + t * 0.4;
-    for (let k = 0; k < 3; k++) {
-        const a = spin + (k * Math.PI) / 3;
-        cr.moveTo(x - Math.cos(a) * rad, y - Math.sin(a) * rad);
-        cr.lineTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad);
-    }
+function sceneWind(cr, ctx) {
+    const { time } = ctx;
+    windStreaks(cr, time, 1.0, 4);
+    // one longer high streak for depth
+    streak(cr, 3.2 + Math.sin(time) * 0.4, 0.7, 0.35, 3.5, 6, -(time * 5) % 9.5);
+    // two curling gusts sweeping left->right at different depths
+    gustCurl(cr, (time * 4.4) % 28 - 2, 8.5 + Math.sin(time * 1.6) * 0.8, 1.5, 0.6);
+    gustCurl(cr, ((time * 3.1) % 28) - 2 + 9, 16 + Math.cos(time * 1.2) * 0.8, 1.1, 0.4);
+}
+
+function sceneError(cr) {
+    cr.setSourceRGBA(0.95, 0.45, 0.40, 0.95);
+    cr.setLineWidth(1.6);
+    circle(cr, 12, 12, 7.5);
     cr.stroke();
+    cr.selectFontFace('Sans', Cairo.FontSlant.NORMAL, Cairo.FontWeight.BOLD);
+    cr.setFontSize(11);
+    cr.setSourceRGBA(0.95, 0.45, 0.40, 0.95);
+    const extents = cr.textExtents('!');
+    cr.moveTo(12 - extents.xAdvance / 2 - extents.xBearing, 12 - extents.yBearing - extents.height / 2);
+    cr.showText('!');
 }
 
-function hailDot(cr, pal, x, y, seed, i) {
-    const rad = 0.42 + rnd(seed, 40 + i) * 0.26;
-    col(cr, pal.hail, 1);
-    cr.newPath();
-    cr.arc(x, y, rad, 0, 2 * Math.PI);
-    cr.fill();
-    col(cr, '#FFFFFF', 0.65);
-    cr.newPath();
-    cr.arc(x - rad * 0.3, y - rad * 0.3, rad * 0.35, 0, 2 * Math.PI);
-    cr.fill();
-}
-
-function lightningBolt(cr, pal, t = 0) {
-    const blink = 0.85 + 0.15 * Math.max(0, Math.sin(t * 2.2));
-    const pts = [[12.9, 11.6], [16.1, 11.6], [13.7, 15.3], [16.4, 15.3],
-        [10.6, 21.8], [12.3, 16.7], [9.9, 16.7]];
+function sceneLoading(cr, ctx) {
+    const { time } = ctx;
     cr.save();
-    // faux glow: wide soft stroke under a crisp fill (no shadow API in GJS)
+    cr.setLineCap(Cairo.LineCap.ROUND);
+    cr.setLineWidth(2);
+    cr.setSourceRGBA(0.40, 0.43, 0.47, 0.25);
+    circle(cr, 12, 12, 6);
+    cr.stroke();
     cr.newPath();
-    col(cr, pal.bolt, 0.35 * blink);
-    cr.setLineWidth(1.8);
-    cr.setLineJoin(Cairo.LineJoin.ROUND);
-    cr.moveTo(pts[0][0], pts[0][1]);
-    for (const [x, y] of pts.slice(1)) cr.lineTo(x, y);
-    cr.closePath();
-    cr.strokePreserve();
-    col(cr, pal.bolt, blink);
-    cr.fill();
+    const angle = time * 4;
+    cr.arc(12, 12, 6, angle, angle + Math.PI * 1.1);
+    const spinColor = INK_SPIN();
+    cr.setSourceRGBA(spinColor[0], spinColor[1], spinColor[2], 0.95);
+    cr.stroke();
     cr.restore();
 }
 
-function fogBars(cr, pal, cx, y0, gap) {
-    cr.setLineWidth(1.15);
-    cr.setLineCap(Cairo.LineCap.ROUND);
-    col(cr, pal.fog, 0.95);
-    const widths = [5.6, 4.6, 5.1];
-    widths.forEach((w, i) => {
-        const y = y0 + i * gap;
-        const off = (i % 2 === 0 ? 0.6 : -0.9);
-        cr.moveTo(cx - w + off, y);
-        cr.lineTo(cx + w + off, y);
-    });
-    cr.stroke();
-}
-
-function windStreamlines(cr, pal, t = 0) {
-    const lanes = [
-        { y: 8.2, len: 13.6, curl: 2.4, alpha: 0.95 },
-        { y: 12.2, len: 16.4, curl: 2.8, alpha: 0.75 },
-        { y: 16.2, len: 11.2, curl: 2.0, alpha: 0.55 },
-    ];
-    cr.setLineCap(Cairo.LineCap.ROUND);
-    lanes.forEach((l, i) => {
-        cr.setLineWidth(1.35 - i * 0.15);
-        col(cr, pal.wind, l.alpha);
-        const x0 = 3.4 + Math.sin(t * 1.3 + i * 2.1) * 0.35;
-        const lift = Math.sin(t * 0.9 + i) * 0.25;
-        const xTail = x0 + l.len - l.curl;
-        cr.newPath();
-        cr.moveTo(x0, l.y);
-        cr.curveTo(x0 + l.len * 0.5, l.y - 0.9 + lift, xTail - 2, l.y - 0.7, xTail, l.y - 0.2);
-        cr.curveTo(xTail + l.curl * 0.8, l.y + 0.2,
-            xTail + l.curl * 0.75, l.y + l.curl * 0.9,
-            xTail + l.curl * 0.15, l.y + l.curl * 0.75);
-        cr.stroke();
-    });
-}
-
-// --- scene assembly -------------------------------------------------------------
-
-export const SCENES = ['sun', 'moon', 'partly', 'cloud', 'fog', 'wind',
-    'rain', 'sleet', 'snow', 'hail', 'storm', 'loading', 'error'];
-
-/** Standalone moon disc at absolute coords (used by the sky backdrop's
- * pushGroup/paintWithAlpha pass, same rules as inside glyphs). */
-export function paintMoonBody(cr, cx, cy, r, phase, night = true) {
-    moonDisc(cr, night ? PAL.night : PAL.day, cx, cy, r, phase);
-}
+const SCENES = {
+    sun: sceneSun, moon: sceneMoon, partly: scenePartly, cloud: sceneCloud,
+    fog: sceneFog, rain: sceneRain, snow: sceneSnow, sleet: sceneSleet,
+    hail: sceneHail, storm: sceneStorm, wind: sceneWind,
+    error: sceneError, loading: sceneLoading,
+};
 
 /**
- * Paint one glyph into `cr`, assuming a `size`×`size` px target.
- * opts: { scene, night=false, intensity=1 (0..6), seed=0, phase=moon 0..1,
- *         pale=false }
- * `pale` picks the glow palette without swapping day→night shapes — the
- * day-tile verdict of the sky port (a daytime glyph whose composited
- * ground went dark joins the glow family, sun stays a sun).
+ * Paint one frame. `opts` must already be in grid space -- the caller scales
+ * the context. Fields:
+ *   scene      one of SCENES
+ *   time       seconds since the icon appeared (animation clock)
+ *   particles  pool from createParticles()
+ *   windy      bool -- add wind streaks to the scene
+ *   night      bool -- render night variant (partly)
+ *   intensity  0..10 precipitation mm, drives drop/flake count
+ *   windKmh    wind speed in km/h, drives rain slant
  */
-export function drawScene(cr, size, opts = {}) {
-    const { scene = 'partly', night = false, intensity = 1, seed = 3,
-        phase = 0.62, pale = false } = opts;
-    // t advances only when the caller animates; static callers stay frozen.
-    const t = opts.timeSec ?? 0;
-    const pal = night || pale ? PAL.night : PAL.day;
-    cr.scale(size / 24, size / 24);
-    cr.setLineJoin(Cairo.LineJoin.ROUND);
+let staticPool = null;   // one seeded pool for every static painter
 
-    const precipZone = { yTop: 13.0, yBottom: 21.6, xl: 6.2, xr: 17.8 };
-    const fall = (i, speed) => (t * speed + rnd(seed, 90 + i) + i * 0.137) % 1;
-
-    switch (scene) {
-    case 'sun':
-        sunDisc(cr, pal, 12, 12, 4.4, 12, seed, t * 0.14);
-        break;
-    case 'moon':
-        moonDisc(cr, pal, 12.4, 11.8, 5.0, phase);
-        break;
-    case 'partly':
-        if (night) moonDisc(cr, pal, 8.4, 7.6, 2.9, phase);
-        else sunDisc(cr, pal, 8.6, 7.8, 2.9, 9, seed, t * 0.14);
-        cloudFill(cr, pal, 13.4, 13.0, 6.4);
-        break;
-    case 'cloud':
-        cloudFill(cr, pal, 15.4 + Math.sin(t * 0.3) * 0.15, 8.6, 5.2, { alpha: 0.55 });
-        cloudFill(cr, pal, 11.6, 11.6, 7.4);
-        break;
-    case 'fog':
-        cloudFill(cr, pal, 12.6, 8.8, 6.2, { alpha: 0.85 });
-        fogBars(cr, pal, 12 + Math.sin(t * 0.5) * 0.35, 14.2, 2.4);
-        break;
-    case 'wind':
-        windStreamlines(cr, pal, t);
-        break;
-    case 'rain': {
-        cloudFill(cr, pal, 12, 8.6, 7.6);
-        const count = 3 + Math.min(6, intensity);
-        for (let i = 0; i < count; i++) {
-            const fx = (i + 0.5 + (rnd(seed, i) - 0.5) * 0.8) / count;
-            const x = precipZone.xl + fx * (precipZone.xr - precipZone.xl);
-            const y = precipZone.yTop + fall(i, 0.85) * (precipZone.yBottom - precipZone.yTop);
-            dropOne(cr, pal, x, y, seed, i);
-        }
-        break;
-    }
-    case 'sleet': {
-        cloudFill(cr, pal, 12, 8.6, 7.6);
-        const n = 3 + Math.min(4, intensity);
-        for (let i = 0; i < n; i++) {
-            const fx = (i + 0.5) / n;
-            const x = precipZone.xl + fx * (precipZone.xr - precipZone.xl) - 0.8;
-            const y = precipZone.yTop + fall(i, 0.8) * (precipZone.yBottom - precipZone.yTop - 1.4);
-            if (i % 2 === 0) dropOne(cr, pal, x, y, seed, i, -0.35);
-            else snowOne(cr, pal, x + 1.6, precipZone.yTop + 2 +
-                ((t * 0.3 + rnd(seed, i) + i * 0.2) % 1) * (precipZone.yBottom - precipZone.yTop - 2),
-                i, seed + 11, t);
-        }
-        break;
-    }
-    case 'snow': {
-        cloudFill(cr, pal, 12, 8.6, 7.6);
-        const count = 3 + Math.min(5, intensity);
-        for (let i = 0; i < count; i++) {
-            const fx = (i + 0.5 + (rnd(seed, i) - 0.5) * 0.8) / count;
-            const drift = Math.sin(t * 0.8 + i * 1.7) * 0.4;
-            const x = precipZone.xl + fx * (precipZone.xr - precipZone.xl) + drift;
-            const y = precipZone.yTop + ((t * 0.28 + rnd(seed, 20 + i) + i * 0.19) % 1)
-                * (precipZone.yBottom - precipZone.yTop);
-            snowOne(cr, pal, x, y, i, seed, t);
-        }
-        break;
-    }
-    case 'hail': {
-        cloudFill(cr, pal, 12, 8.4, 7.6, { storm: true });
-        dropOne(cr, pal, 7.6, precipZone.yTop + 2 + fall(0, 0.9) * 6, seed, 0, -0.25);
-        dropOne(cr, pal, 16.9, precipZone.yTop + 1 + fall(1, 0.9) * 7, seed, 1, -0.25);
-        const dots = 3 + Math.min(3, Math.ceil(intensity / 2));
-        for (let i = 0; i < dots; i++) {
-            const ph = fall(i + 30, 1.1);
-            const bounce = ph > 0.82 ? Math.abs(Math.sin((ph - 0.82) * 20)) * 1.1 * (1 - ph) : 0;
-            const x = precipZone.xl + 1.4 + (i + 0.5) / dots * (precipZone.xr - precipZone.xl - 2.8);
-            const y = precipZone.yTop + 2.4 + ph * (precipZone.yBottom - precipZone.yTop - 3) - bounce;
-            hailDot(cr, pal, x, y, seed, i);
-        }
-        break;
-    }
-    case 'storm':
-        cloudFill(cr, pal, 12, 8.4, 7.6, { storm: true });
-        dropOne(cr, pal, 7.4, precipZone.yTop + fall(0, 1.2) * 7, seed, 0, -0.25);
-        dropOne(cr, pal, 16.8, precipZone.yTop + fall(1, 1.1) * 8, seed + 5, 1, -0.25);
-        lightningBolt(cr, pal, t);
-        break;
-    case 'loading': {
-        col(cr, pal.fog, 0.8);
-        cr.setLineWidth(1.6);
-        cr.setLineCap(Cairo.LineCap.ROUND);
-        cr.newPath();
-        cr.arc(12, 12, 6.5, t * 2.4, t * 2.4 + 4.1);
-        cr.stroke();
-        break;
-    }
-    case 'error':
-        col(cr, '#E05B5B');
-        cr.setLineWidth(1.7);
-        cr.newPath();
-        cr.arc(12, 11, 6.4, 0, 2 * Math.PI);
-        cr.stroke();
-        cr.setLineCap(Cairo.LineCap.ROUND);
-        cr.newPath();
-        cr.moveTo(12, 7.8);
-        cr.lineTo(12, 11.8);
-        cr.stroke();
-        break;
-    default:
-        cloudFill(cr, pal, 12, 10.6, 7.6);
-    }
-}
-
-/**
- * A Gtk.DrawingArea painting a weather glyph. `getOpts()` is consulted on
- * every draw, so callers mutate state freely and just call queue_draw().
- * When `animate()` returns true (typically wired to the user preference),
- * the glyph animates at the extension's 20 fps cadence — but only while the
- * widget is mapped, so hidden tabs cost nothing.
- */
-// --- shared animation heart ---------------------------------------------------
-// One 50 ms source drives EVERY animated glyph and the sky backdrop instead
-// of one GSource per widget: a single wakeup per tick, and the batch of
-// queue_draw()s lands as one frame commit (one damage pass, one GPU upload)
-// instead of N. Subscribers pay only while mapped; the heart stops entirely
-// when the last one leaves or animations are switched off.
-
-const _subs = new Map();
-let _seq = 1;
-let _heart = 0;
-
-function _ensureHeart() {
-    if (_heart)
-        return;
-    _heart = GLib.timeout_add(GLib.PRIORITY_LOW, 50, () => {
-        for (const fn of _subs.values())
-            fn();
-        return GLib.SOURCE_CONTINUE;
-    });
-}
-
-export function addFrameSubscriber(fn) {
-    const id = _seq++;
-    _subs.set(id, fn);
-    _ensureHeart();
-    return id;
-}
-
-export function removeFrameSubscriber(id) {
-    _subs.delete(id);
-    if (!_subs.size && _heart) {
-        GLib.Source.remove(_heart);
-        _heart = 0;
-    }
-}
-
-export function makeWeatherIcon(size, getOpts = null, animate = () => true) {
-    const area = new Gtk.DrawingArea();
-    area.set_size_request(size, size);
-    area.set_halign(Gtk.Align.CENTER);
-    area.set_valign(Gtk.Align.CENTER);
-    area.set_content_width(size);
-    area.set_content_height(size);
-
-    const t0 = GLib.get_monotonic_time();
-    let timer = 0;
-
-    area.set_draw_func((_w, cr, w, h) => {
-        cr.save();
-        const side = Math.min(w, h);
-        cr.translate((w - side) / 2, (h - side) / 2);
-        const userOpts = getOpts ? getOpts() : {};
-        const timeSec = (GLib.get_monotonic_time() - t0) / 1e6;
-        drawScene(cr, side, animate()
-            ? { ...userOpts, timeSec }
-            : { ...userOpts, timeSec: 0 });
-        cr.restore();
-    });
-
-    area.connect('map', () => {
-        if (timer || !animate())
-            return;
-        timer = addFrameSubscriber(() => {
-            if (!animate()) {
-                removeFrameSubscriber(timer);
-                timer = 0;
-                area.queue_draw();
-                return;
-            }
-            area.queue_draw();
-        });
-    });
-    area.connect('unmap', () => {
-        if (timer) {
-            removeFrameSubscriber(timer);
-            timer = 0;
-        }
-    });
-    return area;
+export function paintWeather(cr, opts) {
+    let particles;
+    if (opts.staticPose) {
+        if (!staticPool)
+            staticPool = Object.assign(createParticles(), { static: true });
+        particles = staticPool;
+        particles.seed = opts.seed ?? 7;   // per-glyph layout variety
+    } else
+        particles = opts.particles || createParticles();
+    _light = opts.dark === false;
+    _groundLum = opts.groundLum ?? -1;
+    _night = !!opts.night;
+    _pale = !!opts.pale;
+    const currentTime = opts.time || 0;
+    const ctx = {
+        time: currentTime,
+        t: currentTime,
+        particles,
+        p: particles,
+        windy: !!opts.windy,
+        night: !!opts.night,
+        intensity: opts.intensity || 0,
+        windKmh: opts.windKmh || 0,
+        phase: Number.isFinite(opts.phase) ? opts.phase : moonPhase().phase,
+    };
+    cr.save();
+    // fade rain/storm drops out from under the cloud
+    const sceneRenderer = SCENES[opts.scene] || sceneError;
+    sceneRenderer(cr, ctx);
+    cr.restore();
+    particles.lastTime = currentTime;
+    particles.lastT = currentTime;
 }

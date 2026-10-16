@@ -89,6 +89,23 @@ if must_hover not in app_css:
 if 'THEME_CONFIG' not in app_css:
     fails.append('style.css lost the doctrine citation (THEME_CONFIG comment)')
 
+# 1b -- glyph brain: painter.js + moon.js must be byte-identical across the
+# three homes (extension owns; shared/ archives below the marker; app ships a
+# byte-clone — all divergence must be IN the extension and propagate).
+MK = '/* == SYNCHED DESIGN BRAIN (byte-identity enforced by scripts/check-design-parity.py) == */'
+for name in ('painter', 'moon'):
+    ext_src = (ROOT / 'extension' / (name + '.js')).read_text()
+    app_src = (ROOT / 'app' / 'src' / (name + '.js')).read_text()
+    sh_src = (ROOT / 'shared' / 'art' / (name + '.js')).read_text()
+    if MK not in ext_src or MK not in sh_src:
+        fails.append(f'{name}.js lost its SYNCHED DESIGN BRAIN marker')
+        continue
+    if ext_src != app_src:
+        fails.append(f'{name}.js DRIFT: app/src is not a byte-clone of extension/ (edit the extension, sync the clone)')
+    eb, sb = ext_src.split(MK, 1)[1], sh_src.split(MK, 1)[1]
+    if eb != sb:
+        fails.append(f'{name}.js body drift between shared/ archive and extension source')
+
 if fails:
     print('DESIGN PARITY FAILED:'); [print(' -', f) for f in fails]; sys.exit(1)
 print('design parity OK: brand art, glass tokens, canvas mirrors all agree')

@@ -1,3 +1,4 @@
+/* == SYNCHED DESIGN BRAIN (byte-identity enforced by scripts/check-design-parity.py) == */
 /* moon.js -- lunar phase calculation and rendering */
 
 import Cairo from 'gi://cairo';
