@@ -3,6 +3,7 @@ import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
 import Cairo from 'gi://cairo?version=1.0';
 import { drawScene, SCENES } from '../src/glyph.js';
+import { ChartRaster } from '../src/chart.js';
 import * as W from '../src/weather.js';
 
 let failures = 0;
@@ -220,6 +221,26 @@ check('ink flip: hero ink over noon sun disc goes dark',
     const pinned = shoot({ scene: 'rain', night: false, fxScale: 1 }, 3);
     check('fxScale:1 pins the FX plane to full resolution',
         pinned.fxW === 400 && pinned.fxH === 300, `fx=${pinned.fxW}x${pinned.fxH}`);
+}
+
+// The chart pre-rasterizes into a cached surface: GSK replays a live
+// DrawingArea recording on every presented frame (measured 70-278 ms
+// frames from the chart alone inside the scrolled clip), so paintChart
+// may run ONLY on invalidate/resize/scale change, never per draw.
+{
+    const surf = new Cairo.ImageSurface(Cairo.Format.ARGB32, 400, 200);
+    const cc = new Cairo.Context(surf);
+    const raster = new ChartRaster();
+    const opts = { slice: null, metric: 'temp' };
+    for (let i = 0; i < 5; i++)
+        raster.paint(cc, 400, 200, 2, opts);
+    check('chart raster: 5 draws, 1 rasterization',
+        raster.rasters === 1, `r=${raster.rasters}`);
+    raster.invalidate();
+    raster.paint(cc, 400, 200, 2, opts);
+    raster.paint(cc, 300, 200, 2, opts);
+    check('chart raster: invalidate + resize re-rasterize',
+        raster.rasters === 3, `r=${raster.rasters}`);
 }
 
 
