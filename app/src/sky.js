@@ -608,16 +608,16 @@ export function paintSky(cr, { w: width, h: height, time, scene, night, sky,
     const noon = noonOf(scene, night, solar);
     const scale = height / 420;
 
-    // Quantum per scene class: sun bodies breathe/rotate (rebuild <=4/s),
-    // a timeless moon needs ZERO time-based rebuilds, and only a moon
-    // UNDER twilight pays a 1 Hz breath step. Body-less scenes never move
-    // their cache at all until a resize or the minute tick.
-    const anim = !night && (features.sun || features.moon)
-        ? 4 : night && features.moon && glow > 0.011 ? 1 : 0;
-    const qt = anim ? Math.floor(time * anim) / anim : 0;
+    // Cache boundary: ONLY the time-invariant gradient wash (per scene/
+    // family/glow/solar/phase + size). Horizon glow and the celestial
+    // bodies BREATHE AND ROTATE in real time on the live path below --
+    // a sun quantized into a 4 Hz slideshow reads as "animation is slow",
+    // and the extension has always painted bodies every frame. The cache
+    // now rebuilds only on resize or the upstream per-minute glow/solar
+    // refresh, exactly as often as the sky's palette actually changes.
     const key = `${scene}|${night ? 'n' : 'd'}|${Number(glow).toFixed(3)}`
         + `|${Number.isFinite(solar) ? solar.toFixed(3) : '-'}|`
-        + `${phase == null ? '-' : Number(phase).toFixed(4)}|${qt}|${rw}x${rh}`
+        + `${phase == null ? '-' : Number(phase).toFixed(4)}|${rw}x${rh}`
         + `|${quiet ? 'q' : 'a'}`;
     if (!sky.cache || sky.cacheKey !== key) {
         const reuse = sky.cache
@@ -631,10 +631,6 @@ export function paintSky(cr, { w: width, h: height, time, scene, night, sky,
         sc.paint();
         sc.setOperator(Cairo.Operator.OVER);
         drawBackdrop(sc, rh, skyStops(scene, night, glow, solar));
-        drawHorizonGlow(sc, rw, rh, twilight, night, qt);
-        if (!quiet)
-            drawBodies(sc, rw, rh, scale, features, qt, night, phase,
-                twilight, solar, noon);
         if (scene === 'fog')
             drawFogHills(sc, rw, rh, night);
         sc.$dispose();
@@ -667,6 +663,11 @@ export function paintSky(cr, { w: width, h: height, time, scene, night, sky,
     cr.paint();
     cr.setOperator(Cairo.Operator.OVER);
     sky.blits++;
+
+    drawHorizonGlow(cr, rw, rh, twilight, night, time);
+    if (!quiet)
+        drawBodies(cr, rw, rh, scale, features, time, night, phase,
+            twilight, solar, noon);
 
     if (quiet) {
         if (scrim) {

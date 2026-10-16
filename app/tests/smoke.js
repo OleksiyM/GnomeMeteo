@@ -202,8 +202,10 @@ check('ink flip: hero ink over noon sun disc goes dark',
     check('moon cache ignores time (zero rebuilds)',
         moony.builds === 1 && moony.blits === 60, `b=${moony.builds}`);
     const sunny = shoot({ scene: 'clear', night: false, solar: 1 }, 60);
-    check('sun rebuilds at <=4 Hz',
-        sunny.builds <= 4 * 3 + 1 && sunny.blits === 60, `b=${sunny.builds}`);
+    // bodies animate LIVE (real-time breath/rotation); the cache holds
+    // only the gradient wash, so a time sweep must not rebuild it at all.
+    check('sun animates live (gradient built exactly once)',
+        sunny.builds === 1 && sunny.blits === 60, `b=${sunny.builds}`);
 }
 
 
