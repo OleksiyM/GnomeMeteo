@@ -1,3 +1,8 @@
+/* CANVAS-SCALE MOTION (deliberate app-only divergence): the extension tunes every
+ * drift, fall and gravity in ABSOLUTE px for its fixed 330x420 popup. The standalone
+ * window is ~4x that area, so absolute px/s reads as crawling — draw sites multiply
+ * motion (speeds, streak/fog/snow/hail extents, gravities) by the canvas scale to
+ * restore the popup’s kinetic feel at any window size; positions are relative. */
 // sky.js — animated sky backdrop, ported from the WeatherGlass extension's
 // sky.js: per-scene gradients, twilight palette blended by solar glow, noon
 // blues, breathing sun / phase-accurate moon, drifting cloud sprites,
@@ -412,9 +417,9 @@ function drawClouds(cr, sky, width, scale, dt, time, scene, night, twilight) {
     const tint = night ? 0.45 + 0.35 * twilight : 1;
     const [gr, gg, gb] = night ? [1.0, 0.50, 0.46] : [1.0, 0.62, 0.48];
     for (const cloud of sky.clouds) {
-        cloud.x += cloud.speed * dt;
-        if (cloud.x > width + 200) cloud.x = -260;
-        const cw = 400 * cloud.scale * 0.24, ch = 200 * cloud.scale * 0.24;
+        cloud.x += cloud.speed * dt * scale;
+        if (cloud.x > width + 200 * scale) cloud.x = -260 * scale;
+        const cw = 400 * cloud.scale * 0.24 * scale, ch = 200 * cloud.scale * 0.24 * scale;
         cr.save();
         cr.translate(cloud.x, cloud.y + Math.sin(time * 0.3 + cloud.y) * 4 * scale);
         cr.scale(cw / 400, ch / 200);
@@ -459,23 +464,23 @@ function drawFogHills(cr, width, height, night) {
     cr.fill();
 }
 
-function drawFog(cr, sky, width, dt, time, night) {
+function drawFog(cr, sky, width, dt, time, night, scale = 1) {
     const litColor = night ? [0.55, 0.60, 0.70] : [0.93, 0.95, 0.97];
     const shadeColor = night ? [0.07, 0.09, 0.14] : [0.40, 0.44, 0.50];
     for (const fog of sky.fog) {
-        fog.x += fog.speed * dt;
+        fog.x += fog.speed * dt * scale;
         if (fog.x > width + fog.length) fog.x = -fog.length;
-        const y = fog.y + Math.sin(time * 0.35 + (fog.x + width) * 0.01) * 4;
+        const y = fog.y + Math.sin(time * 0.35 + (fog.x + width) * 0.01) * 4 * scale;
         const tint = fog.tone ? litColor : shadeColor;
         cr.save();
         cr.translate(fog.x + fog.length / 2, y);
         cr.scale(fog.length / (fog.height * 2), 1);
-        const gradient = new Cairo.RadialGradient(0, 0, 0, 0, 0, fog.height);
+        const gradient = new Cairo.RadialGradient(0, 0, 0, 0, 0, fog.height * scale);
         gradient.addColorStopRGBA(0, ...tint, fog.opacity);
         gradient.addColorStopRGBA(0.6, ...tint, fog.opacity * 0.65);
         gradient.addColorStopRGBA(1, ...tint, 0);
         cr.setSource(gradient);
-        cr.arc(0, 0, fog.height, 0, TWO_PI);
+        cr.arc(0, 0, fog.height * scale, 0, TWO_PI);
         cr.fill();
         cr.restore();
     }
@@ -486,42 +491,43 @@ function drawRain(cr, sky, width, height, scale, dt, scene) {
     cr.setLineCap(Cairo.LineCap.ROUND);
     cr.setLineWidth(1.4 * scale);
     for (const drop of sky.drops) {
-        drop.y += drop.speed * dt;
-        drop.x -= drop.speed * 0.28 * dt;
+        drop.y += drop.speed * dt * scale;
+        drop.x -= drop.speed * 0.28 * dt * scale;
         if (drop.y > height + 20) {
             drop.y = -20;
             drop.x = rand(0, width + 60);
         }
         cr.setSourceRGBA(...rainColor, 0.45);
         cr.moveTo(drop.x, drop.y);
-        cr.lineTo(drop.x - drop.length * 0.3, drop.y + drop.length);
+        cr.lineTo(drop.x - drop.length * 0.3 * scale, drop.y + drop.length * scale);
         cr.stroke();
     }
 }
 
 function drawSnow(cr, sky, width, height, scale, dt, time) {
     for (const flake of sky.flakes) {
-        flake.y += flake.speed * dt;
+        flake.y += flake.speed * dt * scale;
         if (flake.y > height + 10) {
             flake.y = -10;
             flake.x = rand(0, width);
         }
         cr.setSourceRGBA(1, 1, 1, 0.85);
         cr.arc(flake.x + Math.sin(time * 1.2 + flake.phase) * 18 * scale, flake.y,
-            flake.radius, 0, TWO_PI);
+            flake.radius * scale, 0, TWO_PI);
         cr.fill();
     }
 }
 
 function drawHail(cr, sky, width, height, dt) {
+    const gs = height / 420;   // same canvas-scale motion doctrine (see note)
     for (const stone of sky.hail) {
-        stone.vy += 900 * dt;
-        stone.x += stone.vx * dt;
-        stone.y += stone.vy * dt;
-        if (stone.y > height - 6 - stone.radius && stone.vy > 0) {
-            stone.y = height - 6 - stone.radius;
+        stone.vy += 900 * gs * dt;
+        stone.x += stone.vx * gs * dt;
+        stone.y += stone.vy * gs * dt;
+        if (stone.y > height - 6 * gs - stone.radius * gs && stone.vy > 0) {
+            stone.y = height - 6 * gs - stone.radius * gs;
             stone.vy *= -0.42;
-            stone.vx = rand(-160, 160);
+            stone.vx = rand(-160, 160) * gs;
             stone.bounces += 1;
         }
         if (stone.bounces > 2 || stone.x < -10 || stone.x > width + 10)
@@ -530,22 +536,22 @@ function drawHail(cr, sky, width, height, dt) {
                 vy: rand(180, 320), radius: rand(2.4, 4.4), bounces: 0,
             });
         cr.setSourceRGBA(0.94, 0.96, 0.99, 0.92);
-        cr.arc(stone.x, stone.y, stone.radius, 0, TWO_PI);
+        cr.arc(stone.x, stone.y, stone.radius * gs, 0, TWO_PI);
         cr.fill();
     }
 }
 
-function drawWindStreaks(cr, sky, width, height, dt) {
+function drawWindStreaks(cr, sky, width, height, dt, scale = 1) {
     for (const streak of sky.streaks) {
-        streak.x += streak.speed * dt;
-        if (streak.x > width + streak.length) {
-            streak.x = -streak.length;
+        streak.x += streak.speed * dt * scale;
+        if (streak.x > width + streak.length * scale) {
+            streak.x = -streak.length * scale;
             streak.y = rand(0, height);
         }
         cr.setSourceRGBA(0.86, 0.93, 0.98, streak.opacity);
-        cr.setLineWidth(streak.width);
+        cr.setLineWidth(streak.width * scale);
         cr.moveTo(streak.x, streak.y);
-        cr.lineTo(streak.x + streak.length, streak.y);
+        cr.lineTo(streak.x + streak.length * scale, streak.y);
         cr.stroke();
     }
 }
@@ -678,11 +684,11 @@ export function paintSky(cr, { w: width, h: height, time, scene, night, sky,
             hasMoon ? { x: sx, y: sy, r: 64 * scale * 0.85 } : null);
     }
     drawClouds(cr, sky, width, scale, dt, time, scene, night, twilight);
-    drawFog(cr, sky, width, dt, time, night);
+    drawFog(cr, sky, width, dt, time, night, scale);
     drawRain(cr, sky, width, height, scale, dt, scene);
     drawSnow(cr, sky, width, height, scale, dt, time);
     drawHail(cr, sky, width, height, dt);
-    drawWindStreaks(cr, sky, width, height, dt);
+    drawWindStreaks(cr, sky, width, height, dt, scale);
     if (features.bolt)
         drawLightning(cr, width, height, scale, time);
     if (scrim) {
