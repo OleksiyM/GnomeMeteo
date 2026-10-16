@@ -65,6 +65,18 @@ button.win-close {
 button.win-close:hover { background: rgba(16, 20, 28, 0.52); }
 button.win-close:active { background: rgba(16, 20, 28, 0.65); }
 
+/* Theme-smear antidote. Adwaita's own stylesheet puts `transition: all
+ * 200ms` on EVERY button (and 500ms on .flat:hover — measured off
+ * libgtk-4's embedded css), so our hover glass fades in AND OUT across a
+ * drag gesture: highlight perpetually chases the cursor. The extension's
+ * Clutter actors were binary — furniture answers on the state-change
+ * frame. APPLICATION-priority provider wins over the theme regardless of
+ * specificity. Dialog/suggested buttons keep platform politeness; the
+ * sky-page furniture does not wait. */
+button.day-tile, button.metric-tab, button.win-close {
+  transition: none;
+}
+
 .day-summary {
   font-weight: 600;
   margin-left: 8px;

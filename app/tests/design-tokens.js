@@ -78,13 +78,24 @@ check('win-close is a dark-glass circle with the tile token family',
     && declsFor(/^button\.win-close:active$/).some(d =>
         /rgba\(16, 20, 28, 0\.65\)/.test(d)));
 
-// --- hover/press must be INSTANT: no transition games on furniture -------
+// --- hover/press must be INSTANT --------------------------------------------
+// Adwaita stamps `transition: all 200ms` on every button (500ms on
+// .flat:hover), which fades hover glass across a drag. The furniture CSS
+// must carry an explicit `transition: none` antidote (positive lock —
+// absence reintroduces the smear) and NOTHING else in the transition
+// family may appear on furniture blocks.
+const FURNITURE = /^(button\.)?(day-tile|metric-tab|win-close)(:\w+)?$/;
+const furnDec1 = declsFor(FURNITURE);
+check('furniture carries the transition:none theme-smear antidote',
+    furnDec1.some(d => /transition:\s*none/.test(d)));
 for (const [label, pattern] of [
     ['day tiles', /(^|\s|,)button\.day-tile/],
     ['win-close', /^button\.win-close/],
+    ['metric tabs', /(^|\s|,)button\.metric-tab/],
 ]) {
-    const leaks = declsFor(pattern).filter(d => /\btransition\b/.test(d));
-    check(`no CSS transition on ${label} hover feedback`,
+    const leaks = declsFor(pattern)
+        .filter(d => /\btransition(?!:\s*none\b|-duration:\s*0(ms)?\b)/.test(d));
+    check(`no fade-bearing transition on ${label}`,
         leaks.length === 0, leaks.join(' | '));
 }
 
