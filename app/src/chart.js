@@ -73,37 +73,26 @@ export function paintChart(cr, w, h, state) {
 
     const present = vals.filter(v => v != null);
     if (!present.length) return;
-    let vmin = metric === 'precip' ? 0 : Math.min(...present);
-    let vmax = metric === 'precip' ? 100 : Math.max(...present);
+    /* Metric-agnostic window, like the extension's chart: it plots whatever
+     * values[] it is handed through ONE y-window + padding pass — precipitation
+     * probabilities are ordinary data points, not a 0-100 gauge. (The app once
+     * special-cased precip into a forced 0..100 axis with rounded bars; the
+     * extension never draws bars. Deleted, do not resurrect.) */
+    let vmin = Math.min(...present);
+    let vmax = Math.max(...present);
     if (!Number.isFinite(vmin) || !Number.isFinite(vmax)) { vmin = 0; vmax = 1; }
     if (vmax - vmin < 1) { vmax += 0.5; vmin -= 0.5; }
-    if (metric !== 'precip') {
-        const padV = (vmax - vmin) * 0.22;
-        vmin -= padV;
-        vmax += padV;
-    }
+    const padV = (vmax - vmin) * 0.22;
+    vmin -= padV;
+    vmax += padV;
     const ys = v => PAD.top + (1 - (v - vmin) / (vmax - vmin)) * plotH;
 
     const stride = n > 16 ? 3 : 2;
 
     // --- series -----------------------------------------------------------------
-    if (metric === 'precip') {
-        const bw = Math.min(13, Math.max(4, (plotW / n) * 0.5));
-        for (let i = 0; i < n; i++) {
-            const v = vals[i] ?? 0;
-            if (v <= 0) continue;
-            const x = xs(i);
-            const y = Math.min(ys(v), plotBot - bw / 2 - 1);
-            cr.newPath();
-            cr.moveTo(x - bw / 2, plotBot);
-            cr.lineTo(x - bw / 2, y + bw / 2);
-            cr.arc(x, y + bw / 2, bw / 2, Math.PI, 2 * Math.PI);
-            cr.lineTo(x + bw / 2, plotBot);
-            cr.closePath();
-            cr.setSourceRGBA(sr, sg, sb, 0.85);
-            cr.fill();
-        }
-    } else {
+    // ONE path for every metric: spline area + stroke (mirrors the
+    // extension's chart — a line, never bars).
+    {
         const pts = [];
         for (let i = 0; i < n; i++)
             if (vals[i] != null) pts.push([xs(i), ys(vals[i])]);
@@ -136,11 +125,9 @@ export function paintChart(cr, w, h, state) {
     for (let i = 0; i < n; i++) {
         if (vals[i] == null) continue;
         const labeled = i % stride === 0;
-        if (metric !== 'precip') {
-            cr.setSourceRGBA(sr, sg, sb, labeled ? 1 : 0.5);
-            cr.arc(xs(i), ys(vals[i]), labeled ? 3.1 : 1.7, 0, 2 * Math.PI);
-            cr.fill();
-        }
+        cr.setSourceRGBA(sr, sg, sb, labeled ? 1 : 0.5);
+        cr.arc(xs(i), ys(vals[i]), labeled ? 3.1 : 1.7, 0, 2 * Math.PI);
+        cr.fill();
         if (labeled) {
             const txt = valueLabel(metric, vals[i], units);
             cr.setFontSize(10.5);
@@ -163,7 +150,7 @@ export function paintChart(cr, w, h, state) {
         cr.stroke();
         cr.setDash([], 0);
         const near = Math.min(n - 1, Math.max(0, Math.round(slice.nowFrac * (n - 1))));
-        if (vals[near] != null && metric !== 'precip') {
+        if (vals[near] != null) {
             cr.setSourceRGBA(1, 1, 1, 0.96);
             cr.arc(xs(near), ys(vals[near]), 5.4, 0, 2 * Math.PI);
             cr.fill();
