@@ -45,6 +45,26 @@
   padding: 10px 14px;
 }
 
+/* Window close — always-dark glass furniture (menu.js THEME_CONFIG: chrome
+ * over the animated sky "always presents the dark treatment"). One token
+ * family with the day-tile glass: 0.34 resting plate, 0.52 hover, 0.65
+ * pressed. No transitions: hover feedback lands on the SAME frame as the
+ * state change. */
+button.win-close {
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(16, 20, 28, 0.34);
+  color: #ffffff;
+  box-shadow: none;
+  outline-offset: -5px;
+}
+
+button.win-close:hover { background: rgba(16, 20, 28, 0.52); }
+button.win-close:active { background: rgba(16, 20, 28, 0.65); }
+
 .day-summary {
   font-weight: 600;
   margin-left: 8px;

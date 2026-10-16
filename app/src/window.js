@@ -249,10 +249,28 @@ class MainWindow extends Adw.ApplicationWindow {
             content: this.#navPage,
             collapsed: false,
         });
-        this.set_content(this.#split);
+        // Permanent ✕ furniture, top-right. Doctrine says chrome over the
+        // animated sky is ALWAYS dark glass with white ink (menu.js
+        // THEME_CONFIG), so unlike the day tiles this one needs no .sky-on
+        // variant: the plate itself carries the contrast on any ground.
+        const rootOverlay = new Gtk.Overlay();
+        rootOverlay.set_child(this.#split);
+        const closeButton = new Gtk.Button({
+            iconName: 'window-close-symbolic',
+            valign: Gtk.Align.START,
+            halign: Gtk.Align.END,
+            marginTop: 7,
+            marginEnd: 7,
+            tooltipText: 'Close (Ctrl+W)',
+            cssClasses: ['win-close'],
+        });
+        closeButton.connect('clicked', () => this.close());
+        rootOverlay.add_overlay(closeButton);
+        this.set_content(rootOverlay);
 
         this.#registerActions(app);
 
+        this.application.set_accels_for_action('win.close', ['<Primary>W']);
         this.application.set_accels_for_action('win.refresh', ['<Primary>R']);
         this.application.set_accels_for_action('win.add-city', ['<Primary>N']);
 
@@ -334,6 +352,7 @@ class MainWindow extends Adw.ApplicationWindow {
             a.connect('activate', cb);
             this.add_action(a);
         };
+        simple('close', () => this.close());
         simple('refresh',
             () => this.#bus.forecasts.kick(this.#bus.config.activeCityId, true));
         simple('add-city', () => this.offerAddCity());

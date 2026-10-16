@@ -221,6 +221,7 @@ class HourlyChart extends Gtk.DrawingArea {
 
     constructor() {
         super();
+        this.add_css_class('hourly-chart'); // identifiable scenery: interactive by design
         this.set_content_height(196);
         this.set_vexpand(false);
         this.set_draw_func((_w, cr, w, h) => paintChart(cr, w, h, {

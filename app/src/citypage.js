@@ -121,6 +121,11 @@ class CityPage extends Gtk.Box {
         this.#overlay.add_overlay(this.#stack);
         this.#overlay.set_measure_overlay(this.#stack, true);
         this.#overlay.add_overlay(this.#updRow);
+        // Decorative chip: pointer events pass straight through it, so it
+        // can never shadow the widgets under its full-width allocation
+        // (GtkOverlay overlay children own their whole box for input).
+        if (this.#overlay.set_overlay_pass_through)
+            this.#overlay.set_overlay_pass_through(this.#updRow, true);
 
         this.append(this.#overlay);
 

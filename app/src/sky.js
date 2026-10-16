@@ -706,6 +706,11 @@ export function paintSky(cr, { w: width, h: height, time, scene, night, sky,
 
 export function makeSkyBackdrop(getState, animate = () => true) {
     const area = new Gtk.DrawingArea();
+    // Pure scenery: opting out of hit-testing keeps every pointer motion's
+    // target walk shallow, so tiles/buttons receive their enter/leave
+    // crossings with zero incidental work (hover felt sluggish with a
+    // full-window drawing area on every motion's probe path).
+    area.set_can_target(false);
     const sky = createSky();
     const t0 = GLib.get_monotonic_time();
     const tPauseStatic = 42; // frozen-frame time for animate() === false

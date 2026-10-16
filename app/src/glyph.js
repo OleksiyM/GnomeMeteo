@@ -83,6 +83,7 @@ export function removeFrameSubscriber(id) {
  * only while mapped. */
 export function makeWeatherIcon(size, getOpts = null, animate = () => true) {
     const area = new Gtk.DrawingArea();
+    area.set_can_target(false); // scenery, like the sky backdrop
     area.set_size_request(size, size);
     area.set_halign(Gtk.Align.CENTER);
     area.set_valign(Gtk.Align.CENTER);

@@ -2,7 +2,10 @@
 // cycle, asserts state through public handles. Run with no other instance.
 import GLib from 'gi://GLib?version=2.0';
 import GObject from 'gi://GObject?version=2.0';
+import Gtk from 'gi://Gtk?version=4.0';
 import { WeatherGlassApp } from '../src/application.js';
+const HERE = GLib.filename_from_uri(import.meta.url)[0]
+    .replace(/[^/]+$/, '');
 
 let failures = 0;
 function check(name, cond, extra = '') {
@@ -18,6 +21,7 @@ const TestApp = GObject.registerClass({ gTypeName: 'WTestApp' },
 class TestApp extends WeatherGlassApp {
     vfunc_activate() {
         super.vfunc_activate();
+        let closeWidget = null; // captured for the close-request verb check
         // generous window: a cold Open-Meteo hiccup costs a retry cycle, not a FAIL
         GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 30, () => {
             const bus = this.bus;
@@ -67,6 +71,52 @@ class TestApp extends WeatherGlassApp {
                 check('move city restores', bus.config.cities[0].id === before[0].id);
 
                 check('window exists', !!this.window);
+
+                // ---- furniture plumbing regression locks ---------------------
+                // A depth-first walk of the live widget tree. These caught-or-
+                // would-have-caught three real regressions: an overlay casting
+                // an input shadow over tiles (hover dies), scenery claiming
+                // hit-test targets (hover slows), the close button missing.
+                const seen = { close: null, tiles: [], scenery: [] };
+                const collect = (w) => {
+                    if (!w) return;
+                    const cls = w.get_css_classes ? w.get_css_classes() : [];
+                    if (cls.includes('win-close')) { seen.close = w; closeWidget = w; }
+                    if (cls.includes('day-tile')) seen.tiles.push(w);
+                    if (w instanceof Gtk.DrawingArea
+                        && !(w.get_css_classes ?? (() => [])).call(w)
+                            .includes('hourly-chart'))
+                        seen.scenery.push(w); // charts ARE interactive (crosshair); rest is scenery
+                    for (let c = w.get_first_child(); c; c = c.get_next_sibling())
+                        collect(c);
+                };
+                collect(this.window);
+
+                check('close button exists', !!seen.close);
+                if (seen.close) {
+                    check('close button sensitive + mapped',
+                        seen.close.get_sensitive() && seen.close.get_mapped());
+                    const a = seen.close.get_allocation();
+                    const winA = this.window.get_content().get_allocation();
+                    check('close button is TOP-RIGHT furniture',
+                        a.y < 80 && (a.x + a.width) > winA.width - 90,
+                        `x=${a.x} y=${a.y} winw=${winA.width}`);
+                }
+                check('day tiles present and clickable',
+                    seen.tiles.length >= 5 && seen.tiles.every(t =>
+                        t.get_sensitive() && t.get_can_target()),
+                    `n=${seen.tiles.length}`);
+                check('scenery never takes pointer targets',
+                    seen.scenery.length > 0 && seen.scenery.every(d =>
+                        !d.get_can_target()),
+                    `${seen.scenery.filter(d => d.get_can_target()).length}/${seen.scenery.length} claim targets`);
+                { // GTK exposes no overlay pass-through getter: source lock
+                    const src = new TextDecoder().decode(GLib.file_get_contents(
+                        `${HERE}/../src/citypage.js`)[1]);
+                    check('decorative overlays pass input through (source lock)',
+                        src.includes('set_overlay_pass_through(this.#updRow'));
+                }
+
                 const cfgPath = `${GLib.getenv('XDG_CONFIG_HOME') || GLib.build_filenamev([GLib.get_home_dir(), '.config'])}/weatherglass/config.json`;
                 const parsed = JSON.parse(new TextDecoder().decode(GLib.file_get_contents(cfgPath)[1]));
                 check('config flushed to disk', parsed.cities.length === before.length,
@@ -83,6 +133,22 @@ class TestApp extends WeatherGlassApp {
                         print(`FAIL sky persist: ${e.stack ?? e}`);
                     }
                     bus.config.setSky(true);
+                    // verb check: pressing the furniture really requests close.
+                    // Handler returns TRUE (intercepted) so the window lives
+                    // long enough to finish teardown cleanly.
+                    if (closeWidget) {
+                        let requested = false;
+                        const hid = this.window.connect('close-request', () => {
+                            requested = true;
+                            return true;
+                        });
+                        closeWidget.emit('clicked');
+                        this.window.disconnect(hid);
+                        check('clicking close requests window close', requested);
+                    } else {
+                        check('clicking close requests window close', false,
+                            'close button was never found');
+                    }
                     print(failures ? `${failures} UI FAILURE(S)` : 'UI INTEGRATION PASSED');
                     this.quit();
                     return GLib.SOURCE_REMOVE;
