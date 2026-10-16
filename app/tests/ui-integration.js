@@ -18,7 +18,8 @@ const TestApp = GObject.registerClass({ gTypeName: 'WTestApp' },
 class TestApp extends WeatherGlassApp {
     vfunc_activate() {
         super.vfunc_activate();
-        GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 14, () => {
+        // generous window: a cold Open-Meteo hiccup costs a retry cycle, not a FAIL
+        GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 30, () => {
             const bus = this.bus;
             const before = bus.config.cities.slice();
             try {

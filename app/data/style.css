@@ -63,39 +63,30 @@ button.day-tile:checked {
   background: alpha(@accent_bg_color, 0.14);
 }
 
-/* Day tiles straight on the sky — the extension's .aw-day recipes verbatim:
- * transparent until hovered (40% white / 28% dark glass) and a heavier
- * glass slab when selected (68% white / 45% dark). Dark glass in the dark
- * card is deliberate: white ink on white-tinted glass vanishes over bright
- * skies. Alphas mirrored by SLAB_/HOVER_ constants in src/citypage.js. */
+/* Day tiles — UN-JUDGED static furniture, the extension's .aw-day row:
+ * transparent → dark hover glass → dark slab + white flip when selected.
+ * Animated-sky furniture is ALWAYS dark (menu.js THEME_CONFIG: "the animated
+ * sky carries its own contrast — the ink judge reads the painted pixels —
+ * so it always presents the dark treatment"; only the solid, sky-off style
+ * takes a per-theme wash). White ink + emboss survives bright grounds the
+ * way the extension's does. */
 .sky-on button.day-tile {
   background: transparent;
   border-color: transparent;
   box-shadow: none;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 4px rgba(0, 0, 10, 0.65);
 }
 
-/* hi-temperature + day-name inherit the family base ink straight from
- * the tile button (.aw-day base): ink-light .95 white / ink-dark #101823 */
+.sky-on button.day-tile:hover { background: rgba(16, 20, 28, 0.28); }
 
-/* Glass tone follows the JUDGED family on the tile (.ink-* = verdict of
- * this tile's own ground, set by ink.applyInk), never the OS scheme: the
- * media query was the source of "almost right" colours — white glare over
- * a starry night, mud-slabs at noon. .ink-light (white ink, dark skies)
- * takes the extension's .aw-day-sel/.aw-day:hover dark-glass pair;
- * .ink-dark mirrors via .aw-light. Literal values byte-match the
- * extension stylesheet. */
-.sky-on button.day-tile.ink-light:hover { background: rgba(16, 20, 28, 0.28); }
-.sky-on button.day-tile.ink-light:checked {
+.sky-on button.day-tile:checked {
   background: rgba(16, 20, 28, 0.45);
   border-color: rgba(255, 255, 255, 0.18);
   color: #ffffff;
 }
-.sky-on button.day-tile.ink-dark:hover { background: rgba(255, 255, 255, 0.40); }
-.sky-on button.day-tile.ink-dark:checked {
-  background: rgba(255, 255, 255, 0.68);
-  border-color: rgba(16, 24, 35, 0.35);
-  color: #0b1220;
-}
+
+.sky-on button.day-tile .day-lo { color: rgba(255, 255, 255, 0.85); }
 
 .day-name {
   font-weight: 700;
@@ -167,23 +158,23 @@ entryrow.error {
 .sky-on card,
 .sky-on .card { border-radius: 18px; }
 
-@media (prefers-color-scheme: light) {
-  .sky-on card,
-  .sky-on .card {
-    background-color: alpha(#ffffff, 0.55);
-    box-shadow: none;
-    border: 1px solid alpha(#ffffff, 0.35);
-  }
+/* Card furniture follows the same doctrine as the tiles: over the animated
+ * sky it is ALWAYS dark glass (light OS included) with white ink, emboss,
+ * and the .62 caption tier — the chip family of the dark slab recipes.
+ * Sky off keeps the plain Adwaita card (per-theme wash), as in the
+ * extension's solid style. */
+.sky-on card,
+.sky-on .card {
+  background-color: alpha(#0d0f17, 0.52);
+  box-shadow: none;
+  border: 1px solid alpha(#ffffff, 0.12);
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 4px rgba(0, 0, 10, 0.65);
 }
 
-@media (prefers-color-scheme: dark) {
-  .sky-on card,
-  .sky-on .card {
-    background-color: alpha(#0d0f17, 0.52);
-    box-shadow: none;
-    border: 1px solid alpha(#ffffff, 0.12);
-  }
-}
+.sky-on card .dim-label,
+.sky-on card .caption,
+.sky-on .card .dim-label { color: rgba(255, 255, 255, 0.62); }
 
 /* Judged ink families — values are the extension's .aw-dark/.aw-light
  * ink plus the card-wide emboss every sky rider gets (.aw-content):
@@ -227,19 +218,16 @@ entryrow.error {
   min-height: 0;
 }
 
-/* Idle→hover text ramp and the checked pill ride the segBox verdict
- * (.aw-tab colour tokens verbatim): ink-light ≙ .aw-dark, ink-dark ≙
- * .aw-light. */
-.sky-on .metric-tabs.ink-light .metric-tab { color: rgba(255, 255, 255, 0.60); }
-.sky-on .metric-tabs.ink-light .metric-tab:hover { color: rgba(255, 255, 255, 0.85); }
-.sky-on .metric-tabs.ink-light .metric-tab:checked {
-  background-color: rgba(16, 20, 28, 0.45);
-  border-color: rgba(255, 255, 255, 0.18);
-  color: #ffffff;
-}
-.sky-on .metric-tabs.ink-dark .metric-tab { color: rgba(16, 24, 35, 0.55); }
-.sky-on .metric-tabs.ink-dark .metric-tab:hover { color: rgba(16, 24, 35, 0.80); }
-.sky-on .metric-tabs.ink-dark .metric-tab:checked {
+/* Idle→hover text ramp rides the segBox verdict (extension chromeVerdicts
+ * judges the idle tab ROW against the sky); the checked pill is static
+ * dark furniture, exempted from the ramp via :not(:checked).
+ * (.aw-tab colour tokens verbatim.) */
+.sky-on .metric-tabs.ink-light .metric-tab:not(:checked) { color: rgba(255, 255, 255, 0.60); }
+.sky-on .metric-tabs.ink-light .metric-tab:not(:checked):hover { color: rgba(255, 255, 255, 0.85); }
+.sky-on .metric-tabs.ink-dark .metric-tab:not(:checked) { color: rgba(16, 24, 35, 0.55); }
+.sky-on .metric-tabs.ink-dark .metric-tab:not(:checked):hover { color: rgba(16, 24, 35, 0.80); }
+
+.sky-on .metric-tab:checked {
   background-color: rgba(16, 20, 28, 0.45);
   border-color: rgba(255, 255, 255, 0.18);
   color: #ffffff;

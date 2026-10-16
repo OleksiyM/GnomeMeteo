@@ -45,9 +45,17 @@ def norm_lit(t):
     return 'rgba(%s,%s,%s,%s)' % (m.group(1), m.group(2), m.group(3), '%g' % float(m.group(4)))
 ext_css = (ROOT/'extension/stylesheet.css').read_text()
 app_css = (ROOT/'app/data/style.css').read_text()
-TOKENS = ['rgba(16,20,28,0.28)','rgba(16,20,28,0.45)','rgba(255,255,255,0.18)',
-          'rgba(255,255,255,0.40)','rgba(255,255,255,0.4)','rgba(255,255,255,0.68)',
-          'rgba(16,24,35,0.35)']
+# Dark furniture literals must appear in both sheets; the LIGHT glass pair
+# (rgba(255,255,255,.68) / rgba(16,24,35,.35)) lives only in the extension's
+# solid/light-theme style — the app's sky-off surfaces are plain Adwaita by
+# design, so their ABSENCE from app/data/style.css is intentional.
+TOKENS = ['rgba(16,20,28,0.28)', 'rgba(16,20,28,0.45)', 'rgba(255,255,255,0.18)',
+          'rgba(16,24,35,0.66)', 'rgba(255,255,255,0.62)', 'rgba(255,255,255,0.85)',
+          'rgba(255,255,255,0.95)']
+ext_have = {norm_lit(ws(x)) for x in RGBA(ext_css)}
+lack_ext = [t for t in TOKENS if norm_lit(t) not in ext_have]
+if lack_ext:
+    fails.append(f'extension stylesheet lost tokens the app mirrors: {lack_ext}')
 have = {norm_lit(ws(x)) for x in RGBA(app_css)}
 missing = [t for t in TOKENS if norm_lit(t) not in have]
 if missing:
@@ -68,6 +76,18 @@ must = ['rgba(16, 20, 28, 0.28)', 'rgba(16, 20, 28, 0.45)',
 lack = [t for t in must if norm_lit(re.sub(r'\s','',t)) not in have]
 if lack:
     fails.append(f'app stylesheet furniture literals missing: {lack}')
+
+# 3b -- furniture must be VERDICT-INDEPENDENT: no :hover/:checked rule may
+# key off .ink-light/.ink-dark (that regression hid behind the literal checks)
+g_candidates = re.findall(r'[^{}\n]*[.]ink-(?:light|dark)[^{}\n]*', app_css)
+keyed = [s for s in g_candidates if ':not(' not in s and ('day-tile' in s or ':checked' in s)]
+if keyed:
+    fails.append(f'verdict-keyed furniture (tiles or :checked pills) resurrected: {keyed[:4]}')
+must_hover = 'button.day-tile:hover { background: rgba(16, 20, 28, 0.28); }'
+if must_hover not in app_css:
+    fails.append('day-tile hover furniture rule missing/unquoted-verbatim')
+if 'THEME_CONFIG' not in app_css:
+    fails.append('style.css lost the doctrine citation (THEME_CONFIG comment)')
 
 if fails:
     print('DESIGN PARITY FAILED:'); [print(' -', f) for f in fails]; sys.exit(1)
