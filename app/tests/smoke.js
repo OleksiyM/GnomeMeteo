@@ -206,6 +206,20 @@ check('ink flip: hero ink over noon sun disc goes dark',
     // only the gradient wash, so a time sweep must not rebuild it at all.
     check('sun animates live (gradient built exactly once)',
         sunny.builds === 1 && sunny.blits === 60, `b=${sunny.builds}`);
+    // Celestial bodies ride pre-rendered sprites (breath = paint alpha,
+    // rays stay live), so 60 frames build each sprite set at most once;
+    // body-less skies build none. The FX plane rasterizes downscaled:
+    // at 400x300 its surface must be <= half width, unless fxScale pins it.
+    check('sun+moon sprites built once, rain builds none',
+        sunny.spriteBuilds === 1 && moony.spriteBuilds === 1
+            && rainy.spriteBuilds === 0,
+        `sun=${sunny.spriteBuilds} moon=${moony.spriteBuilds} rain=${rainy.spriteBuilds}`);
+    check('FX plane is downscaled by default',
+        rainy.fxW >= 100 && rainy.fxW <= 200 && rainy.fxH <= 150,
+        `fx=${rainy.fxW}x${rainy.fxH}`);
+    const pinned = shoot({ scene: 'rain', night: false, fxScale: 1 }, 3);
+    check('fxScale:1 pins the FX plane to full resolution',
+        pinned.fxW === 400 && pinned.fxH === 300, `fx=${pinned.fxW}x${pinned.fxH}`);
 }
 
 

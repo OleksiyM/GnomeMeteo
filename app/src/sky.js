@@ -14,7 +14,7 @@ import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Cairo from 'gi://cairo?version=1.0';
 import { moonPhase } from './weather.js';
-import { paintMoonBody, addFrameSubscriber, removeFrameSubscriber } from './glyph.js';
+import { paintMoonBody } from './glyph.js';
 
 const TWO_PI = Math.PI * 2;
 const rand = (min, max) => min + Math.random() * (max - min);
@@ -162,6 +162,9 @@ export function createSky() {
         streaks: [], fog: [],
         // static-layer surface cache (see paintSky) + counters for tests
         cache: null, cacheKey: '', builds: 0, blits: 0,
+        // FX plane + celestial sprites + adaptive-quality state (see paintSky)
+        fx: null, fxW: 0, fxH: 0, fxScale: null, frameMs: null, _fxFrames: 0,
+        sunSprites: null, moonSprite: null, glowSprite: null, spriteBuilds: 0,
     };
 }
 
@@ -263,10 +266,15 @@ function drawBackdrop(cr, height, stops) {
     cr.paint();
 }
 
-function drawHorizonGlow(cr, width, height, twilight, night, time) {
+/* The glow's breath only scales its alpha, and every gradient stop is
+ * linear in that alpha — so the sprite bakes at MAX breath (1.06) and each
+ * frame paintWithAlpha(breath / 1.06) reproduces the live draw exactly
+ * (modulo 8-bit rounding) for the price of a blit. */
+const GLOW_BREATH_MAX = 1.06;
+
+function drawHorizonGlowRaw(cr, width, height, twilight, night, alphaScale) {
     if (twilight <= 0.01) return;
-    const breath = 1 + 0.06 * Math.sin(time * 0.4);
-    const alpha = twilight * (night ? 0.42 : 0.34) * breath;
+    const alpha = twilight * (night ? 0.42 : 0.34) * alphaScale;
     const [r, g, b] = night ? [1.0, 0.45, 0.28] : [1.0, 0.62, 0.30];
     cr.save();
     cr.translate(width * 0.7, height * 1.04);
@@ -281,23 +289,113 @@ function drawHorizonGlow(cr, width, height, twilight, night, time) {
     cr.restore();
 }
 
+function drawHorizonGlow(cr, sky, width, height, twilight, night, time) {
+    if (twilight <= 0.01) return;
+    const key = `${width}x${height}|${night ? 'n' : 'd'}|${twilight.toFixed(3)}`;
+    if (!sky.glowSprite || sky.glowSprite.key !== key) {
+        const surf = new Cairo.ImageSurface(
+            Cairo.Format.ARGB32, Math.max(1, Math.round(width)),
+            Math.max(1, Math.round(height)));
+        const sc = new Cairo.Context(surf);
+        drawHorizonGlowRaw(sc, width, height, twilight, night, GLOW_BREATH_MAX);
+        sc.$dispose();
+        surf.flush();
+        sky.glowSprite = { key, surf };
+        sky.spriteBuilds++;
+    }
+    const breath = 1 + 0.06 * Math.sin(time * 0.4);
+    sourceSurface(cr, sky.glowSprite.surf, 0, 0);
+    cr.paintWithAlpha(breath / GLOW_BREATH_MAX);
+}
+
+/* A transparent sprite painted around its own centre, in logical px. */
+function makeCentredSprite(diameter, paint) {
+    const size = Math.max(2, Math.ceil(diameter) + 2);
+    const surf = new Cairo.ImageSurface(Cairo.Format.ARGB32, size, size);
+    const sc = new Cairo.Context(surf);
+    sc.translate(size / 2, size / 2);
+    paint(sc);
+    sc.$dispose();
+    surf.flush();
+    return { surf, half: size / 2 };
+}
+
+/* Scaled surface paints MUST pin BILINEAR: Cairo's default GOOD filter
+ * falls into a separable-convolution path on strong downscales (measured
+ * 23.8 ms vs 0.8 ms for 2800x1900 -> 700x475), which would eat everything
+ * the downscaled FX plane saves. The sky's content is smooth gradients
+ * and soft sprites, so bilinear loses nothing visible. */
+function sourceSurface(cr, surf, x, y) {
+    cr.setSourceSurface(surf, x, y);
+    cr.getSource().setFilter(Cairo.Filter.BILINEAR);
+}
+
+function blitCentred(cr, sprite, x, y, alpha = 1) {
+    sourceSurface(cr, sprite.surf, x - sprite.half, y - sprite.half);
+    if (alpha >= 0.999) cr.paint();
+    else cr.paintWithAlpha(Math.max(0, alpha));
+}
+
 const SUNSET_CORE = [1.0, 0.56, 0.26];
 const SUNSET_RAY = [1.0, 0.52, 0.30];
 
-function drawSun(cr, sunX, sunY, radius, scale, time, twilight = 0, noon = 0) {
-    const warm = (rgb, target) =>
+/* Sun, layered for sprites: aura and corona breathe ONLY through a global
+ * alpha that scales every stop linearly, and the core is fully static —
+ * so all three bake once (aura/corona at max breath) and each frame is two
+ * alpha-scaled blits plus the core. The rays stay LIVE: each ray's length
+ * and alpha shimmer on its own phase, which no sprite alpha can express,
+ * and their thin triangles are cheap next to the radial fills they sit on.
+ * Breathing and rotation therefore remain smooth per-frame motion, never
+ * a quantized slideshow. */
+const AURA_BREATH_MAX = 0.48, CORONA_BREATH_MAX = 0.77;
+
+function sunWarm(twilight, noon) {
+    return (rgb, target) =>
         mix(mix(rgb, [1.0, 0.97, 0.86], 0.35 * noon), target, twilight);
+}
+
+function paintSunAura(cr, radius, twilight, noon) {
+    const warm = sunWarm(twilight, noon);
     const auraRadius = radius * (3.6 + 1.2 * twilight);
-    const aura = new Cairo.RadialGradient(sunX, sunY, radius * 0.2, sunX, sunY, auraRadius);
-    const auraBreath = (0.40 + 0.08 * Math.sin(time * 0.7)) * (1 + 0.3 * twilight);
+    const aura = new Cairo.RadialGradient(0, 0, radius * 0.2, 0, 0, auraRadius);
+    const auraBreath = AURA_BREATH_MAX * (1 + 0.3 * twilight);
     aura.addColorStopRGBA(0, ...warm([1.0, 0.88, 0.45], [1.0, 0.66, 0.36]), auraBreath);
     aura.addColorStopRGBA(0.35, ...warm([1.0, 0.72, 0.22], [1.0, 0.50, 0.30]), auraBreath * 0.5);
     aura.addColorStopRGBA(0.7, ...warm([1.0, 0.58, 0.12], [0.95, 0.40, 0.36]), auraBreath * 0.2);
     aura.addColorStopRGBA(1, ...warm([1.0, 0.50, 0.05], [0.90, 0.36, 0.40]), 0);
     cr.setSource(aura);
-    cr.arc(sunX, sunY, auraRadius, 0, TWO_PI);
+    cr.arc(0, 0, auraRadius, 0, TWO_PI);
     cr.fill();
+}
 
+function paintSunCorona(cr, radius, twilight, noon) {
+    const warm = sunWarm(twilight, noon);
+    const coronaRadius = radius * 1.9;
+    const corona = new Cairo.RadialGradient(0, 0, radius * 0.5, 0, 0, coronaRadius);
+    corona.addColorStopRGBA(0, ...warm([1.0, 0.94, 0.60], [1.0, 0.74, 0.46]), CORONA_BREATH_MAX);
+    corona.addColorStopRGBA(0.5, ...warm([1.0, 0.78, 0.25], [1.0, 0.50, 0.28]), CORONA_BREATH_MAX * 0.45);
+    corona.addColorStopRGBA(1, ...warm([1.0, 0.65, 0.15], [0.95, 0.38, 0.30]), 0);
+    cr.setSource(corona);
+    cr.arc(0, 0, coronaRadius, 0, TWO_PI);
+    cr.fill();
+}
+
+function paintSunCore(cr, radius, twilight, noon) {
+    const warm = sunWarm(twilight, noon);
+    const coreRadius = radius * 0.85;
+    const core = new Cairo.RadialGradient(
+        -radius * 0.25, -radius * 0.25, radius * 0.1, 0, 0, coreRadius);
+    core.addColorStopRGBA(0, ...warm([1.0, 0.99, 0.88], [1.0, 0.90, 0.66]), 1.0);
+    core.addColorStopRGBA(0.45, ...warm([1.0, 0.88, 0.35], [1.0, 0.68, 0.32]), 0.98);
+    core.addColorStopRGBA(0.85, ...warm([1.0, 0.70, 0.14], SUNSET_CORE), 0.96);
+    core.addColorStopRGBA(1, ...warm([0.98, 0.55, 0.08], [0.94, 0.36, 0.16]), 0.90);
+    cr.setSource(core);
+    cr.arc(0, 0, coreRadius, 0, TWO_PI);
+    cr.fill();
+}
+
+function drawSunRays(cr, sunX, sunY, radius, scale, time, twilight, noon) {
+    const warm = sunWarm(twilight, noon);
     const rayCount = 16;
     const stepAngle = TWO_PI / rayCount;
     cr.save();
@@ -334,27 +432,43 @@ function drawSun(cr, sunX, sunY, radius, scale, time, twilight = 0, noon = 0) {
         cr.restore();
     }
     cr.restore();
+}
 
-    const coronaRadius = radius * 1.9;
-    const corona = new Cairo.RadialGradient(sunX, sunY, radius * 0.5, sunX, sunY, coronaRadius);
-    const coronaBreath = 0.65 + 0.12 * Math.sin(time * 1.5);
-    corona.addColorStopRGBA(0, ...warm([1.0, 0.94, 0.60], [1.0, 0.74, 0.46]), coronaBreath);
-    corona.addColorStopRGBA(0.5, ...warm([1.0, 0.78, 0.25], [1.0, 0.50, 0.28]), coronaBreath * 0.45);
-    corona.addColorStopRGBA(1, ...warm([1.0, 0.65, 0.15], [0.95, 0.38, 0.30]), 0);
-    cr.setSource(corona);
-    cr.arc(sunX, sunY, coronaRadius, 0, TWO_PI);
-    cr.fill();
+function drawSun(cr, sky, sunX, sunY, radius, scale, time, twilight = 0, noon = 0) {
+    const key = `${radius.toFixed(1)}|${twilight.toFixed(3)}|${noon.toFixed(3)}`;
+    if (!sky.sunSprites || sky.sunSprites.key !== key) {
+        sky.sunSprites = {
+            key,
+            aura: makeCentredSprite(2 * radius * (3.6 + 1.2 * twilight),
+                c => paintSunAura(c, radius, twilight, noon)),
+            corona: makeCentredSprite(2 * radius * 1.9,
+                c => paintSunCorona(c, radius, twilight, noon)),
+            core: makeCentredSprite(2 * radius * 0.85,
+                c => paintSunCore(c, radius, twilight, noon)),
+        };
+        sky.spriteBuilds++;
+    }
+    const s = sky.sunSprites;
+    blitCentred(cr, s.aura, sunX, sunY,
+        (0.40 + 0.08 * Math.sin(time * 0.7)) / AURA_BREATH_MAX);
+    drawSunRays(cr, sunX, sunY, radius, scale, time, twilight, noon);
+    blitCentred(cr, s.corona, sunX, sunY,
+        (0.65 + 0.12 * Math.sin(time * 1.5)) / CORONA_BREATH_MAX);
+    blitCentred(cr, s.core, sunX, sunY);
+}
 
-    const coreRadius = radius * 0.85;
-    const core = new Cairo.RadialGradient(
-        sunX - radius * 0.25, sunY - radius * 0.25, radius * 0.1, sunX, sunY, coreRadius);
-    core.addColorStopRGBA(0, ...warm([1.0, 0.99, 0.88], [1.0, 0.90, 0.66]), 1.0);
-    core.addColorStopRGBA(0.45, ...warm([1.0, 0.88, 0.35], [1.0, 0.68, 0.32]), 0.98);
-    core.addColorStopRGBA(0.85, ...warm([1.0, 0.70, 0.14], SUNSET_CORE), 0.96);
-    core.addColorStopRGBA(1, ...warm([0.98, 0.55, 0.08], [0.94, 0.36, 0.16]), 0.90);
-    cr.setSource(core);
-    cr.arc(sunX, sunY, coreRadius, 0, TWO_PI);
-    cr.fill();
+function drawMoonSprited(cr, sky, moonX, moonY, radius, phase) {
+    const ph = Number.isFinite(phase) ? phase : moonPhase().phase;
+    const key = `${radius.toFixed(1)}|${ph.toFixed(4)}`;
+    if (!sky.moonSprite || sky.moonSprite.key !== key) {
+        sky.moonSprite = {
+            key,
+            sprite: makeCentredSprite(2 * radius * 3.4,
+                c => drawMoon(c, 0, 0, radius, ph)),
+        };
+        sky.spriteBuilds++;
+    }
+    blitCentred(cr, sky.moonSprite.sprite, moonX, moonY);
 }
 
 function drawMoon(cr, moonX, moonY, radius, phase, phaseValue) {
@@ -401,14 +515,14 @@ function drawStars(cr, stars, time, twilight = 0, keepOut = null) {
 
 /** Celestial bodies ONLY (into the cached layer). The star twinkle rides
  * separately per-frame, honoring the moon keep-out. */
-function drawBodies(cr, width, height, scale, features, time, night, phase,
+function drawBodies(cr, sky, width, height, scale, features, time, night, phase,
     twilight, solar, noon) {
     const [sunX, sunY] = sunSpot(width, height, night, solar);
     const radius = 64 * scale;
     if ((features.sun || features.moon) && !night)
-        drawSun(cr, sunX, sunY, radius, scale, time, twilight, noon);
+        drawSun(cr, sky, sunX, sunY, radius, scale, time, twilight, noon);
     else if (features.moon)
-        drawMoon(cr, sunX, sunY, radius, phase);
+        drawMoonSprited(cr, sky, sunX, sunY, radius, phase);
 }
 
 function drawClouds(cr, sky, width, scale, dt, time, scene, night, twilight) {
@@ -584,17 +698,18 @@ function drawLightning(cr, width, height, scale, time) {
  * Paint one frame. `getState()` -> {scene, night, phase, glow, solar} and
  * `animate()` gates motion (paused frames advance time by 0 via dt clamp).
  *
- * Layered for throughput: everything that changes slowly (sky gradient,
- * horizon glow, sun/moon with its breathing and ray rotation, fog ridges)
- * builds ONCE onto an offscreen surface — celestial breathing quantizes to
- * eighth-seconds, so the rebuild runs a few times a second at most and
- * never for body-less scenes until a resize. Every frame is then a single
- * opaque blit plus the genuinely dynamic list: stars, clouds, particles,
- * lightning, scrim.
+ * Layered for throughput: the gradient wash builds once onto a cached
+ * surface; the sun's aura/corona/core, the moon, and the horizon glow ride
+ * pre-rendered sprites whose breathing is a per-frame paint alpha (rays
+ * stay live); and the genuinely dynamic list (stars, clouds, particles,
+ * lightning, scrim) paints onto a downscaled FX plane that composites
+ * with one upscale blit. opts.fxScale pins that plane's resolution
+ * (1 = full); by default it is half-res and adapts to measured paint time.
  */
 export function paintSky(cr, { w: width, h: height, time, scene, night, sky,
     scrim = null, radius = 0, phase = null, glow = 0, solar = null,
-    quiet = false }) {
+    quiet = false, fxScale = null }) {
+    const tStartUs = GLib.get_monotonic_time();
     const rw = Math.round(width), rh = Math.round(height);
     if (sky.scene !== scene || sky.w !== rw || sky.h !== rh)
         rebuild(sky, rw, rh, scene);
@@ -610,10 +725,9 @@ export function paintSky(cr, { w: width, h: height, time, scene, night, sky,
 
     // Cache boundary: ONLY the time-invariant gradient wash (per scene/
     // family/glow/solar/phase + size). Horizon glow and the celestial
-    // bodies BREATHE AND ROTATE in real time on the live path below --
-    // a sun quantized into a 4 Hz slideshow reads as "animation is slow",
-    // and the extension has always painted bodies every frame. The cache
-    // now rebuilds only on resize or the upstream per-minute glow/solar
+    // bodies still BREATHE AND ROTATE in real time on the live path below
+    // (as sprite alphas and live rays — never a quantized slideshow). The
+    // wash rebuilds only on resize or the upstream per-minute glow/solar
     // refresh, exactly as often as the sky's palette actually changes.
     const key = `${scene}|${night ? 'n' : 'd'}|${Number(glow).toFixed(3)}`
         + `|${Number.isFinite(solar) ? solar.toFixed(3) : '-'}|`
@@ -658,44 +772,50 @@ export function paintSky(cr, { w: width, h: height, time, scene, night, sky,
     }
     cr.clip();
 
-    cr.setOperator(Cairo.Operator.SOURCE);
-    cr.setSourceSurface(sky.cache, 0, 0);
-    cr.paint();
-    cr.setOperator(Cairo.Operator.OVER);
-    sky.blits++;
-
-    /* LIVE FX plane — one logical-resolution surface that replays the
-     * ENTIRE old live sequence (base wash copy → glow → bodies → particles
-     * → scrim), then composites with a single upscale blit.
+    /* LIVE FX plane — one DOWNSCALED surface that replays the ENTIRE old
+     * live sequence (base wash copy → glow → bodies → particles → scrim)
+     * in logical coordinates under a scaled context, then composites with
+     * a single upscale blit. The old code also painted the wash straight
+     * onto `cr` first, where this opaque FX paint overwrote every pixel:
+     * that full-window blit is gone.
      *
-     * Motivation: painting the live elements directly on the node's cairo
-     * context rasterizes every fill at DEVICE resolution — on a 2x display
-     * the sun aura (4.8 radii) plus dawn glow cost 37+ ms/frame at
-     * 2800x1900, saturating the 20 fps heartbeat until the main loop
-     * starved hover redraws ("tile highlighting is super slow"). The wash
-     * cache has always been painted at logical resolution and upscaled at
-     * blit; the live plane now joins it, cutting device traffic to two
-     * memcopy-grade blits.
+     * Why downscaled: painting live elements at device resolution cost
+     * 37+ ms/frame at 2800x1900 (sun aura + dawn glow radial fills),
+     * saturating the main loop until hover redraws starved ("tile
+     * highlighting is super slow"). The sky is low-frequency scenery
+     * behind glass, so the plane rasterizes at fxScale (default: half
+     * resolution, capped near 900 px wide; adaptive quality below can
+     * lower it further under sustained load, and callers may pin it with
+     * opts.fxScale, e.g. 1 for pixel-exact previews). Widgets riding on
+     * top — tiles, labels, chart — are separate nodes and stay full-res.
      *
      * Starting fx from the cache copy (not transparent) is SEMANTICS, not
      * waste: the moon terminator punches with Operator.CLEAR and relies on
      * what stands BEHIND it surviving the hole (night wash for eclipsed
      * limbs, star field for keep-outs); glow under bodies must be eaten by
      * that punch too. With the base replicated, every operator sees the
-     * exact pixel history the direct path gave it — pixel-identical output
-     * at quarter the fill cost (any DPI), no special cases. */
+     * exact pixel history the direct path gave it, no special cases. */
+    const baseFx = fxScale != null
+        ? fxScale
+        : Math.min(0.5, 900 / Math.max(1, rw));
+    if (sky.fxScale == null || fxScale != null)
+        sky.fxScale = Math.max(0.2, Math.min(1, baseFx));
+    const fw = Math.max(1, Math.round(rw * sky.fxScale));
+    const fh = Math.max(1, Math.round(rh * sky.fxScale));
+    sky.fxW = fw; sky.fxH = fh;
     let fx = sky.fx;
-    if (!fx || fx.getWidth() !== rw || fx.getHeight() !== rh)
-        fx = sky.fx = new Cairo.ImageSurface(Cairo.Format.ARGB32, rw, rh);
+    if (!fx || fx.getWidth() !== fw || fx.getHeight() !== fh)
+        fx = sky.fx = new Cairo.ImageSurface(Cairo.Format.ARGB32, fw, fh);
     const fc = new Cairo.Context(fx);
+    fc.scale(fw / rw, fh / rh);
     fc.setOperator(Cairo.Operator.SOURCE);
-    fc.setSourceSurface(sky.cache, 0, 0);
+    sourceSurface(fc, sky.cache, 0, 0);
     fc.paint();
     fc.setOperator(Cairo.Operator.OVER);
 
-    drawHorizonGlow(fc, rw, rh, twilight, night, time);
+    drawHorizonGlow(fc, sky, rw, rh, twilight, night, time);
     if (!quiet) {
-        drawBodies(fc, rw, rh, scale, features, time, night, phase,
+        drawBodies(fc, sky, rw, rh, scale, features, time, night, phase,
             twilight, solar, noon);
         const hasMoon = features.moon && night;
         if (night && (features.stars || features.moon)) {
@@ -716,11 +836,34 @@ export function paintSky(cr, { w: width, h: height, time, scene, night, sky,
         fc.setSourceRGBA(...scrim);
         fc.paint();
     }
-    cr.setSourceSurface(fx, 0, 0);
+    fc.$dispose();
+    fx.flush();
+
+    cr.save();
+    cr.scale(rw / fw, rh / fh);
+    sourceSurface(cr, fx, 0, 0);
     cr.paint();
     cr.restore();
-}
+    sky.blits++;
+    cr.restore();
 
+    /* Adaptive quality: an EMA of our own paint time steps the FX scale
+     * down (floor 0.25) while frames stay over 12 ms and recovers toward
+     * the base scale under 4 ms, re-evaluated every 30 frames so it can
+     * never oscillate frame-to-frame. Pinned callers (opts.fxScale) are
+     * exempt. Hover responsiveness outranks sky sharpness: the scale is
+     * the knob, the frame clock in makeSkyBackdrop also lengthens its
+     * interval while frameMs is high. */
+    const ms = (GLib.get_monotonic_time() - tStartUs) / 1000;
+    sky.frameMs = sky.frameMs == null ? ms : sky.frameMs * 0.8 + ms * 0.2;
+    if (fxScale == null && ++sky._fxFrames >= 30) {
+        sky._fxFrames = 0;
+        if (sky.frameMs > 12 && sky.fxScale > 0.25)
+            sky.fxScale = Math.max(0.25, sky.fxScale * 0.8);
+        else if (sky.frameMs < 4 && sky.fxScale < baseFx)
+            sky.fxScale = Math.min(baseFx, sky.fxScale * 1.25);
+    }
+}
 // ---------------------------------------------------------------------------
 // Widget: full-page backdrop, ticking only while mapped AND animated, 20 fps
 // like the extension. Sun glow/solar are solved at paint time (per-minute
@@ -755,24 +898,66 @@ export function makeSkyBackdrop(getState, animate = () => true) {
         });
     });
 
-    let sub = 0;
+    /* Frame-clock drive (was the shared 50 ms timer): the tick callback runs
+     * in the UPDATE phase, so a sky redraw joins the SAME frame cycle as
+     * any hover damage already pending instead of landing mid-cycle and
+     * waiting a vsync. It throttles itself to ~20 fps (10 fps while the
+     * adaptive quality in paintSky reports slow frames), stays silent
+     * while the window is inactive, and stops entirely when the
+     * compositor freezes the frame clock (occluded/minimized surface).
+     * The callback itself is one timestamp comparison per vsync and
+     * stays registered while mapped — animate-off just skips redraws,
+     * so re-enabling animation resumes without a remap. */
+    let tick = 0, lastDrawUs = 0, winActive = true, settled = false;
+    let root = null, activeHandler = 0;
+    const readActive = () => {
+        try {
+            return root ? root.get_property('is-active') !== false : true;
+        } catch { return true; }
+    };
     area.connect('map', () => {
-        if (sub || !animate()) return;
-        sub = addFrameSubscriber(() => {
+        root = area.get_root();
+        winActive = readActive();
+        if (root && !activeHandler) {
+            try {
+                activeHandler = root.connect('notify::is-active', () => {
+                    winActive = readActive();
+                    if (winActive) area.queue_draw();
+                });
+            } catch { activeHandler = 0; }
+        }
+        if (tick) return;
+        lastDrawUs = 0;
+        settled = !animate();
+        tick = area.add_tick_callback((_w, clock) => {
             if (!animate()) {
-                removeFrameSubscriber(sub);
-                sub = 0;
-                area.queue_draw(); // settle on the static frame
-                return;
+                if (!settled) {
+                    settled = true;
+                    area.queue_draw(); // settle on the static frame
+                }
+                return true;
             }
-            area.queue_draw();
+            settled = false;
+            if (!winActive) return true;
+            const now = clock.get_frame_time();
+            const intervalUs = (sky.frameMs > 12 ? 100 : 50) * 1000;
+            if (now - lastDrawUs >= intervalUs) {
+                lastDrawUs = now;
+                area.queue_draw();
+            }
+            return true;
         });
     });
     area.connect('unmap', () => {
-        if (sub) {
-            removeFrameSubscriber(sub);
-            sub = 0;
+        if (tick) {
+            area.remove_tick_callback(tick);
+            tick = 0;
         }
+        if (root && activeHandler) {
+            root.disconnect(activeHandler);
+            activeHandler = 0;
+        }
+        root = null;
     });
     area.invalidateState = () => area.queue_draw();
     return area;
