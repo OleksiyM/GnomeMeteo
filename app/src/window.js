@@ -669,8 +669,12 @@ class MainWindow extends Adw.ApplicationWindow {
         }
         cities.forEach((c, i) => {
             const row = this.#rows.get(c.id);
-            if (row && this.#rowIndexOf(row) !== i)
-                this.#sidebarList.insert(row, i); // insert() moves existing rows
+            if (row && this.#rowIndexOf(row) !== i) {
+                // Reinsert from unparented: insert() on a live row reorders
+                // siblings but leaves its old allocation behind as whitespace.
+                this.#sidebarList.remove(row);
+                this.#sidebarList.insert(row, i);
+            }
         });
         for (const row of this.#rows.values())
             row.setOrganizeMode(this.#organizeMode);

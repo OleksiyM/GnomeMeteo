@@ -76,10 +76,8 @@ class TestApp extends WeatherGlassApp {
                     bus.config.moveCityTo(before[2].id, 0);
                     check('moveCityTo lands on final index',
                         bus.config.cities[0].id === before[2].id);
-                    bus.config.moveCityTo(before[2].id, 2);
-                    check('moveCityTo restore preserves city order',
-                        bus.config.cities.map(c => c.id).join(',')
-                            === before.map(c => c.id).join(','));
+                    // Leave this net reorder in place until the delayed
+                    // allocation check below has had frames to settle.
                 }
 
                 const organizeAct = this.window?.lookup_action('organize');
@@ -100,7 +98,7 @@ class TestApp extends WeatherGlassApp {
                 // hit-test targets (hover slows), the close button missing.
                 const seen = {
                     close: null, tiles: [], scenery: [],
-                    organizeHandles: [], organizeRemoves: [],
+                    organizeHandles: [], organizeRemoves: [], cityRows: [],
                 };
                 const collect = (w) => {
                     if (!w) return;
@@ -110,6 +108,8 @@ class TestApp extends WeatherGlassApp {
                         seen.organizeHandles.push(w);
                     if (cls.includes('city-remove-pill'))
                         seen.organizeRemoves.push(w);
+                    if (w instanceof Gtk.ListBoxRow && w.city?.id)
+                        seen.cityRows.push(w);
                     if (cls.includes('day-tile')) seen.tiles.push(w);
                     if (w instanceof Gtk.DrawingArea
                         && !(w.get_css_classes ?? (() => [])).call(w)
@@ -172,6 +172,32 @@ class TestApp extends WeatherGlassApp {
                     } catch (e) {
                         failures++;
                         print(`FAIL sky persist: ${e.stack ?? e}`);
+                    }
+                    {
+                        const measured = seen.cityRows.map(row => {
+                            const allocation = row.get_allocation();
+                            const [, natural] = row.measure(
+                                Gtk.Orientation.VERTICAL, allocation.width || -1);
+                            return { allocation, natural };
+                        }).sort((a, b) => a.allocation.y - b.allocation.y);
+                        const allocations = measured.map(({ allocation }) => allocation);
+                        const gaps = allocations.slice(1).map((a, i) =>
+                            a.y - (allocations[i].y + allocations[i].height));
+                        const excess = measured.map(({ allocation, natural }) =>
+                            allocation.height - natural);
+                        check('reordered city rows allocate compactly from the top',
+                            allocations.length === before.length
+                            && allocations[0].y >= 0 && allocations[0].y <= 2
+                            && gaps.every(gap => gap >= 0 && gap <= 2)
+                            && excess.every(extra => extra >= 0 && extra <= 2),
+                            `top=${allocations[0]?.y} gaps=${gaps.join(',')} `
+                            + `extra-height=${excess.join(',')}`);
+                    }
+                    if (typeof bus.config.moveCityTo === 'function') {
+                        bus.config.moveCityTo(before[2].id, 2);
+                        check('moveCityTo restore preserves city order',
+                            bus.config.cities.map(c => c.id).join(',')
+                                === before.map(c => c.id).join(','));
                     }
                     bus.config.setSky(true);
                     // verb check: pressing the furniture really requests close.
