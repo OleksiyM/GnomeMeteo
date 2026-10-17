@@ -60,9 +60,7 @@
   .tabs button{font:inherit;font-size:12.5px;border-radius:999px;padding:4px 11px;cursor:pointer;
     background:transparent;border:1px solid transparent;color:var(--dim)}
   .tabs button[aria-selected="true"]{background:rgba(16,20,28,.5);color:#fff;border-color:var(--line)}
-  [data-win="a"] .day .range{position:relative;height:4px;border-radius:2px;background:rgba(255,255,255,.13);margin:5px 7px 2px}
-  [data-win="a"] .day .range span{position:absolute;top:0;height:4px;border-radius:2px;background:linear-gradient(90deg,#57a8ff,#f5a524)}
-  [data-win="a"] .day .pc{min-height:14px;font-size:10.5px;font-weight:650;color:#7db9ff;font-variant-numeric:tabular-nums}
+  [data-win="a"] .day .pc{min-height:14px;margin-top:3px;font-size:10.5px;font-weight:650;color:#7db9ff;font-variant-numeric:tabular-nums}
   [data-win="a"] .day .pc.off{opacity:0}
   [data-win="a"] .nowbadge{display:none;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
     background:rgba(16,20,28,.5);border:1px solid var(--line);border-radius:999px;padding:2px 7px;margin-right:6px;vertical-align:2px}
@@ -195,14 +193,14 @@
           <span style="margin-left:auto;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums">16–23 Oct</span>
         </div>
         <div class="days" data-days>
-          <button class="day" aria-selected="true"><div class="dn">Today 16</div><svg class="glyph"><use href="#g-partly"/></svg><div class="hl"><b>21°</b> <span>14°</span></div><div class="range"><span style="left:16.7%;width:58.3%"></span></div><div class="pc off">0%</div></button>
-          <button class="day"><div class="dn">Fri 17</div><svg class="glyph"><use href="#g-sun"/></svg><div class="hl"><b>23°</b> <span>15°</span></div><div class="range"><span style="left:25.0%;width:66.7%"></span></div><div class="pc off">0%</div></button>
-          <button class="day"><div class="dn">Sat 18</div><svg class="glyph"><use href="#g-rain"/></svg><div class="hl"><b>19°</b> <span>14°</span></div><div class="range"><span style="left:16.7%;width:41.7%"></span></div><div class="pc">80%</div></button>
-          <button class="day"><div class="dn">Sun 19</div><svg class="glyph"><use href="#g-cloud"/></svg><div class="hl"><b>20°</b> <span>13°</span></div><div class="range"><span style="left:8.3%;width:58.3%"></span></div><div class="pc">20%</div></button>
-          <button class="day"><div class="dn">Mon 20</div><svg class="glyph"><use href="#g-sun"/></svg><div class="hl"><b>24°</b> <span>16°</span></div><div class="range"><span style="left:33.3%;width:66.7%"></span></div><div class="pc off">0%</div></button>
-          <button class="day"><div class="dn">Tue 21</div><svg class="glyph"><use href="#g-partly"/></svg><div class="hl"><b>22°</b> <span>15°</span></div><div class="range"><span style="left:25.0%;width:58.3%"></span></div><div class="pc off">0%</div></button>
-          <button class="day"><div class="dn">Wed 22</div><svg class="glyph"><use href="#g-rain"/></svg><div class="hl"><b>18°</b> <span>12°</span></div><div class="range"><span style="left:0.0%;width:50.0%"></span></div><div class="pc">90%</div></button>
-          <button class="day"><div class="dn">Thu 23</div><svg class="glyph"><use href="#g-cloud"/></svg><div class="hl"><b>20°</b> <span>13°</span></div><div class="range"><span style="left:8.3%;width:58.3%"></span></div><div class="pc">30%</div></button>
+          <button class="day" aria-selected="true"><div class="dn">Today 16</div><svg class="glyph"><use href="#g-partly"/></svg><div class="hl"><b>21°</b> <span>14°</span></div><div class="pc off">0%</div></button>
+          <button class="day"><div class="dn">Fri 17</div><svg class="glyph"><use href="#g-sun"/></svg><div class="hl"><b>23°</b> <span>15°</span></div><div class="pc off">0%</div></button>
+          <button class="day"><div class="dn">Sat 18</div><svg class="glyph"><use href="#g-rain"/></svg><div class="hl"><b>19°</b> <span>14°</span></div><div class="pc">80%</div></button>
+          <button class="day"><div class="dn">Sun 19</div><svg class="glyph"><use href="#g-cloud"/></svg><div class="hl"><b>20°</b> <span>13°</span></div><div class="pc">20%</div></button>
+          <button class="day"><div class="dn">Mon 20</div><svg class="glyph"><use href="#g-sun"/></svg><div class="hl"><b>24°</b> <span>16°</span></div><div class="pc off">0%</div></button>
+          <button class="day"><div class="dn">Tue 21</div><svg class="glyph"><use href="#g-partly"/></svg><div class="hl"><b>22°</b> <span>15°</span></div><div class="pc off">0%</div></button>
+          <button class="day"><div class="dn">Wed 22</div><svg class="glyph"><use href="#g-rain"/></svg><div class="hl"><b>18°</b> <span>12°</span></div><div class="pc">90%</div></button>
+          <button class="day"><div class="dn">Thu 23</div><svg class="glyph"><use href="#g-cloud"/></svg><div class="hl"><b>20°</b> <span>13°</span></div><div class="pc">30%</div></button>
         </div>
       </div>
     </div>
