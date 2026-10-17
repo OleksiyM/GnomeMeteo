@@ -70,6 +70,27 @@ class TestApp extends WeatherGlassApp {
                 bus.config.moveCity(before[1].id, 1);
                 check('move city restores', bus.config.cities[0].id === before[0].id);
 
+                check('moveCityTo exists for drag reorder',
+                    typeof bus.config.moveCityTo === 'function');
+                if (typeof bus.config.moveCityTo === 'function') {
+                    bus.config.moveCityTo(before[2].id, 0);
+                    check('moveCityTo lands on final index',
+                        bus.config.cities[0].id === before[2].id);
+                    bus.config.moveCityTo(before[2].id, 2);
+                    check('moveCityTo restore preserves city order',
+                        bus.config.cities.map(c => c.id).join(',')
+                            === before.map(c => c.id).join(','));
+                }
+
+                const organizeAct = this.window?.lookup_action('organize');
+                check('organize action exists and starts off',
+                    !!organizeAct && organizeAct.state?.get_boolean() === false);
+                if (organizeAct) {
+                    organizeAct.activate(null);
+                    check('organize action toggles on',
+                        organizeAct.state?.get_boolean() === true);
+                }
+
                 check('window exists', !!this.window);
 
                 // ---- furniture plumbing regression locks ---------------------
@@ -77,11 +98,18 @@ class TestApp extends WeatherGlassApp {
                 // would-have-caught three real regressions: an overlay casting
                 // an input shadow over tiles (hover dies), scenery claiming
                 // hit-test targets (hover slows), the close button missing.
-                const seen = { close: null, tiles: [], scenery: [] };
+                const seen = {
+                    close: null, tiles: [], scenery: [],
+                    organizeHandles: [], organizeRemoves: [],
+                };
                 const collect = (w) => {
                     if (!w) return;
                     const cls = w.get_css_classes ? w.get_css_classes() : [];
                     if (cls.includes('win-close')) { seen.close = w; closeWidget = w; }
+                    if (cls.includes('city-organize-handle'))
+                        seen.organizeHandles.push(w);
+                    if (cls.includes('city-remove-pill'))
+                        seen.organizeRemoves.push(w);
                     if (cls.includes('day-tile')) seen.tiles.push(w);
                     if (w instanceof Gtk.DrawingArea
                         && !(w.get_css_classes ?? (() => [])).call(w)
@@ -110,6 +138,19 @@ class TestApp extends WeatherGlassApp {
                     seen.scenery.length > 0 && seen.scenery.every(d =>
                         !d.get_can_target()),
                     `${seen.scenery.filter(d => d.get_can_target()).length}/${seen.scenery.length} claim targets`);
+                check('organize mode shows a grip and remove pill per city',
+                    seen.organizeHandles.length === before.length
+                    && seen.organizeRemoves.length === before.length
+                    && [...seen.organizeHandles, ...seen.organizeRemoves]
+                        .every(w => w.get_visible() && w.get_mapped()),
+                    `grips=${seen.organizeHandles.length} removes=${seen.organizeRemoves.length}`);
+                if (organizeAct) {
+                    organizeAct.activate(null);
+                    check('organize action toggles off and hides affordances',
+                        organizeAct.state?.get_boolean() === false
+                        && [...seen.organizeHandles, ...seen.organizeRemoves]
+                            .every(w => !w.get_visible()));
+                }
                 { // GTK exposes no overlay pass-through getter: source lock
                     const src = new TextDecoder().decode(GLib.file_get_contents(
                         `${HERE}/../src/citypage.js`)[1]);

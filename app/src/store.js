@@ -169,11 +169,20 @@ export class Config {
 
     moveCity(id, delta) {
         const from = this.#cfg.cities.findIndex(c => c.id === id);
-        const to = from + delta;
-        if (from < 0 || to < 0 || to >= this.#cfg.cities.length) return;
+        if (from < 0) return;
+        this.moveCityTo(id, from + delta);
+    }
+
+    moveCityTo(id, to) {
+        const from = this.#cfg.cities.findIndex(c => c.id === id);
+        to = Math.trunc(+to);
+        if (from < 0 || !Number.isFinite(to)) return;
+        to = Math.max(0, Math.min(this.#cfg.cities.length - 1, to));
+        if (from === to) return;
         const [city] = this.#cfg.cities.splice(from, 1);
         this.#cfg.cities.splice(to, 0, city);
         this.#bus.emit('cities-changed', { moved: id });
+        this.#bus.emit('config-changed', 'city-order');
     }
 
     #scheduleSave() {

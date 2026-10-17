@@ -5,6 +5,7 @@
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
 import GObject from 'gi://GObject?version=2.0';
+import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import { CityPage } from './citypage.js';
@@ -25,14 +26,19 @@ class CityRow extends Gtk.ListBoxRow {
     city;
 
     #bus;
+    #organize;
     #glyphState = { scene: 'partly', night: false };
     #nameLabel; #tempLabel; #timeLabel; #revealer;
+    #handleLabel; #removePill; #menuButton;
+    #dragInert = true;
+    #dragLastY = 0;
     #ticker = 0;
 
-    constructor(bus, city) {
+    constructor(bus, city, organize = null) {
         super();
         this.city = city;
         this.#bus = bus;
+        this.#organize = organize;
 
         const outer = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
 
@@ -42,6 +48,17 @@ class CityRow extends Gtk.ListBoxRow {
             margin_top: 6, margin_bottom: 6,
             margin_start: 8, margin_end: 4,
         });
+
+        // Organize mode only: the grip says "drag from anywhere on the
+        // row"; it stays dead to the pointer so the row gesture owns it.
+        this.#handleLabel = new Gtk.Label({
+            label: '‖',
+            valign: Gtk.Align.CENTER,
+            css_classes: ['city-organize-handle'],
+            can_target: false,
+            visible: false,
+        });
+        row.append(this.#handleLabel);
 
         const glyph = makeWeatherIcon(26, () => this.#glyphState,
             () => bus.config.animate);
@@ -54,11 +71,13 @@ class CityRow extends Gtk.ListBoxRow {
         });
         this.#nameLabel = new Gtk.Label({ label: city.name, xalign: 0 });
         this.#nameLabel.set_ellipsize(3);
+        this.#nameLabel.set_can_target(false);
         text.append(this.#nameLabel);
         const subtitle = [city.admin1, city.countryCode].filter(Boolean).join(' · ');
         if (subtitle) {
             const sub = new Gtk.Label({ label: subtitle, xalign: 0, css_classes: ['dim-label', 'caption'] });
             sub.set_ellipsize(3);
+            sub.set_can_target(false);
             text.append(sub);
         }
         row.append(text);
@@ -69,18 +88,36 @@ class CityRow extends Gtk.ListBoxRow {
         });
         this.#tempLabel = new Gtk.Label({ label: '', css_classes: ['city-temp'] });
         this.#timeLabel = new Gtk.Label({ label: '', css_classes: ['dim-label', 'caption'] });
+        this.#tempLabel.set_can_target(false);
+        this.#timeLabel.set_can_target(false);
         trailing.append(this.#tempLabel);
         trailing.append(this.#timeLabel);
         row.append(trailing);
 
-        const menuBtn = new Gtk.MenuButton({
+        const trashImage = new Gtk.Image({ icon_name: 'user-trash-symbolic' });
+        trashImage.set_pixel_size(16);
+        this.#removePill = new Gtk.Button({
+            child: trashImage,
+            valign: Gtk.Align.CENTER,
+            tooltip_text: `Remove ${city.name}`,
+            css_classes: ['city-remove-pill'],
+            visible: false,
+        });
+        try {
+            this.#removePill.set_cursor(Gdk.Cursor.new_from_name('pointer', null));
+        } catch { /* themed cursors are polish */ }
+        this.#removePill.connect('clicked', () =>
+            this.#revealer.set_reveal_child(true));
+        row.append(this.#removePill);
+
+        this.#menuButton = new Gtk.MenuButton({
             valign: Gtk.Align.CENTER,
             icon_name: 'view-more-symbolic',
             tooltip_text: 'City options',
             primary: false,
         });
-        menuBtn.set_menu_model(cityRowMenu());
-        row.append(menuBtn);
+        this.#menuButton.set_menu_model(cityRowMenu());
+        row.append(this.#menuButton);
 
         outer.append(row);
 
@@ -118,6 +155,43 @@ class CityRow extends Gtk.ListBoxRow {
         group.add_action(removeAct);
         this.insert_action_group('row', group);
 
+        // One client-side vertical drag, claimed only in Organize mode.
+        // Like TickerGlass, avoid GtkDragSource: the row tree is never
+        // reparented under the live grab; a data-level move lands on release.
+        const drag = new Gtk.GestureDrag();
+        drag.connect('drag-begin', (_g, _x, _y, seq) => {
+            this.#dragLastY = 0;
+            this.#dragInert = !this.#organize?.isEnabled();
+            if (this.#dragInert) return;
+            const sequence = seq ?? drag.get_last_updated_sequence();
+            if (sequence)
+                drag.set_sequence_state(sequence, Gtk.EventSequenceState.CLAIMED);
+            this.#organize.begin(this);
+        });
+        drag.connect('drag-update', (_g, _x, y) => {
+            if (this.#dragInert) return;
+            this.#dragLastY = y;
+            this.#organize.update(this, y);
+        });
+        drag.connect('drag-end', (_g, _x, y) => {
+            if (this.#dragInert) return;
+            this.#dragInert = true;
+            this.#organize.end(this, y ?? this.#dragLastY);
+        });
+        this.add_controller(drag);
+
+        const motion = new Gtk.EventControllerMotion();
+        motion.connect('enter', () => {
+            try {
+                if (this.#organize?.isEnabled())
+                    this.set_cursor(Gdk.Cursor.new_from_name('all-scroll', null));
+            } catch { /* cursor is polish, not function */ }
+        });
+        motion.connect('leave', () => {
+            try { this.set_cursor(null); } catch { /* ditto */ }
+        });
+        this.add_controller(motion);
+
         bus.on('forecast-updated', (id, data) => {
             if (id !== city.id) return;
             this.#hydrate(data);
@@ -128,6 +202,30 @@ class CityRow extends Gtk.ListBoxRow {
 
         const cached = bus.forecasts?.getState(city.id);
         if (cached?.data) this.#hydrate(cached.data);
+    }
+
+    setOrganizeMode(on) {
+        this.#handleLabel.set_visible(on);
+        this.#removePill.set_visible(on);
+        this.#menuButton.set_visible(!on);
+        if (!on) {
+            this.#revealer.set_reveal_child(false);
+            this.setDragging(false);
+        }
+        try {
+            this.set_cursor(on
+                ? Gdk.Cursor.new_from_name('all-scroll', null)
+                : null);
+        } catch { /* cursor is polish */ }
+    }
+
+    setDragging(on) {
+        this.set_opacity(on ? 0.35 : 1);
+    }
+
+    dragLabel() {
+        const temp = this.#tempLabel.label;
+        return temp ? `${this.city.name}  ${temp}` : this.city.name;
     }
 
     #hydrate(data) {
@@ -174,6 +272,10 @@ export const MainWindow = GObject.registerClass({ gTypeName: 'WMainWindow' },
 class MainWindow extends Adw.ApplicationWindow {
     #bus;
     #sidebarList; #contentStack; #navPage; #emptyNavPage; #split;
+    #listOverlay; #dropBar; #ghost; #ghostLabel; #appMenuButton;
+    #organizeAction = null;
+    #organizeMode = false;
+    #dragState = null;
     #rows = new Map();
     #pages = new Map();
     #suspendSelectionSignal = false;
@@ -228,9 +330,12 @@ class MainWindow extends Adw.ApplicationWindow {
         sidebarBottom.append(addBtn);
 
         const sidebarToolbar = new Adw.HeaderBar();
-        const menuBtn = new Gtk.MenuButton({ icon_name: 'open-menu-symbolic' });
-        menuBtn.set_menu_model(this.#buildAppMenu());
-        sidebarToolbar.pack_end(menuBtn);
+        this.#appMenuButton = new Gtk.MenuButton({
+            icon_name: 'open-menu-symbolic',
+            tooltip_text: 'WeatherGlass menu · organize cities',
+        });
+        this.#appMenuButton.set_menu_model(this.#buildAppMenu());
+        sidebarToolbar.pack_end(this.#appMenuButton);
         sidebarToolbar.set_title_widget(new Gtk.Label({
             label: 'WeatherGlass',
             css_classes: ['title'],
@@ -238,10 +343,35 @@ class MainWindow extends Adw.ApplicationWindow {
 
         const sidebarBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
         sidebarBox.append(sidebarToolbar);
-        const listScroll = new Gtk.ScrolledWindow();
+        const listScroll = new Gtk.ScrolledWindow({ vexpand: true });
         listScroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
         listScroll.set_child(this.#sidebarList);
-        sidebarBox.append(listScroll);
+
+        // Organize drag rides an overlay OUTSIDE the scroller, like
+        // TickerGlass: the ghost/drop bar float over the viewport while
+        // the real row tree remains untouched under the pointer grab.
+        this.#listOverlay = new Gtk.Overlay({ vexpand: true });
+        this.#listOverlay.set_child(listScroll);
+        this.#dropBar = new Gtk.Box({
+            css_classes: ['city-dropbar'],
+            halign: Gtk.Align.FILL,
+            valign: Gtk.Align.START,
+            height_request: 2,
+            can_target: false,
+            visible: false,
+        });
+        this.#listOverlay.add_overlay(this.#dropBar);
+        this.#ghost = new Gtk.Box({
+            css_classes: ['city-drag-ghost'],
+            halign: Gtk.Align.START,
+            valign: Gtk.Align.START,
+            can_target: false,
+            visible: false,
+        });
+        this.#ghostLabel = new Gtk.Label({ label: '', valign: Gtk.Align.CENTER });
+        this.#ghost.append(this.#ghostLabel);
+        this.#listOverlay.add_overlay(this.#ghost);
+        sidebarBox.append(this.#listOverlay);
         sidebarBox.append(sidebarBottom);
 
         this.#split = new Adw.NavigationSplitView({
@@ -269,6 +399,7 @@ class MainWindow extends Adw.ApplicationWindow {
         this.set_content(rootOverlay);
 
         this.#registerActions(app);
+        this.#installOrganizeEscape();
 
         this.application.set_accels_for_action('win.close', ['<Primary>W']);
         this.application.set_accels_for_action('win.refresh', ['<Primary>R']);
@@ -280,6 +411,10 @@ class MainWindow extends Adw.ApplicationWindow {
 
     #buildAppMenu() {
         const menu = new Gio.Menu();
+        const cities = new Gio.Menu();
+        cities.append('Organize Cities', 'win.organize');
+        menu.append_section(null, cities);
+
         const units = new Gio.Menu();
         units.append('Metric (°C · km/h)', 'win.units::metric');
         units.append('Imperial (°F · mph)', 'win.units::imperial');
@@ -347,6 +482,14 @@ class MainWindow extends Adw.ApplicationWindow {
         });
         this.add_action(skyAct);
 
+        this.#organizeAction = new Gio.SimpleAction({
+            name: 'organize',
+            state: new GLib.Variant('b', false),
+        });
+        this.#organizeAction.connect('activate', a =>
+            this.#setOrganizeMode(!a.state.get_boolean()));
+        this.add_action(this.#organizeAction);
+
         const simple = (name, cb) => {
             const a = new Gio.SimpleAction({ name });
             a.connect('activate', cb);
@@ -368,6 +511,7 @@ class MainWindow extends Adw.ApplicationWindow {
         bus.on('cities-changed', () => this.sync());
         bus.on('remove-city', id => bus.config.removeCity(id));
         bus.on('move-city', (id, delta) => bus.config.moveCity(id, delta));
+        bus.on('move-city-to', (id, to) => bus.config.moveCityTo(id, to));
         bus.on('request-refresh', id => bus.forecasts.kick(id, true));
 
         Adw.StyleManager.get_default().connect('notify::dark', sm => {
@@ -385,6 +529,112 @@ class MainWindow extends Adw.ApplicationWindow {
         return -1;
     }
 
+    #installOrganizeEscape() {
+        const keys = new Gtk.EventControllerKey();
+        keys.set_propagation_phase(Gtk.PropagationPhase.CAPTURE);
+        keys.connect('key-pressed', (_c, keyval) => {
+            if (keyval === Gdk.KEY_Escape && this.#organizeMode) {
+                this.#setOrganizeMode(false);
+                return true;
+            }
+            return false;
+        });
+        this.add_controller(keys);
+    }
+
+    #setOrganizeMode(on) {
+        on = !!on;
+        this.#organizeMode = on;
+        if (this.#organizeAction
+            && this.#organizeAction.state.get_boolean() !== on)
+            this.#organizeAction.state = new GLib.Variant('b', on);
+        if (this.#appMenuButton) {
+            if (on) this.#appMenuButton.add_css_class('organize-active');
+            else this.#appMenuButton.remove_css_class('organize-active');
+        }
+        if (!on) {
+            this.#ghost?.set_visible(false);
+            this.#dropBar?.set_visible(false);
+            this.#dragState?.row.setDragging(false);
+            this.#dragState = null;
+        }
+        for (const row of this.#rows.values())
+            row.setOrganizeMode(on);
+    }
+
+    #organizeController() {
+        return {
+            isEnabled: () => this.#organizeMode,
+            begin: row => this.#beginCityDrag(row),
+            update: (row, dy) => this.#updateCityDrag(row, dy),
+            end: (row, dy) => this.#endCityDrag(row, dy),
+        };
+    }
+
+    #beginCityDrag(row) {
+        if (!this.#organizeMode) return;
+        const cities = this.#bus.config.cities;
+        const from = cities.findIndex(c => c.id === row.city.id);
+        if (from < 0) return;
+        const rowH = row.get_height() >= 24 ? row.get_height() : 48;
+        const translated = row.translate_coordinates(this.#listOverlay, 0, 0);
+        const startY = translated?.[0] ? translated[2] : from * rowH;
+        this.#dragState = { row, from, to: from, rowH, startY };
+        row.setDragging(true);
+        this.#ghostLabel.label = row.dragLabel();
+        this.#ghost.set_size_request(-1, Math.max(rowH - 6, 24));
+        this.#ghost.set_margin_top(Math.max(0, Math.round(startY)));
+        this.#ghost.set_visible(true);
+        this.#positionDropBar(from, from);
+    }
+
+    #dragTarget(dy) {
+        const state = this.#dragState;
+        const count = this.#bus.config.cities.length;
+        const steps = Math.sign(dy) * Math.floor(Math.abs(dy) / state.rowH);
+        return Math.max(0, Math.min(count - 1, state.from + steps));
+    }
+
+    #positionDropBar(from, to) {
+        const cities = this.#bus.config.cities;
+        const target = this.#rows.get(cities[to]?.id);
+        if (!target) {
+            this.#dropBar.set_visible(false);
+            return;
+        }
+        const translated = target.translate_coordinates(this.#listOverlay, 0, 0);
+        if (!translated?.[0]) {
+            this.#dropBar.set_visible(false);
+            return;
+        }
+        this.#dropBar.set_margin_top(Math.round(
+            translated[2] + (to > from ? target.get_height() : 0)));
+        this.#dropBar.set_visible(true);
+    }
+
+    #updateCityDrag(row, dy) {
+        const state = this.#dragState;
+        if (!state || state.row !== row) return;
+        state.to = this.#dragTarget(dy);
+        this.#ghost.set_margin_top(Math.max(0,
+            Math.round(state.startY + dy - state.rowH / 3)));
+        this.#positionDropBar(state.from, state.to);
+    }
+
+    #endCityDrag(row, dy) {
+        const state = this.#dragState;
+        this.#ghost.set_visible(false);
+        this.#dropBar.set_visible(false);
+        row.setDragging(false);
+        this.#dragState = null;
+        if (!state || state.row !== row) return;
+        const to = Math.max(0, Math.min(
+            this.#bus.config.cities.length - 1,
+            state.from + Math.sign(dy) * Math.floor(Math.abs(dy) / state.rowH)));
+        if (to !== state.from)
+            this.#bus.emit('move-city-to', row.city.id, to);
+    }
+
     offerAddCity() {
         const dlg = new AddCityDialog(loc => this.#bus.config.addCity(loc));
         this.present_dialog(null, null, dlg, () => {});
@@ -396,7 +646,7 @@ class MainWindow extends Adw.ApplicationWindow {
 
         for (const city of cities) {
             if (!this.#rows.has(city.id)) {
-                const row = new CityRow(bus, city);
+                const row = new CityRow(bus, city, this.#organizeController());
                 this.#sidebarList.append(row);
                 this.#rows.set(city.id, row);
             }
@@ -422,6 +672,11 @@ class MainWindow extends Adw.ApplicationWindow {
             if (row && this.#rowIndexOf(row) !== i)
                 this.#sidebarList.insert(row, i); // insert() moves existing rows
         });
+        for (const row of this.#rows.values())
+            row.setOrganizeMode(this.#organizeMode);
+        this.#organizeAction?.set_enabled(cities.length > 0);
+        if (!cities.length && this.#organizeMode)
+            this.#setOrganizeMode(false);
 
         if (!cities.length) {
             this.#split.set_content(this.#emptyNavPage);
