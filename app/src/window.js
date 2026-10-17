@@ -1,6 +1,6 @@
 // window.js — AdwApplicationWindow with a city sidebar (split view):
-// per-city rows (glyph · name · local clock · temperature), row menus for
-// move/remove, header menu for units / refresh interval / motion / about.
+// per-city rows (glyph · name · local clock · temperature); Organize
+// Cities owns move/remove, header menu owns units / refresh / motion.
 
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
@@ -14,14 +14,6 @@ import { makeWeatherIcon } from './glyph.js';
 import { makeSkyBackdrop } from './sky.js';
 import { fmtTemp, cityWallMs, fmtClock, sceneFor, brandTexture } from './weather.js';
 
-function cityRowMenu() {
-    const menu = new Gio.Menu();
-    menu.append('Move Up', 'row.move::-1');
-    menu.append('Move Down', 'row.move::1');
-    menu.append('Remove…', 'row.remove');
-    return menu;
-}
-
 const CityRow = GObject.registerClass({ gTypeName: 'WCityRow' },
 class CityRow extends Gtk.ListBoxRow {
     city;
@@ -30,7 +22,7 @@ class CityRow extends Gtk.ListBoxRow {
     #organize;
     #glyphState = { scene: 'partly', night: false };
     #nameLabel; #tempLabel; #timeLabel; #revealer;
-    #handleLabel; #removePill; #menuButton;
+    #handleLabel; #removePill;
     #dragInert = true;
     #dragLastY = 0;
     #ticker = 0;
@@ -47,7 +39,7 @@ class CityRow extends Gtk.ListBoxRow {
             orientation: Gtk.Orientation.HORIZONTAL,
             spacing: 10,
             margin_top: 6, margin_bottom: 6,
-            margin_start: 8, margin_end: 4,
+            margin_start: 8, margin_end: 12,
         });
 
         // Organize mode only: the grip says "drag from anywhere on the
@@ -111,15 +103,6 @@ class CityRow extends Gtk.ListBoxRow {
             this.#revealer.set_reveal_child(true));
         row.append(this.#removePill);
 
-        this.#menuButton = new Gtk.MenuButton({
-            valign: Gtk.Align.CENTER,
-            icon_name: 'view-more-symbolic',
-            tooltip_text: 'City options',
-            primary: false,
-        });
-        this.#menuButton.set_menu_model(cityRowMenu());
-        row.append(this.#menuButton);
-
         outer.append(row);
 
         // inline confirm-before-delete
@@ -142,19 +125,6 @@ class CityRow extends Gtk.ListBoxRow {
         outer.append(this.#revealer);
 
         this.set_child(outer);
-
-        // widget-local actions powering the popover menu
-        const group = new Gio.SimpleActionGroup();
-        const moveAct = new Gio.SimpleAction({
-            name: 'move',
-            parameter_type: new GLib.VariantType('i'),
-        });
-        moveAct.connect('activate', (_a, p) => bus.emit('move-city', city.id, p.get_int32()));
-        group.add_action(moveAct);
-        const removeAct = new Gio.SimpleAction({ name: 'remove' });
-        removeAct.connect('activate', () => this.#revealer.set_reveal_child(true));
-        group.add_action(removeAct);
-        this.insert_action_group('row', group);
 
         // One client-side vertical drag, claimed only in Organize mode.
         // Like TickerGlass, avoid GtkDragSource: the row tree is never
@@ -208,7 +178,6 @@ class CityRow extends Gtk.ListBoxRow {
     setOrganizeMode(on) {
         this.#handleLabel.set_visible(on);
         this.#removePill.set_visible(on);
-        this.#menuButton.set_visible(!on);
         if (!on) {
             this.#revealer.set_reveal_child(false);
             this.setDragging(false);

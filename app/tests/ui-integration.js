@@ -100,7 +100,7 @@ class TestApp extends WeatherGlassApp {
                     close: null, tiles: [], scenery: [],
                     organizeHandles: [], organizeRemoves: [], cityRows: [],
                     heroTemps: [], heroCities: [], sectionTitles: [],
-                    metricTabs: [], detailsToggles: [],
+                    metricTabs: [], detailsToggles: [], menuButtons: [],
                     nowBadges: [], currentStrips: [], currentGrids: [],
                 };
                 const collect = (w) => {
@@ -124,6 +124,7 @@ class TestApp extends WeatherGlassApp {
                         seen.metricTabs.push(w);
                     if (w.get_mapped?.() && cls.includes('details-toggle'))
                         seen.detailsToggles.push(w);
+                    if (w instanceof Gtk.MenuButton) seen.menuButtons.push(w);
                     if (cls.includes('now-badge')) seen.nowBadges.push(w);
                     if (cls.includes('current-strip')) seen.currentStrips.push(w);
                     if (cls.includes('current-grid')) seen.currentGrids.push(w);
@@ -181,6 +182,9 @@ class TestApp extends WeatherGlassApp {
                             === bus.config.sky,
                         `sky=${bus.config.sky}`);
                 }
+                check('city rows have no three-dot menu (only the app menu remains)',
+                    seen.menuButtons.length === 1,
+                    `menuButtons=${seen.menuButtons.length}`);
                 check('organize mode shows a grip and remove pill per city',
                     seen.organizeHandles.length === before.length
                     && seen.organizeRemoves.length === before.length
