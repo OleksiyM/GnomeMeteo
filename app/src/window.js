@@ -11,6 +11,7 @@ import Adw from 'gi://Adw?version=1';
 import { CityPage } from './citypage.js';
 import { AddCityDialog } from './addcity.js';
 import { makeWeatherIcon } from './glyph.js';
+import { makeSkyBackdrop } from './sky.js';
 import { fmtTemp, cityWallMs, fmtClock, sceneFor, brandTexture } from './weather.js';
 
 function cityRowMenu() {
@@ -272,6 +273,7 @@ export const MainWindow = GObject.registerClass({ gTypeName: 'WMainWindow' },
 class MainWindow extends Adw.ApplicationWindow {
     #bus;
     #sidebarList; #contentStack; #navPage; #emptyNavPage; #split;
+    #windowSky;
     #listOverlay; #dropBar; #ghost; #ghostLabel; #appMenuButton;
     #organizeAction = null;
     #organizeMode = false;
@@ -326,10 +328,11 @@ class MainWindow extends Adw.ApplicationWindow {
         });
         const addBtn = new Gtk.Button({ label: 'Add City', hexpand: true });
         addBtn.add_css_class('flat');
+        addBtn.add_css_class('sidebar-add');
         addBtn.connect('clicked', () => this.offerAddCity());
         sidebarBottom.append(addBtn);
 
-        const sidebarToolbar = new Adw.HeaderBar();
+        const sidebarToolbar = new Adw.HeaderBar({ css_classes: ['sidebar-toolbar'] });
         this.#appMenuButton = new Gtk.MenuButton({
             icon_name: 'open-menu-symbolic',
             tooltip_text: 'WeatherGlass menu · organize cities',
@@ -341,7 +344,10 @@ class MainWindow extends Adw.ApplicationWindow {
             css_classes: ['title'],
         }));
 
-        const sidebarBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
+        const sidebarBox = new Gtk.Box({
+            orientation: Gtk.Orientation.VERTICAL,
+            css_classes: ['sidebar-shell'],
+        });
         sidebarBox.append(sidebarToolbar);
         const listScroll = new Gtk.ScrolledWindow({ vexpand: true });
         listScroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
@@ -379,12 +385,21 @@ class MainWindow extends Adw.ApplicationWindow {
             content: this.#navPage,
             collapsed: false,
         });
+        this.#split.add_css_class('sky-split');
+        // One sky behind the WHOLE window: the split view floats over it,
+        // with the sidebar darkened by its tinted-glass shell in CSS. The
+        // backdrop paints whichever scene the active city page reports.
+        this.#windowSky = makeSkyBackdrop(
+            () => this.#activeSkyView(),
+            () => this.#bus.config.animate);
         // Permanent ✕ furniture, top-right. Doctrine says chrome over the
         // animated sky is ALWAYS dark glass with white ink (menu.js
         // THEME_CONFIG), so unlike the day tiles this one needs no .sky-on
         // variant: the plate itself carries the contrast on any ground.
         const rootOverlay = new Gtk.Overlay();
-        rootOverlay.set_child(this.#split);
+        rootOverlay.set_child(this.#windowSky);
+        rootOverlay.add_overlay(this.#split);
+        rootOverlay.set_measure_overlay(this.#split, true);
         const closeButton = new Gtk.Button({
             iconName: 'window-close-symbolic',
             valign: Gtk.Align.START,
@@ -397,6 +412,7 @@ class MainWindow extends Adw.ApplicationWindow {
         closeButton.connect('clicked', () => this.close());
         rootOverlay.add_overlay(closeButton);
         this.set_content(rootOverlay);
+        this.#applyWindowSkyMode();
 
         this.#registerActions(app);
         this.#installOrganizeEscape();
@@ -407,6 +423,26 @@ class MainWindow extends Adw.ApplicationWindow {
 
         this.#hookBus();
         this.sync();
+    }
+
+    #activeSkyView() {
+        const cities = this.#bus.config.cities;
+        const activeId = cities.some(c => c.id === this.#bus.config.activeCityId)
+            ? this.#bus.config.activeCityId : cities[0]?.id;
+        return this.#pages.get(activeId)?.skyView()
+            ?? { scene: 'partly', night: false, phase: 0.62, glow: 0, solar: null };
+    }
+
+    #applyWindowSkyMode() {
+        const on = this.#bus.config.sky;
+        if (on) this.add_css_class('sky-window');
+        else this.remove_css_class('sky-window');
+        this.#windowSky?.set_visible(on);
+        if (on) this.#invalidateWindowSky();
+    }
+
+    #invalidateWindowSky() {
+        if (this.#bus.config.sky) this.#windowSky?.invalidateState?.();
     }
 
     #buildAppMenu() {
@@ -507,8 +543,13 @@ class MainWindow extends Adw.ApplicationWindow {
         const bus = this.#bus;
         bus.on('config-changed', kind => {
             if (kind === 'active-city' || kind === 'units') this.sync();
+            if (kind === 'sky' || kind === 'animate') this.#applyWindowSkyMode();
+            if (kind === 'active-city') this.#invalidateWindowSky();
         });
         bus.on('cities-changed', () => this.sync());
+        bus.on('sky-invalidated', id => {
+            if (id === bus.config.activeCityId) this.#invalidateWindowSky();
+        });
         bus.on('remove-city', id => bus.config.removeCity(id));
         bus.on('move-city', (id, delta) => bus.config.moveCity(id, delta));
         bus.on('move-city-to', (id, to) => bus.config.moveCityTo(id, to));
@@ -690,6 +731,7 @@ class MainWindow extends Adw.ApplicationWindow {
         const activeId = cities.some(c => c.id === bus.config.activeCityId)
             ? bus.config.activeCityId : cities[0].id;
         this.#contentStack.set_visible_child_name(activeId);
+        this.#invalidateWindowSky();
         this.#suspendSelectionSignal = true;
         this.#sidebarList.select_row(this.#rows.get(activeId) ?? null);
         this.#suspendSelectionSignal = false;

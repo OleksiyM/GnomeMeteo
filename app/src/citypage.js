@@ -1,25 +1,23 @@
-// citypage.js — per-city view over the ANIMATED SKY BACKDROP (both ported
-// from the extension): hero, stat tiles, metric picker, hourly chart, day
-// tiles — all wearing ADAPTIVE INK, judged worst-of-five-samples against the
-// composited ground (gradient + sun/moon disc + glass), so a passing disc
-// flips whole label families exactly like the extension popup.
-//
-// Section order mirrors the extension popup (header → chart → days), and
-// adds what it parsed but never displayed (feels-like, humidity, wind
-// compass, UV, pressure, moon phase).
+// citypage.js — per-city Sky-first panel over the window-wide animated
+// sky: temperature hero, 8-day selector, hourly chart, selected-day
+// details, then live conditions — all wearing ADAPTIVE INK, judged
+// worst-of-five-samples against the composited ground (gradient +
+// sun/moon disc + glass), so a passing disc flips whole label families
+// exactly like the extension popup.
 
 import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import GObject from 'gi://GObject?version=2.0';
 import Adw from 'gi://Adw?version=1';
 import { makeWeatherIcon } from './glyph.js';
-import { makeSkyBackdrop, sampleSky, bodyOf } from './sky.js';
+import { sampleSky, bodyOf } from './sky.js';
 import { HourlyChart, CHART_SERIES } from './chart.js';
 import { judgeBoxes, judgeInk, lineInk, applyInk, lumOf } from './ink.js';
 import {
     effectiveScene, precipIntensity, sceneFor, moonPhase, daySlice, cityWallMs,
     sunShade, dayName, fmtTemp, fmtWind, fmtPressure, fmtVisibility, fmtPrecipRate,
-    fmtClock, fmtDayStamp, fmtLocalIso, compass, uvBand, relTime, locationLabel,
+    fmtPrecipTotal, fmtDuration, fmtClock, fmtDayStamp, fmtLocalIso, compass,
+    uvBand, relTime, locationLabel,
 } from './weather.js';
 
 const METRIC_KEYS = ['temp', 'precip', 'wind'];
@@ -33,15 +31,13 @@ const METRIC_KEYS = ['temp', 'precip', 'wind'];
 // feeds a verdict anymore. scripts/check-design-parity.py pins the literals.
 
 function statTile(title) {
-    const titleLbl = new Gtk.Label({ label: title, css_classes: ['stat-title'] });
+    const titleLbl = new Gtk.Label({ label: title, xalign: 0, css_classes: ['stat-title'] });
     const valueLbl = new Gtk.Label({ label: '—', css_classes: ['stat-value'] });
     valueLbl.set_wrap(true);
     valueLbl.set_xalign(0);
     const box = new Gtk.Box({
         orientation: Gtk.Orientation.VERTICAL,
         spacing: 2,
-        margin_top: 10, margin_bottom: 10,
-        margin_start: 14, margin_end: 14,
         css_classes: ['card', 'stat-tile'],
     });
     box.append(titleLbl);
@@ -51,6 +47,43 @@ function statTile(title) {
 
 function caption(text) {
     return new Gtk.Label({ label: text, xalign: 0, css_classes: ['dim-label', 'caption'] });
+}
+
+function sectionHeading(title, note) {
+    const box = new Gtk.Box({
+        orientation: Gtk.Orientation.HORIZONTAL,
+        spacing: 8,
+        css_classes: ['section-heading'],
+    });
+    const titleLbl = new Gtk.Label({ label: title, xalign: 0, css_classes: ['section-title'] });
+    box.append(titleLbl);
+    if (note)
+        box.append(new Gtk.Label({ label: note, xalign: 0, css_classes: ['section-note'] }));
+    return { box, titleLbl };
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function dateParts(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? '');
+    return m ? { month: Number(m[2]), day: Number(m[3]) } : null;
+}
+
+function forecastRangeLabel(daily) {
+    const first = dateParts(daily?.[0]?.date);
+    const last = dateParts(daily?.at(-1)?.date);
+    if (!first || !last) return '';
+    return first.month === last.month
+        ? `${first.day}–${last.day} ${MONTHS[first.month - 1]}`
+        : `${first.day} ${MONTHS[first.month - 1]}–${last.day} ${MONTHS[last.month - 1]}`;
+}
+
+function preciseLocationLabel(city) {
+    const region = locationLabel(city);
+    const lat = `${Math.abs(city.latitude).toFixed(2)}°${city.latitude >= 0 ? 'N' : 'S'}`;
+    const lon = `${Math.abs(city.longitude).toFixed(2)}°${city.longitude >= 0 ? 'E' : 'W'}`;
+    return [region, `${lat}, ${lon}`].filter(Boolean).join(' · ');
 }
 
 // GJS freezes vfuncs at registration — the registerClass wrapper is mandatory.
@@ -72,24 +105,22 @@ class CityPage extends Gtk.Box {
     #skyNight = false;
     #moonPhase = 0.62;
 
-    #stack; #overlay; #backdrop; #vadj;
+    #stack; #overlay; #vadj;
     #errorBanner; #errorBannerLabel; #coldErrorLabel;
-    #tempLabel; #condLabel; #feelsLabel; #clockLabel; #dateLabel; #updatedLabel;
-    #heroSpinner; #updRow;
-    #chart; #daySummary; #segBox; #moonGlyph; #moonLabel; #sunLabel;
-    #tilesFlow; #dayTiles = []; #metricBtns = [];
+    #tempLabel; #cityLabel; #locLabel; #condLabel; #nowBadge;
+    #clockLabel; #dateLabel; #updatedLabel; #heroSpinner;
+    #chart; #daySummary; #segBox;
+    #forecastHead; #forecastRange; #tilesFlow; #dayTiles = []; #metricBtns = [];
+    #detailsHead; #detailsHeading; #detailsFlow; #detailsTiles = {};
+    #detailsToggle; #detailsExpanded = false; #detailsOrder = [];
+    #currentHead; #currentStrip; #currentStripLabel;
     #tiles = {};
-    #heroLeft; #heroRight; #statFlow; #astroBox;
+    #heroLeft; #heroRight; #statFlow;
 
     constructor(bus, city) {
         super({ orientation: Gtk.Orientation.VERTICAL });
         this.city = city;
         this.#bus = bus;
-
-        // ---- sky backdrop under everything -----------------------------------
-        this.#backdrop = makeSkyBackdrop(
-            () => this.#skyView(),
-            () => bus.config.animate);
 
         this.#stack = new Gtk.Stack({ vexpand: true, hexpand: true });
         const scroll = new Gtk.ScrolledWindow();
@@ -100,32 +131,11 @@ class CityPage extends Gtk.Box {
         this.#stack.add_named(this.#buildBusy(), 'loading');
         this.#stack.add_named(this.#buildColdError(), 'error');
 
-        // floating update row (extension's ghost refresh corner)
-        this.#updRow = new Gtk.Box({
-            spacing: 6,
-            halign: Gtk.Align.END,
-            valign: Gtk.Align.START,
-            hexpand: true,
-            margin_top: 6, margin_end: 10,
-        });
-        this.#heroSpinner = new Gtk.Spinner({ visible: false });
-        this.#updatedLabel = new Gtk.Label({ label: '', css_classes: ['dim-label', 'caption'] });
-        this.#updRow.append(this.#heroSpinner);
-        this.#updRow.append(this.#updatedLabel);
-
-        // Base layer = the sky; content floats above it as overlay children.
-        // measure_overlay keeps the scrollable content in the size negotiation
-        // (the DrawingArea's own natural size is zero).
+        // The animated sky is window-owned (MainWindow) so the sidebar and
+        // panel share one continuous ground; this page is transparent
+        // content over it and only reports its scene via skyView().
         this.#overlay = new Gtk.Overlay();
-        this.#overlay.set_child(this.#backdrop);
-        this.#overlay.add_overlay(this.#stack);
-        this.#overlay.set_measure_overlay(this.#stack, true);
-        this.#overlay.add_overlay(this.#updRow);
-        // Decorative chip: pointer events pass straight through it, so it
-        // can never shadow the widgets under its full-width allocation
-        // (GtkOverlay overlay children own their whole box for input).
-        if (this.#overlay.set_overlay_pass_through)
-            this.#overlay.set_overlay_pass_through(this.#updRow, true);
+        this.#overlay.set_child(this.#stack);
 
         this.append(this.#overlay);
 
@@ -195,8 +205,13 @@ class CityPage extends Gtk.Box {
         };
     }
 
+    /** Scene for MainWindow's shared whole-window sky backdrop. */
+    skyView() {
+        return this.#skyView();
+    }
+
     #invalidateSky() {
-        if (this.#skyOn) this.#backdrop.invalidateState?.();
+        if (this.#skyOn) this.#bus.emit('sky-invalidated', this.city.id);
     }
 
     /** Composited ground rgb at page-space px (sky + celestial disc). */
@@ -214,16 +229,19 @@ class CityPage extends Gtk.Box {
         return rgb;
     }
 
-    /** Card-space box [x,y,w,h] of a widget, accumulated up to the overlay. */
+    /** Window-space box [x,y,w,h] of a widget, accumulated up to the
+     * root so samples line up with MainWindow's whole-window sky. */
     #boxOf(widget) {
+        const root = this.get_root();
+        if (!root) return null;
         let x = 0, y = 0;
         let w = widget;
-        while (w && w !== this.#overlay) {
+        while (w && w !== root) {
             const a = w.get_allocation();
             x += a.x; y += a.y;
             w = w.get_parent();
         }
-        if (w !== this.#overlay) return null; // unmapped / not in page
+        if (w !== root) return null; // unmapped / not in window
         const a = widget.get_allocation();
         if (a.width <= 1 || a.height <= 1) return null;
         return [x, y, a.width, a.height];
@@ -240,7 +258,8 @@ class CityPage extends Gtk.Box {
 
     #rejudge() {
         if (!this.#skyOn || !this.get_mapped()) return;
-        const W = this.#overlay.get_width(), H = this.#overlay.get_height();
+        const frame = this.get_root() ?? this.#overlay;
+        const W = frame.get_width(), H = frame.get_height();
         if (W < 50 || H < 50) return;
         const bgPoint = (fx, fy) => this.#groundAtPx(fx * W, fy * H, W, H);
         const judge = (widgets, comp) => {
@@ -253,12 +272,15 @@ class CityPage extends Gtk.Box {
 
         applyInk(this.#heroLeft, judge([this.#heroLeft], raw), on);
         applyInk(this.#heroRight, judge([this.#heroRight], raw), on);
-        applyInk(this.#updRow, judge([this.#updRow], raw), on);
-        // Stats cards + astro bar: fixed dark-glass furniture (extension
-        // _paintDark doctrine) — strip verdict classes; the static .sky-on
-        // card rules in style.css own their ink.
+        applyInk(this.#forecastHead, judge([this.#forecastHead], raw), on);
+        applyInk(this.#detailsHead, judge([this.#detailsHead], raw), on);
+        applyInk(this.#currentHead, judge([this.#currentHead], raw), on);
+        // Stat cards: fixed dark-glass furniture (extension _paintDark
+        // doctrine) — strip verdict classes; the static .sky-on card
+        // rules in style.css own their ink.
         applyInk(this.#statFlow, null, false);
-        applyInk(this.#astroBox, null, false);
+        applyInk(this.#detailsFlow, null, false);
+        applyInk(this.#currentStrip, null, false);
 
         // Day tiles NEVER re-ink: transparent / dark-slab / dark-pill states
         // are static CSS furniture with white ink + emboss, exactly like the
@@ -290,7 +312,8 @@ class CityPage extends Gtk.Box {
     #chartGroundLum(px, py) {
         if (!this.#skyOn) return null;
         const box = this.#boxOf(this.#chart);
-        const W = this.#overlay.get_width(), H = this.#overlay.get_height();
+        const frame = this.get_root() ?? this.#overlay;
+        const W = frame.get_width(), H = frame.get_height();
         if (!box || W < 50 || H < 50) return null;
         return lumOf(this.#groundAtPx(box[0] + px, box[1] + py, W, H));
     }
@@ -305,14 +328,14 @@ class CityPage extends Gtk.Box {
         const outer = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 0 });
         const top = new Gtk.Box({
             orientation: Gtk.Orientation.VERTICAL,
-            spacing: 10,
-            margin_top: 12, margin_start: 14, margin_end: 14,
+            spacing: 0,
+            margin_top: 30, margin_start: 22, margin_end: 58,
         });
         const bottom = new Gtk.Box({
             orientation: Gtk.Orientation.VERTICAL,
-            spacing: 8,
-            margin_top: 7, margin_bottom: 14,
-            margin_start: 14, margin_end: 14,
+            spacing: 0,
+            margin_top: 30, margin_bottom: 14,
+            margin_start: 22, margin_end: 22,
         });
         outer.append(top);
         clamp.set_child(outer);
@@ -321,30 +344,61 @@ class CityPage extends Gtk.Box {
         const hero = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 10 });
         this.#heroLeft = new Gtk.Box({
             orientation: Gtk.Orientation.VERTICAL,
+            valign: Gtk.Align.START,
+        });
+        this.#tempLabel = new Gtk.Label({ label: '—', xalign: 0, css_classes: ['hero-temp'] });
+        this.#cityLabel = new Gtk.Label({
+            label: this.city.name, xalign: 0, css_classes: ['hero-city'],
+        });
+        this.#cityLabel.set_ellipsize(3);
+        this.#locLabel = new Gtk.Label({
+            label: preciseLocationLabel(this.city),
+            xalign: 0, css_classes: ['hero-loc'],
+        });
+        this.#locLabel.set_ellipsize(3);
+        const condRow = new Gtk.Box({
+            orientation: Gtk.Orientation.HORIZONTAL,
+            spacing: 6,
+            margin_top: 6,
+        });
+        this.#nowBadge = new Gtk.Label({
+            label: 'NOW', css_classes: ['now-badge'], visible: false,
             valign: Gtk.Align.CENTER,
         });
-        this.#tempLabel = new Gtk.Label({ label: '—', css_classes: ['hero-temp'] });
         this.#condLabel = new Gtk.Label({
-            xalign: 0, css_classes: ['dim-label', 'hero-cond'],
+            xalign: 0, css_classes: ['hero-cond'],
         });
-        this.#feelsLabel = new Gtk.Label({ xalign: 0, css_classes: ['hero-feels'] });
+        condRow.append(this.#nowBadge);
+        condRow.append(this.#condLabel);
         this.#heroLeft.append(this.#tempLabel);
-        this.#heroLeft.append(this.#condLabel);
-        this.#heroLeft.append(this.#feelsLabel);
+        this.#heroLeft.append(this.#cityLabel);
+        this.#heroLeft.append(this.#locLabel);
+        this.#heroLeft.append(condRow);
         hero.append(this.#heroLeft);
 
         hero.append(new Gtk.Box({ hexpand: true }));
 
         this.#heroRight = new Gtk.Box({
             orientation: Gtk.Orientation.VERTICAL,
-            valign: Gtk.Align.CENTER,
+            valign: Gtk.Align.START,
             halign: Gtk.Align.END,
             spacing: 2,
         });
-        this.#clockLabel = new Gtk.Label({ label: '--:--', css_classes: ['hero-clock'] });
-        this.#dateLabel = new Gtk.Label({ label: '', css_classes: ['dim-label'] });
+        this.#clockLabel = new Gtk.Label({ label: '--:--', xalign: 1, css_classes: ['hero-clock'] });
+        this.#dateLabel = new Gtk.Label({ label: '', xalign: 1, css_classes: ['hero-date'] });
+        const updatedRow = new Gtk.Box({
+            orientation: Gtk.Orientation.HORIZONTAL,
+            spacing: 6,
+            halign: Gtk.Align.END,
+            margin_top: 6,
+        });
+        this.#heroSpinner = new Gtk.Spinner({ visible: false });
+        this.#updatedLabel = new Gtk.Label({ label: '', css_classes: ['hero-updated'] });
+        updatedRow.append(this.#heroSpinner);
+        updatedRow.append(this.#updatedLabel);
         this.#heroRight.append(this.#clockLabel);
         this.#heroRight.append(this.#dateLabel);
+        this.#heroRight.append(updatedRow);
         hero.append(this.#heroRight);
         top.append(hero);
 
@@ -352,6 +406,7 @@ class CityPage extends Gtk.Box {
         this.#errorBanner = new Gtk.Box({
             orientation: Gtk.Orientation.HORIZONTAL,
             spacing: 8,
+            margin_top: 14,
             css_classes: ['card', 'warning-banner'],
             visible: false,
         });
@@ -360,42 +415,29 @@ class CityPage extends Gtk.Box {
         this.#errorBanner.append(this.#errorBannerLabel);
         top.append(this.#errorBanner);
 
-        // stat tiles ------------------------------------------------------------------
-        this.#statFlow = new Gtk.FlowBox();
-        this.#statFlow.set_selection_mode(Gtk.SelectionMode.NONE);
-        this.#statFlow.set_homogeneous(true);
-        this.#statFlow.set_max_children_per_line(3);
-        this.#statFlow.set_row_spacing(10);
-        this.#statFlow.set_column_spacing(10);
-        for (const [key, title] of [['wind', 'Wind'], ['humidity', 'Humidity'],
-            ['pressure', 'Pressure'], ['uv', 'UV index'], ['visibility', 'Visibility'],
-            ['precip', 'Precipitation']]) {
-            const t = statTile(title);
-            this.#statFlow.insert(t.box, -1);
-            this.#tiles[key] = t.valueLbl;
-        }
-        top.append(this.#statFlow);
-
-        // sun & moon -----------------------------------------------------------------
-        this.#astroBox = new Gtk.Box({
-            orientation: Gtk.Orientation.HORIZONTAL,
-            spacing: 14,
-            css_classes: ['card'],
-            margin_top: 2, margin_bottom: 2,
-            margin_start: 6, margin_end: 6,
+        // 8-day selector ------------------------------------------------------------
+        const forecastSection = new Gtk.Box({
+            orientation: Gtk.Orientation.VERTICAL,
+            spacing: 8,
+            margin_top: 32,
+            css_classes: ['forecast-section'],
         });
-        this.#moonGlyph = makeWeatherIcon(30, () => this.#moonIconState, () => false);
-        this.#astroBox.append(this.#moonGlyph);
-        const sunCol = new Gtk.Box({
-            orientation: Gtk.Orientation.VERTICAL, spacing: 2, hexpand: true,
+        const forecastHeading = sectionHeading('8-day forecast',
+            'Select a day to preview its sky and hours');
+        this.#forecastHead = forecastHeading.box;
+        this.#forecastRange = new Gtk.Label({
+            label: '', xalign: 1, hexpand: true, css_classes: ['section-note', 'forecast-range'],
         });
-        this.#sunLabel = new Gtk.Label({ label: 'Sunrise — · Sunset —', xalign: 0 });
-        sunCol.append(this.#sunLabel);
-        sunCol.append(caption('Sunrise and sunset (city-local)'));
-        this.#astroBox.append(sunCol);
-        this.#moonLabel = new Gtk.Label({ label: 'Moon', css_classes: ['dim-label'] });
-        this.#astroBox.append(this.#moonLabel);
-        top.append(this.#astroBox);
+        this.#forecastHead.append(this.#forecastRange);
+        forecastSection.append(this.#forecastHead);
+        this.#tilesFlow = new Gtk.FlowBox();
+        this.#tilesFlow.set_selection_mode(Gtk.SelectionMode.NONE);
+        this.#tilesFlow.set_homogeneous(true);
+        this.#tilesFlow.set_max_children_per_line(8);
+        this.#tilesFlow.set_row_spacing(4);
+        this.#tilesFlow.set_column_spacing(5);
+        forecastSection.append(this.#tilesFlow);
+        top.append(forecastSection);
 
         // FULL-BLEED chart zone, like the extension popup: the curve, the
         // condition strip and the hour rail lie straight on the sky with no
@@ -403,6 +445,7 @@ class CityPage extends Gtk.Box {
         const chartCard = new Gtk.Box({
             orientation: Gtk.Orientation.VERTICAL,
             spacing: 4,
+            margin_top: 14,
             css_classes: ['chart-zone'],
         });
         this.#segBox = new Gtk.Box({
@@ -439,21 +482,86 @@ class CityPage extends Gtk.Box {
         outer.append(chartCard);
         outer.append(bottom);
 
-        // day tiles ---------------------------------------------------------------------
-        this.#tilesFlow = new Gtk.FlowBox();
-        this.#tilesFlow.set_selection_mode(Gtk.SelectionMode.NONE);
-        this.#tilesFlow.set_homogeneous(true);
-        this.#tilesFlow.set_max_children_per_line(4);
-        this.#tilesFlow.set_row_spacing(4);
-        this.#tilesFlow.set_column_spacing(5);
-        bottom.append(this.#tilesFlow);
+        // selected-day details ---------------------------------------------------------
+        const detailsHeading = sectionHeading("Today's details", 'Daily forecast');
+        this.#detailsHead = detailsHeading.box;
+        this.#detailsHeading = detailsHeading.titleLbl;
+        bottom.append(this.#detailsHead);
+        this.#detailsFlow = new Gtk.FlowBox({ margin_top: 8 });
+        this.#detailsFlow.set_selection_mode(Gtk.SelectionMode.NONE);
+        this.#detailsFlow.set_homogeneous(true);
+        this.#detailsFlow.set_max_children_per_line(2);
+        this.#detailsFlow.set_row_spacing(10);
+        this.#detailsFlow.set_column_spacing(10);
+        this.#detailsFlow.set_sort_func((a, b) =>
+            this.#detailRank(a) - this.#detailRank(b));
+        for (const [key, title] of [
+            ['feels', 'Feels-like high / low'],
+            ['precipTotal', 'Precipitation total'],
+            ['windMax', 'Wind max · gusts'],
+            ['uvMax', 'UV max'],
+            ['daylight', 'Daylight · sun'],
+            ['moon', 'Moon'],
+        ]) {
+            const t = statTile(title);
+            this.#detailsTiles[key] = t;
+            this.#detailsFlow.insert(t.box, -1);
+        }
+        bottom.append(this.#detailsFlow);
+        this.#detailsToggle = new Gtk.Button({
+            label: 'More details',
+            halign: Gtk.Align.START,
+            margin_top: 10,
+            css_classes: ['details-toggle'],
+        });
+        this.#detailsToggle.connect('clicked', () => {
+            this.#detailsExpanded = !this.#detailsExpanded;
+            this.#detailsToggle.label = this.#detailsExpanded
+                ? 'Fewer details' : 'More details';
+            this.#updateDetailsVisibility();
+            this.#scheduleRejudge();
+        });
+        bottom.append(this.#detailsToggle);
 
-        bottom.append(new Gtk.LinkButton({
+        // current conditions -------------------------------------------------------------
+        const currentHeading = sectionHeading('Current conditions', 'Live conditions');
+        this.#currentHead = currentHeading.box;
+        this.#currentHead.set_margin_top(24);
+        bottom.append(this.#currentHead);
+        this.#currentStripLabel = new Gtk.Label({
+            label: '', xalign: 0, wrap: true, css_classes: ['current-strip-label'],
+        });
+        this.#currentStrip = new Gtk.Box({
+            orientation: Gtk.Orientation.VERTICAL,
+            margin_top: 8,
+            css_classes: ['card', 'current-strip'],
+            visible: false,
+        });
+        this.#currentStrip.append(this.#currentStripLabel);
+        bottom.append(this.#currentStrip);
+        this.#statFlow = new Gtk.FlowBox({ margin_top: 8, css_classes: ['current-grid'] });
+        this.#statFlow.set_selection_mode(Gtk.SelectionMode.NONE);
+        this.#statFlow.set_homogeneous(true);
+        this.#statFlow.set_max_children_per_line(4);
+        this.#statFlow.set_row_spacing(10);
+        this.#statFlow.set_column_spacing(10);
+        for (const [key, title] of [['wind', 'Wind · gusts'], ['humidity', 'Humidity'],
+            ['pressure', 'Pressure'], ['uv', 'UV index'], ['visibility', 'Visibility'],
+            ['precip', 'Precipitation'], ['dew', 'Dew point'], ['cloud', 'Cloud cover']]) {
+            const t = statTile(title);
+            this.#statFlow.insert(t.box, -1);
+            this.#tiles[key] = t.valueLbl;
+        }
+        bottom.append(this.#statFlow);
+
+        const footer = new Gtk.LinkButton({
             uri: 'https://open-meteo.com/',
             label: 'Weather data by Open-Meteo.com',
             css_classes: ['flat', 'caption'],
             halign: Gtk.Align.CENTER,
-        }));
+            margin_top: 24,
+        });
+        bottom.append(footer);
         return clamp;
     }
 
@@ -499,14 +607,13 @@ class CityPage extends Gtk.Box {
         const on = this.#skyOn;
         if (on) {
             this.add_css_class('sky-on');
-            this.#backdrop.set_visible(true);
             this.#chart.setGroundSampler((x, y) => this.#chartGroundLum(x, y));
         } else {
             this.remove_css_class('sky-on');
-            this.#backdrop.set_visible(false);
-            for (const w of [this.#heroLeft, this.#heroRight, this.#updRow,
-                this.#statFlow, this.#astroBox, this.#daySummary,
-                this.#segBox])
+            for (const w of [this.#heroLeft, this.#heroRight,
+                this.#forecastHead, this.#detailsHead, this.#currentHead,
+                this.#statFlow, this.#detailsFlow, this.#currentStrip,
+                this.#daySummary, this.#segBox])
                 applyInk(w, null, false);
             for (const t of this.#dayTiles) {
                 applyInk(t.btn, null, false);
@@ -573,27 +680,26 @@ class CityPage extends Gtk.Box {
         this.#syncSkyScene();
 
         this.#tempLabel.label = fmtTemp(c.temp, units);
-        this.#condLabel.label = scene.desc;
-        const region = locationLabel(this.city);
-        this.#feelsLabel.label = `Feels like ${fmtTemp(c.feels, units)}${region ? ` · ${region}` : ''}`;
+        this.#cityLabel.label = this.city.name;
+        this.#locLabel.label = preciseLocationLabel(this.city);
+        this.#condLabel.label = `${scene.desc} · Feels like ${fmtTemp(c.feels, units)}`;
+        this.#forecastRange.label = forecastRangeLabel(data.daily);
 
-        this.#tiles.wind.label = `${fmtWind(c.wind, units)} ${compass(c.windDeg)}`.trim();
+        const windText = `${fmtWind(c.wind, units)} ${compass(c.windDeg)}`.trim();
+        this.#tiles.wind.label = c.gust != null
+            ? `${windText}\ngusts ${fmtWind(c.gust, units)}`
+            : windText;
         this.#tiles.humidity.label = c.humidity != null ? `${Math.round(c.humidity)}%` : '—';
         this.#tiles.pressure.label = fmtPressure(c.pressure, units);
         this.#tiles.visibility.label = fmtVisibility(c.visibility, units);
         this.#tiles.precip.label = fmtPrecipRate(c.precip, units);
+        this.#tiles.dew.label = fmtTemp(c.dew, units);
+        this.#tiles.cloud.label = c.cloud != null ? `${Math.round(c.cloud)}%` : '—';
         this.#tiles.uv.label = c.uv != null
             ? `${Math.round(c.uv)} · ${uvBand(c.uv).label}`
             : '—';
-
-        const today = data.daily[0];
-        if (today?.sunrise) {
-            this.#sunLabel.label =
-                `Sunrise ${fmtLocalIso(today.sunrise, this.#h12)} · Sunset ${fmtLocalIso(today.sunset, this.#h12)}`;
-        }
         this.#moonIconState = { scene: 'moon', phase: mp.phase, night: true };
-        this.#moonLabel.label = `${mp.name}\n${Math.round(mp.illum * 100)}% lit`;
-        this.#moonGlyph.queue_draw();
+        this.#refreshCurrentStrip();
 
         this.#errorBanner.visible = false;
         this.#buildDayTiles();
@@ -619,6 +725,84 @@ class CityPage extends Gtk.Box {
         }
     }
 
+    #refreshCurrentStrip() {
+        if (!this.#data || !this.#currentStripLabel) return;
+        const c = this.#data.current;
+        const units = this.#bus.config.units;
+        const scene = effectiveScene(c);
+        const bits = [
+            `Now in ${this.city.name} · ${fmtTemp(c.temp, units)}`,
+            scene.desc,
+            `Wind ${fmtWind(c.wind, units)} ${compass(c.windDeg)}`.trim(),
+        ];
+        if (c.humidity != null) bits.push(`Humidity ${Math.round(c.humidity)}%`);
+        bits.push(`Updated ${relTime(this.#data.fetchedAtWallMs)}`);
+        this.#currentStripLabel.label = bits.join(' · ');
+    }
+
+    #detailRank(flowChild) {
+        const box = flowChild?.get_child?.();
+        const key = Object.keys(this.#detailsTiles)
+            .find(k => this.#detailsTiles[k].box === box);
+        const rank = key ? this.#detailsOrder.indexOf(key) : -1;
+        return rank >= 0 ? rank : 99;
+    }
+
+    #detailPriority(day) {
+        if ((day.precipProb ?? 0) >= 50 || (day.precipSum ?? 0) >= 1)
+            return ['precipTotal', 'windMax', 'feels', 'daylight', 'uvMax', 'moon'];
+        if ((day.uv ?? 0) >= 6)
+            return ['feels', 'uvMax', 'daylight', 'windMax', 'precipTotal', 'moon'];
+        if ((day.precipProb ?? 0) >= 20 || (day.precipSum ?? 0) > 0)
+            return ['feels', 'windMax', 'daylight', 'precipTotal', 'uvMax', 'moon'];
+        return ['feels', 'windMax', 'uvMax', 'daylight', 'precipTotal', 'moon'];
+    }
+
+    #updateDetailsVisibility() {
+        this.#detailsOrder.forEach((key, rank) => {
+            const tile = this.#detailsTiles[key];
+            if (tile) tile.box.visible = this.#detailsExpanded || rank < 4;
+        });
+    }
+
+    #updateDayDetails(day, units) {
+        if (!day) return;
+        this.#detailsHeading.label = this.#dayIndex === 0
+            ? "Today's details" : `${dayName(day.date)}'s details`;
+        this.#detailsTiles.feels.valueLbl.label =
+            `${fmtTemp(day.feelsMax ?? day.tmax, units)} / ${fmtTemp(day.feelsMin ?? day.tmin, units)}`;
+        this.#detailsTiles.precipTotal.valueLbl.label =
+            fmtPrecipTotal(day.precipSum, units)
+            + (day.precipHours != null ? ` · ${Math.round(day.precipHours)} h` : '');
+        this.#detailsTiles.windMax.valueLbl.label =
+            `${fmtWind(day.windMax, units)} ${compass(day.windDir)}`.trim()
+            + (day.gustMax != null ? ` · gusts ${fmtWind(day.gustMax, units)}` : '');
+        this.#detailsTiles.uvMax.valueLbl.label = day.uv != null
+            ? `${Math.round(day.uv)} · ${uvBand(day.uv).label}` : '—';
+        let daylight = fmtDuration(day.daylightSec);
+        if (day.daylightSec == null && day.sunrise && day.sunset) {
+            const mins = iso => {
+                const m = /T(\d{2}):(\d{2})/.exec(iso);
+                return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+            };
+            const rise = mins(day.sunrise), set = mins(day.sunset);
+            if (rise != null && set != null && set > rise)
+                daylight = fmtDuration((set - rise) * 60);
+        }
+        this.#detailsTiles.daylight.valueLbl.label =
+            `${daylight} · ${fmtLocalIso(day.sunrise, this.#h12)}–${fmtLocalIso(day.sunset, this.#h12)}`;
+        const dm = /^(\d{4})-(\d{2})-(\d{2})/.exec(day.date ?? '');
+        const mp = dm
+            ? moonPhase(Date.UTC(Number(dm[1]), Number(dm[2]) - 1, Number(dm[3]), 12))
+            : moonPhase();
+        this.#detailsTiles.moon.valueLbl.label =
+            `${mp.name} · ${Math.round(mp.illum * 100)}% lit`;
+
+        this.#detailsOrder = this.#detailPriority(day);
+        this.#detailsFlow.invalidate_sort();
+        this.#updateDetailsVisibility();
+    }
+
     #buildDayTiles() {
         // extension tile anatomy: name · 26px code-pose glyph · hi/lo pair,
         // hierarchy by WEIGHT (lo is never faded away, only lighter)
@@ -634,10 +818,11 @@ class CityPage extends Gtk.Box {
             const col = new Gtk.Box({
                 orientation: Gtk.Orientation.VERTICAL,
                 spacing: 2,
-                margin_top: 5, margin_bottom: 4,
+                margin_top: 10, margin_bottom: 9,
             });
+            const dateNum = dateParts(day.date)?.day;
             col.append(new Gtk.Label({
-                label: i === 0 ? 'Today' : dayName(day.date),
+                label: `${i === 0 ? 'Today' : dayName(day.date)}${dateNum ? ` ${dateNum}` : ''}`,
                 css_classes: ['day-name'],
             }));
             const glyphState = {
@@ -665,6 +850,8 @@ class CityPage extends Gtk.Box {
             btn.connect('toggled', () => {
                 if (!btn.active) return;
                 this.#dayIndex = i;
+                this.#detailsExpanded = false;
+                if (this.#detailsToggle) this.#detailsToggle.label = 'More details';
                 this.#rerender();
             });
             this.#tilesFlow.insert(btn, -1);
@@ -682,6 +869,11 @@ class CityPage extends Gtk.Box {
             cityWallMs(this.#data));
         this.#chart.setData(slice);
 
+        const future = this.#dayIndex > 0;
+        this.#nowBadge.visible = future;
+        this.#currentStrip.visible = future;
+        this.#statFlow.visible = !future;
+        this.#refreshCurrentStrip();
         const day = this.#data.daily[Math.min(this.#dayIndex, this.#data.daily.length - 1)];
         if (day) {
             const info = sceneFor(day.code, true);
@@ -692,6 +884,7 @@ class CityPage extends Gtk.Box {
                 `${this.#dayIndex === 0 ? 'Today' : dayName(day.date)} · ${info.desc} · `
                 + `H ${fmtTemp(day.tmax, units)} L ${fmtTemp(day.tmin, units)}`
                 + (extras.length ? ` · ${extras.join(' · ')}` : '');
+            this.#updateDayDetails(day, units);
         }
         this.#scheduleRejudge(0);
     }
@@ -702,6 +895,7 @@ class CityPage extends Gtk.Box {
         this.#clockLabel.label = fmtClock(wall, this.#h12);
         this.#dateLabel.label = fmtDayStamp(wall);
         this.#updatedLabel.label = relTime(this.#data.fetchedAtWallMs);
+        this.#refreshCurrentStrip();
     }
 
 });

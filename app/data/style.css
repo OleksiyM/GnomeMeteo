@@ -2,30 +2,76 @@
 
 /* .aw-current-temp: oversized THIN numeral (3em, weight 200) */
 .hero-temp {
-  font-size: 50px;
+  font-size: 56px;
   font-weight: 200;
   font-feature-settings: "tnum";
 }
 
+.hero-city {
+  font-size: 26px;
+  font-weight: 700;
+  margin-top: 10px;
+}
+
+.hero-loc {
+  font-size: 12.5px;
+  margin-top: 3px;
+}
+
 /* .aw-desc: 0.85em, ordinary weight, theme-dimmed */
 .hero-cond {
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 400;
 }
 
-.hero-feels {
-  font-size: 12.5px;
-  font-weight: 400;
+.now-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  background: rgba(16, 20, 28, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  padding: 2px 7px;
+  color: #ffffff;
 }
 
 .hero-clock {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 650;
   font-feature-settings: "tnum";
+}
+
+.hero-date { font-size: 12.5px; }
+.hero-updated { font-size: 11px; }
+
+.section-title {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.section-note { font-size: 11px; }
+.forecast-range { font-feature-settings: "tnum"; }
+
+.current-strip { padding: 9px 13px; }
+.current-strip-label { font-size: 12.5px; }
+
+button.details-toggle {
+  font-size: 12px;
+  font-weight: 650;
+  border-radius: 999px;
+  padding: 6px 12px;
+  box-shadow: none;
+}
+
+.sky-on button.details-toggle {
+  background: rgba(16, 20, 28, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #ffffff;
 }
 
 .stat-tile {
   min-width: 130px;
+  padding: 10px 14px;
 }
 
 .stat-title {
@@ -151,8 +197,8 @@ button.day-tile:checked {
 .day-summary {
   font-size: 12.5px;
   font-weight: 600;
-  margin-left: 14px;
-  margin-right: 14px;
+  margin-left: 22px;
+  margin-right: 22px;
 }
 
 .city-temp {
@@ -225,6 +271,57 @@ entryrow.error {
   border-top: 1px solid alpha(currentColor, 0.1);
 }
 
+/* Whole-window Sky-first: one animated sky (MainWindow) behind the split
+ * view; the sidebar reads as darker tinted glass over that same ground. */
+.sky-window .sky-split,
+.sky-window navigation-split-view,
+.sky-window navigation-view-page,
+.sky-window .sidebar-pane,
+.sky-window .sidebar-toolbar,
+.sky-window .navigation-sidebar,
+.sky-window .sidebar-shell scrolledwindow,
+.sky-window .sidebar-shell scrolledwindow > viewport {
+  background: transparent;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.sky-window .sidebar-shell {
+  background: rgba(8, 12, 18, 0.58);
+  color: #e8edf1;
+  border-right: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.sky-window .sidebar-toolbar {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  color: #e8edf1;
+}
+
+.sky-window .sidebar-shell .dim-label,
+.sky-window .sidebar-shell .caption {
+  color: rgba(232, 237, 241, 0.62);
+}
+
+.sky-window .navigation-sidebar row {
+  color: #e8edf1;
+}
+
+.sky-window .navigation-sidebar row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sky-window .navigation-sidebar row:selected {
+  background: rgba(255, 255, 255, 0.11);
+  color: #ffffff;
+}
+
+.sky-window button.sidebar-add {
+  border: 1px dashed rgba(255, 255, 255, 0.28);
+  border-radius: 9px;
+  background: transparent;
+  color: #cfd6dd;
+}
+
 /* ---- animated sky backdrop + adaptive ink --------------------------------
  * The translucent card glass MUST match GLASS_LIGHT/GLASS_DARK in
  * src/citypage.js — the ink judges composite with these exact alphas, so
@@ -280,10 +377,14 @@ entryrow.error {
 /* Dim tiers are the extension's fixed COLOUR tokens (.aw-desc .62/.66,
  * .aw-day-lo .85/.8), NOT element opacity: fading a widget also fades its
  * emboss and multiplies against the family alpha (.95×.6 ≠ .62). */
-.sky-on .ink-light .hero-cond, .sky-on .ink-light .hero-feels,
+.sky-on .ink-light .hero-cond, .sky-on .ink-light .hero-loc,
+.sky-on .ink-light .hero-date, .sky-on .ink-light .section-note,
 .sky-on .ink-light .day-summary { color: rgba(255, 255, 255, 0.62); }
-.sky-on .ink-dark .hero-cond, .sky-on .ink-dark .hero-feels,
+.sky-on .ink-light .hero-updated { color: rgba(255, 255, 255, 0.38); }
+.sky-on .ink-dark .hero-cond, .sky-on .ink-dark .hero-loc,
+.sky-on .ink-dark .hero-date, .sky-on .ink-dark .section-note,
 .sky-on .ink-dark .day-summary { color: rgba(16, 24, 35, 0.66); }
+.sky-on .ink-dark .hero-updated { color: rgba(16, 24, 35, 0.45); }
 
 /* Metric tabs — the extension's pill style (aw-tab): transparent full pill,
  * dim label, the ACTIVE one lights up with the day-tile glass. No linked
@@ -295,7 +396,9 @@ entryrow.error {
   background-color: transparent;
   border: 1px solid transparent;
   box-shadow: none;
-  padding: 3px 10px;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 8px 18px;
   min-height: 0;
 }
 

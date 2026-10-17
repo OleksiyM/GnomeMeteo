@@ -99,6 +99,9 @@ class TestApp extends WeatherGlassApp {
                 const seen = {
                     close: null, tiles: [], scenery: [],
                     organizeHandles: [], organizeRemoves: [], cityRows: [],
+                    heroTemps: [], heroCities: [], sectionTitles: [],
+                    metricTabs: [], detailsToggles: [],
+                    nowBadges: [], currentStrips: [], currentGrids: [],
                 };
                 const collect = (w) => {
                     if (!w) return;
@@ -111,6 +114,19 @@ class TestApp extends WeatherGlassApp {
                     if (w instanceof Gtk.ListBoxRow && w.city?.id)
                         seen.cityRows.push(w);
                     if (cls.includes('day-tile')) seen.tiles.push(w);
+                    if (w.get_mapped?.() && cls.includes('hero-temp'))
+                        seen.heroTemps.push(w);
+                    if (w.get_mapped?.() && cls.includes('hero-city'))
+                        seen.heroCities.push(w);
+                    if (w.get_mapped?.() && cls.includes('section-title'))
+                        seen.sectionTitles.push(w);
+                    if (w.get_mapped?.() && cls.includes('metric-tab'))
+                        seen.metricTabs.push(w);
+                    if (w.get_mapped?.() && cls.includes('details-toggle'))
+                        seen.detailsToggles.push(w);
+                    if (cls.includes('now-badge')) seen.nowBadges.push(w);
+                    if (cls.includes('current-strip')) seen.currentStrips.push(w);
+                    if (cls.includes('current-grid')) seen.currentGrids.push(w);
                     if (w instanceof Gtk.DrawingArea
                         && !(w.get_css_classes ?? (() => [])).call(w)
                             .includes('hourly-chart'))
@@ -138,6 +154,33 @@ class TestApp extends WeatherGlassApp {
                     seen.scenery.length > 0 && seen.scenery.every(d =>
                         !d.get_can_target()),
                     `${seen.scenery.filter(d => d.get_can_target()).length}/${seen.scenery.length} claim targets`);
+                {
+                    const titles = seen.sectionTitles.map(w => w.label);
+                    const tabs = seen.metricTabs.map(w => w.label);
+                    check('Sky-first panel sections are present',
+                        seen.heroTemps.length === 1
+                        && seen.heroCities.length === 1
+                        && !!seen.heroCities[0].label
+                        && titles.includes('8-day forecast')
+                        && titles.some(t => t.endsWith("'s details"))
+                        && titles.includes('Current conditions')
+                        && tabs.join('|') === 'Temperature|Precipitation|Wind'
+                        && seen.detailsToggles.length === 1,
+                        `titles=${titles.join('|')} tabs=${tabs.join('|')}`);
+                    const content = this.window.get_content();
+                    const yOf = w => w?.translate_coordinates(content, 0, 0)?.[2] ?? null;
+                    const firstTile = seen.tiles.find(t => t.get_mapped());
+                    const ys = [yOf(seen.heroTemps[0]), yOf(seen.heroCities[0]),
+                        yOf(firstTile), yOf(seen.metricTabs[0])];
+                    check('Sky-first order is hero, city, days, then chart tabs',
+                        ys.every(y => y != null)
+                        && ys[0] < ys[1] && ys[1] < ys[2] && ys[2] < ys[3],
+                        `ys=${ys.join(',')}`);
+                    check('whole-window sky class follows the sky preference',
+                        this.window.get_css_classes().includes('sky-window')
+                            === bus.config.sky,
+                        `sky=${bus.config.sky}`);
+                }
                 check('organize mode shows a grip and remove pill per city',
                     seen.organizeHandles.length === before.length
                     && seen.organizeRemoves.length === before.length
@@ -151,11 +194,33 @@ class TestApp extends WeatherGlassApp {
                         && [...seen.organizeHandles, ...seen.organizeRemoves]
                             .every(w => !w.get_visible()));
                 }
-                { // GTK exposes no overlay pass-through getter: source lock
-                    const src = new TextDecoder().decode(GLib.file_get_contents(
+                {
+                    const mappedTiles = seen.tiles.filter(t => t.get_mapped());
+                    if (mappedTiles.length > 1) mappedTiles[1].set_active(true);
+                    check('future day swaps live grid for the Now strip',
+                        mappedTiles.length > 1
+                        && seen.nowBadges.some(w => w.get_visible())
+                        && seen.currentStrips.some(w => w.get_visible())
+                        && seen.currentGrids.some(w => !w.get_visible())
+                        && seen.sectionTitles.some(w =>
+                            w.label.endsWith("'s details") && w.label !== "Today's details"),
+                        `tiles=${mappedTiles.length}`);
+                    if (mappedTiles.length > 0) mappedTiles[0].set_active(true);
+                    check('returning to Today restores the live grid',
+                        seen.currentStrips.every(w => !w.get_visible())
+                        && seen.currentGrids.some(w => w.get_visible()));
+                }
+                { // Shared-sky ownership has no GTK getter: source lock
+                    const pageSrc = new TextDecoder().decode(GLib.file_get_contents(
                         `${HERE}/../src/citypage.js`)[1]);
-                    check('decorative overlays pass input through (source lock)',
-                        src.includes('set_overlay_pass_through(this.#updRow'));
+                    const winSrc = new TextDecoder().decode(GLib.file_get_contents(
+                        `${HERE}/../src/window.js`)[1]);
+                    check('window owns the shared sky; pages stay transparent',
+                        winSrc.includes('makeSkyBackdrop')
+                        && winSrc.includes('#activeSkyView')
+                        && pageSrc.includes('skyView()')
+                        && !pageSrc.includes('makeSkyBackdrop')
+                        && !pageSrc.includes('#updRow'));
                 }
 
                 const cfgPath = `${GLib.getenv('XDG_CONFIG_HOME') || GLib.build_filenamev([GLib.get_home_dir(), '.config'])}/weatherglass/config.json`;

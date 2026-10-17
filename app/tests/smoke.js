@@ -109,6 +109,37 @@ void offset;
 
 check('fmtTemp metric', W.fmtTemp(23.4, 'metric') === '23°');
 check('fmtTemp imperial', W.fmtTemp(23.4, 'imperial') === '74°');
+check('fmtPrecipTotal + fmtDuration',
+    W.fmtPrecipTotal(8.4, 'metric') === '8.4 mm'
+    && W.fmtDuration((11 * 60 + 16) * 60) === '11h 16m');
+{
+    const n = W.normalize({
+        current: {
+            time: '2026-10-14T11:45', temperature_2m: 16, apparent_temperature: 15,
+            weather_code: 2, is_day: 1, relative_humidity_2m: 68,
+            precipitation: 0, cloud_cover: 56, wind_gusts_10m: 23,
+        },
+        hourly: {
+            time: ['2026-10-14T10:00', '2026-10-14T11:00', '2026-10-14T12:00'],
+            dew_point_2m: [8, 9, 10],
+        },
+        daily: {
+            time: ['2026-10-14'], weather_code: [61],
+            temperature_2m_max: [21], temperature_2m_min: [14],
+            apparent_temperature_max: [20], apparent_temperature_min: [13],
+            precipitation_probability_max: [80], sunrise: ['2026-10-14T05:52'],
+            sunset: ['2026-10-14T17:08'], uv_index_max: [2],
+            wind_speed_10m_max: [21], wind_gusts_10m_max: [44],
+            wind_direction_10m_dominant: [225], precipitation_sum: [8.4],
+            precipitation_hours: [7], daylight_duration: [40560],
+        },
+    }, Date.UTC(2026, 9, 14, 11, 45));
+    check('normalize carries Sky-first current/day fields',
+        n.current.cloud === 56 && n.current.gust === 23 && n.current.dew === 9
+        && n.daily[0].feelsMax === 20 && n.daily[0].gustMax === 44
+        && n.daily[0].windDir === 225 && n.daily[0].precipHours === 7
+        && n.daily[0].daylightSec === 40560);
+}
 check('compass wraps', W.compass(359) === 'N' && W.compass(45) === 'NE' && W.compass(-90) === 'W');
 check('sceneFor night sun → moon', W.sceneFor(0, false).scene === 'moon');
 const stormByCape = W.deriveScene({ code: 63, cape: 2600, visibility: 20000, precip: 2, isDay: true });check('CAPE derives hail', stormByCape.scene === 'hail', stormByCape.scene);

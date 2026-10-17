@@ -79,14 +79,18 @@ export function forecastUrl(lat, lon, days = FORECAST_DAYS) {
         '&current=', [
             'temperature_2m', 'relative_humidity_2m', 'apparent_temperature', 'is_day',
             'precipitation', 'weather_code', 'cloud_cover', 'pressure_msl',
-            'wind_speed_10m', 'wind_direction_10m', 'uv_index', 'visibility', 'cape',
+            'wind_speed_10m', 'wind_direction_10m', 'wind_gusts_10m',
+            'uv_index', 'visibility', 'cape',
         ].join(','),
         '&hourly=', ['temperature_2m', 'precipitation_probability', 'wind_speed_10m',
-            'weather_code', 'is_day'].join(','),
+            'weather_code', 'is_day', 'dew_point_2m'].join(','),
         '&daily=', [
             'weather_code', 'temperature_2m_max', 'temperature_2m_min',
+            'apparent_temperature_max', 'apparent_temperature_min',
             'precipitation_probability_max', 'sunrise', 'sunset', 'uv_index_max',
-            'wind_speed_10m_max', 'precipitation_sum',
+            'wind_speed_10m_max', 'wind_gusts_10m_max',
+            'wind_direction_10m_dominant', 'precipitation_sum',
+            'precipitation_hours', 'daylight_duration',
         ].join(','),
         '&timezone=auto&forecast_days=', days.toString(),
         '&temperature_unit=celsius&wind_speed_unit=kmh',
@@ -110,6 +114,16 @@ export function normalize(j, receivedWallMs = Date.now()) {
     const h = j.hourly;
     const d = j.daily;
     const nDays = Math.min(d.time?.length ?? 0, FORECAST_DAYS);
+    // Dew point is hourly-only in Open-Meteo: carry the hour bracketing
+    // the current reading so the live tile shows a measured value.
+    let dew = null;
+    if (Array.isArray(h.time) && Array.isArray(h.dew_point_2m)) {
+        const nowMs = naiveMs(c.time);
+        for (let i = 0; i < h.time.length; i++) {
+            if (naiveMs(h.time[i]) <= nowMs) dew = h.dew_point_2m[i] ?? dew;
+            else break;
+        }
+    }
     return {
         fetchedAtWallMs: receivedWallMs,
         // city clock offset: naive city wall time at fetch minus our wall clock
@@ -121,8 +135,11 @@ export function normalize(j, receivedWallMs = Date.now()) {
             isDay: !!c.is_day,
             humidity: c.relative_humidity_2m,
             precip: c.precipitation ?? 0,
+            cloud: c.cloud_cover ?? null,
+            dew,
             wind: c.wind_speed_10m,
             windDeg: c.wind_direction_10m,
+            gust: c.wind_gusts_10m ?? null,
             pressure: c.pressure_msl ?? null,
             uv: c.uv_index ?? null,
             visibility: c.visibility ?? null,
@@ -134,12 +151,18 @@ export function normalize(j, receivedWallMs = Date.now()) {
             code: arr(d.weather_code, i) ?? 0,
             tmax: arr(d.temperature_2m_max, i),
             tmin: arr(d.temperature_2m_min, i),
+            feelsMax: arr(d.apparent_temperature_max, i),
+            feelsMin: arr(d.apparent_temperature_min, i),
             precipProb: arr(d.precipitation_probability_max, i),
             sunrise: String(arr(d.sunrise, i) ?? ''),
             sunset: String(arr(d.sunset, i) ?? ''),
             uv: arr(d.uv_index_max, i),
             windMax: arr(d.wind_speed_10m_max, i),
+            gustMax: arr(d.wind_gusts_10m_max, i),
+            windDir: arr(d.wind_direction_10m_dominant, i),
             precipSum: arr(d.precipitation_sum, i),
+            precipHours: arr(d.precipitation_hours, i),
+            daylightSec: arr(d.daylight_duration, i),
         })),
         hourly: {
             time: (h.time ?? []).map(String),
@@ -361,6 +384,19 @@ export function fmtPrecipRate(mmPerH, units) {
     return units === 'imperial'
         ? `${(mmPerH / 25.4).toFixed(2)} in/h`
         : `${mmPerH.toFixed(1)} mm/h`;
+}
+
+export function fmtPrecipTotal(mm, units) {
+    if (mm == null) return '—';
+    return units === 'imperial'
+        ? `${(mm / 25.4).toFixed(2)} in`
+        : `${mm.toFixed(1)} mm`;
+}
+
+export function fmtDuration(seconds) {
+    if (seconds == null || Number.isNaN(seconds)) return '—';
+    const mins = Math.round(seconds / 60);
+    return `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, '0')}m`;
 }
 
 const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
