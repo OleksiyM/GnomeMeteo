@@ -28,7 +28,7 @@
   .card h3{margin:0 0 8px;font-size:13px}
   .card p{margin:8px 0 0;font-size:12px;color:var(--dim);line-height:1.45}
   .trio{display:flex;gap:10px}
-  .cell{flex:1;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 2px 7px}
+  .cell{flex:1;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:9px 2px 7px}
   .cell span{font-size:10.5px;color:var(--dim)}
   .sky-day{background:linear-gradient(180deg,#27609c,#84b4da)}
   .sky-night{background:linear-gradient(180deg,#0d1524,#31445f)}
@@ -118,8 +118,13 @@
     <linearGradient id="boltGrad" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#ffd964"/><stop offset="1" stop-color="#f5a524"/>
     </linearGradient>
-    <linearGradient id="dropGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#9fd6ff"/><stop offset="1" stop-color="#3f96f5"/>
+    <!-- judged water inks, extension INK_WATER: deep navy holds contrast on
+         bright skies; light aqua glows on night grounds -->
+    <linearGradient id="dropGradDay" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a61cc"/><stop offset="1" stop-color="#0a4a96"/>
+    </linearGradient>
+    <linearGradient id="dropGradNight" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a8e2ff"/><stop offset="1" stop-color="#61d1ff"/>
     </linearGradient>
     <!-- shared cloud: dome vertically squashed 15% (base y=19 and width unchanged,
          so precip hang points and partly occlusion stay put) -->
@@ -127,10 +132,9 @@
     <g id="flake" stroke="#f4fbff" stroke-width="1.35" stroke-linecap="round" style="filter:drop-shadow(0 .8px .8px rgba(16,24,35,.5))">
       <path d="M0-2.1V2.1M-1.8-1.05 1.8 1.05M1.8-1.05-1.8 1.05"/>
     </g>
-    <g id="dropShape">
-      <path d="M0-2.3C.95-.9 1.45.05 1.45.85A1.45 1.45 0 1 1-1.45.85C-1.45.05-.95-.9 0-2.3Z" fill="url(#dropGrad)"/>
-      <circle cx="-.45" cy=".55" r=".34" fill="#ffffff" opacity=".75"/>
-    </g>
+    <path id="dropPath" d="M0-2.3C.95-.9 1.45.05 1.45.85A1.45 1.45 0 1 1-1.45.85C-1.45.05-.95-.9 0-2.3Z"/>
+    <g id="dropDay"><use href="#dropPath" fill="url(#dropGradDay)"/><circle cx="-.45" cy=".55" r=".34" fill="#ffffff" opacity=".55"/></g>
+    <g id="dropNight"><use href="#dropPath" fill="url(#dropGradNight)"/><circle cx="-.45" cy=".55" r=".34" fill="#ffffff" opacity=".8"/></g>
     <path id="spark" d="M0-2.2.62-.62 2.2 0 .62.62 0 2.2-.62.62-2.2 0-.62-.62Z"/>
 
     <!-- the full sun, drawn complete wherever it appears: partly/showers
@@ -178,11 +182,17 @@
     </symbol>
     <symbol id="r-rain-night" viewBox="0 0 24 24">
       <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudNight)"/>
-      <use href="#dropsMid"/>
+      <use href="#dropsMidNight"/>
     </symbol>
     <symbol id="r-sleet" viewBox="0 0 24 24">
       <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/>
-      <use href="#dropShape" transform="translate(7.8,18.4) scale(.92)"/>
+      <use href="#dropDay" transform="translate(7.8,18.4) scale(.92)"/>
+      <use href="#flake" transform="translate(12.4 18.6) scale(.85)"/>
+      <circle cx="16.8" cy="17.6" r="1.15" fill="#eaf6ff"/>
+    </symbol>
+    <symbol id="r-sleet-night" viewBox="0 0 24 24">
+      <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudNight)"/>
+      <use href="#dropNight" transform="translate(7.8,18.4) scale(.92)"/>
       <use href="#flake" transform="translate(12.4 18.6) scale(.85)"/>
       <circle cx="16.8" cy="17.6" r="1.15" fill="#eaf6ff"/>
     </symbol>
@@ -205,11 +215,16 @@
     </symbol>
 
     <!-- ===== per-condition variants (coverage matrix) ===== -->
-    <g id="dropsLight"><use href="#dropShape" transform="translate(9.2,18.4) scale(.88)"/><use href="#dropShape" transform="translate(14.6,18.8) scale(.88)"/></g>
-    <g id="dropsMid"><use href="#dropShape" transform="translate(7.8,18.4) scale(.92)"/><use href="#dropShape" transform="translate(12.2,19) scale(.98)"/><use href="#dropShape" transform="translate(16.6,18.4) scale(.92)"/></g>
-    <g id="dropsHeavy"><use href="#dropShape" transform="translate(6.4,18.2) scale(.8)"/><use href="#dropShape" transform="translate(9.4,19) scale(.86)"/><use href="#dropShape" transform="translate(12.4,18.2) scale(.8)"/><use href="#dropShape" transform="translate(15.4,19) scale(.86)"/><use href="#dropShape" transform="translate(18.4,18.2) scale(.8)"/></g>
-    <g id="drizzleLight" opacity=".9"><use href="#dropShape" transform="translate(9,17.8) scale(.52)"/><use href="#dropShape" transform="translate(12.4,18.5) scale(.52)"/><use href="#dropShape" transform="translate(15.8,17.8) scale(.52)"/></g>
-    <g id="drizzleDense" opacity=".9"><use href="#dropShape" transform="translate(7,17.6) scale(.5)"/><use href="#dropShape" transform="translate(9.7,18.6) scale(.5)"/><use href="#dropShape" transform="translate(12.4,17.6) scale(.5)"/><use href="#dropShape" transform="translate(15.1,18.6) scale(.5)"/><use href="#dropShape" transform="translate(17.8,17.6) scale(.5)"/><use href="#dropShape" transform="translate(10.8,20.6) scale(.44)"/><use href="#dropShape" transform="translate(14.2,20.9) scale(.44)"/></g>
+    <g id="dropsLight"><use href="#dropDay" transform="translate(9.2,18.4) scale(.88)"/><use href="#dropDay" transform="translate(14.6,18.8) scale(.88)"/></g>
+    <g id="dropsLightNight"><use href="#dropNight" transform="translate(9.2,18.4) scale(.88)"/><use href="#dropNight" transform="translate(14.6,18.8) scale(.88)"/></g>
+    <g id="dropsMid"><use href="#dropDay" transform="translate(7.8,18.4) scale(.92)"/><use href="#dropDay" transform="translate(12.2,19) scale(.98)"/><use href="#dropDay" transform="translate(16.6,18.4) scale(.92)"/></g>
+    <g id="dropsMidNight"><use href="#dropNight" transform="translate(7.8,18.4) scale(.92)"/><use href="#dropNight" transform="translate(12.2,19) scale(.98)"/><use href="#dropNight" transform="translate(16.6,18.4) scale(.92)"/></g>
+    <g id="dropsHeavy"><use href="#dropDay" transform="translate(6.4,18.2) scale(.8)"/><use href="#dropDay" transform="translate(9.4,19) scale(.86)"/><use href="#dropDay" transform="translate(12.4,18.2) scale(.8)"/><use href="#dropDay" transform="translate(15.4,19) scale(.86)"/><use href="#dropDay" transform="translate(18.4,18.2) scale(.8)"/></g>
+    <g id="dropsHeavyNight"><use href="#dropNight" transform="translate(6.4,18.2) scale(.8)"/><use href="#dropNight" transform="translate(9.4,19) scale(.86)"/><use href="#dropNight" transform="translate(12.4,18.2) scale(.8)"/><use href="#dropNight" transform="translate(15.4,19) scale(.86)"/><use href="#dropNight" transform="translate(18.4,18.2) scale(.8)"/></g>
+    <g id="drizzleLight" opacity=".9"><use href="#dropDay" transform="translate(9,17.8) scale(.52)"/><use href="#dropDay" transform="translate(12.4,18.5) scale(.52)"/><use href="#dropDay" transform="translate(15.8,17.8) scale(.52)"/></g>
+    <g id="drizzleLightNight" opacity=".9"><use href="#dropNight" transform="translate(9,17.8) scale(.52)"/><use href="#dropNight" transform="translate(12.4,18.5) scale(.52)"/><use href="#dropNight" transform="translate(15.8,17.8) scale(.52)"/></g>
+    <g id="drizzleDense" opacity=".9"><use href="#dropDay" transform="translate(7,17.6) scale(.5)"/><use href="#dropDay" transform="translate(9.7,18.6) scale(.5)"/><use href="#dropDay" transform="translate(12.4,17.6) scale(.5)"/><use href="#dropDay" transform="translate(15.1,18.6) scale(.5)"/><use href="#dropDay" transform="translate(17.8,17.6) scale(.5)"/><use href="#dropDay" transform="translate(10.8,20.6) scale(.44)"/><use href="#dropDay" transform="translate(14.2,20.9) scale(.44)"/></g>
+    <g id="drizzleDenseNight" opacity=".9"><use href="#dropNight" transform="translate(7,17.6) scale(.5)"/><use href="#dropNight" transform="translate(9.7,18.6) scale(.5)"/><use href="#dropNight" transform="translate(12.4,17.6) scale(.5)"/><use href="#dropNight" transform="translate(15.1,18.6) scale(.5)"/><use href="#dropNight" transform="translate(17.8,17.6) scale(.5)"/><use href="#dropNight" transform="translate(10.8,20.6) scale(.44)"/><use href="#dropNight" transform="translate(14.2,20.9) scale(.44)"/></g>
     <g id="flakesLight"><use href="#flake" transform="translate(9.4 18.4) scale(.85)"/><use href="#flake" transform="translate(14.8 19.2) scale(.85)"/></g>
     <g id="flakesHeavy"><use href="#flake" transform="translate(6.8 17.6) scale(.75)"/><use href="#flake" transform="translate(10.2 19.6) scale(.9)"/><use href="#flake" transform="translate(13.8 17.8) scale(.8)"/><use href="#flake" transform="translate(17.2 19.4) scale(.9)"/></g>
     <g id="grains" fill="#f4fbff"><circle cx="7.6" cy="17.4" r=".85"/><circle cx="10.4" cy="19.4" r=".85"/><circle cx="13.2" cy="17.8" r=".85"/><circle cx="16" cy="19.6" r=".85"/><circle cx="18.4" cy="17.6" r=".75"/></g>
@@ -231,10 +246,15 @@
       <use href="#spark" transform="translate(4.6 10.6) scale(.6)" fill="#ffffff"/>
     </symbol>
     <symbol id="r-drizzle-1" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudDay)"/><use href="#drizzleLight"/></symbol>
+    <symbol id="r-drizzle-1-night" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudNight)"/><use href="#drizzleLightNight"/></symbol>
     <symbol id="r-drizzle-2" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/><use href="#drizzleLight"/><use href="#drizzleLight" transform="translate(1.6,2.8) scale(.85)"/></symbol>
+    <symbol id="r-drizzle-2-night" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudNight)"/><use href="#drizzleLightNight"/><use href="#drizzleLightNight" transform="translate(1.6,2.8) scale(.85)"/></symbol>
     <symbol id="r-drizzle-3" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/><use href="#drizzleDense"/></symbol>
+    <symbol id="r-drizzle-3-night" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudNight)"/><use href="#drizzleDenseNight"/></symbol>
     <symbol id="r-rain-light" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/><use href="#dropsLight"/></symbol>
+    <symbol id="r-rain-light-night" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudNight)"/><use href="#dropsLightNight"/></symbol>
     <symbol id="r-rain-heavy" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudStorm)"/><use href="#dropsHeavy"/></symbol>
+    <symbol id="r-rain-heavy-night" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudStorm)"/><use href="#dropsHeavyNight"/></symbol>
     <symbol id="r-showers-light-day" viewBox="0 0 24 24">
       <use href="#sunFull" transform="translate(0.8,0.8) scale(.5)"/>
       <use href="#cloudPath" transform="translate(4.2,0.8) scale(.78)" fill="url(#cloudDay)"/><use href="#dropsLight" transform="translate(1.2,.6)"/>
@@ -251,16 +271,27 @@
     <symbol id="r-showers-night" viewBox="0 0 24 24">
       <path d="M11.8 9.2A5 5 0 1 1 5.6 3a4 4 0 0 0 6.2 6.2Z" fill="url(#moonGrad)"/>
       <use href="#cloudPath" transform="translate(4.2,0.8) scale(.78)" fill="url(#cloudNight)"/>
-      <use href="#dropsMid" transform="translate(1.1,0.2)"/>
+      <use href="#dropsMidNight" transform="translate(1.1,0.2)"/>
     </symbol>
     <symbol id="r-freezing-light" viewBox="0 0 24 24">
       <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/>
-      <use href="#dropShape" transform="translate(8.8,18.4) scale(.9)"/>
+      <use href="#dropDay" transform="translate(8.8,18.4) scale(.9)"/>
+      <use href="#flake" transform="translate(14.6 18.4) scale(.85)"/>
+    </symbol>
+    <symbol id="r-freezing-light-night" viewBox="0 0 24 24">
+      <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudNight)"/>
+      <use href="#dropNight" transform="translate(8.8,18.4) scale(.9)"/>
       <use href="#flake" transform="translate(14.6 18.4) scale(.85)"/>
     </symbol>
     <symbol id="r-freezing-heavy" viewBox="0 0 24 24">
       <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudStorm)"/>
-      <use href="#dropShape" transform="translate(7.8,18.2) scale(.88)"/><use href="#dropShape" transform="translate(16.6,18.2) scale(.88)"/>
+      <use href="#dropDay" transform="translate(7.8,18.2) scale(.88)"/><use href="#dropDay" transform="translate(16.6,18.2) scale(.88)"/>
+      <use href="#flake" transform="translate(12.2 18.2) scale(.9)"/>
+      <path d="M6 21.8h12" stroke="#bfe3ff" stroke-width="1.3" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="r-freezing-heavy-night" viewBox="0 0 24 24">
+      <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudStorm)"/>
+      <use href="#dropNight" transform="translate(7.8,18.2) scale(.88)"/><use href="#dropNight" transform="translate(16.6,18.2) scale(.88)"/>
       <use href="#flake" transform="translate(12.2 18.2) scale(.9)"/>
       <path d="M6 21.8h12" stroke="#bfe3ff" stroke-width="1.3" stroke-linecap="round"/>
     </symbol>
@@ -290,11 +321,11 @@
       <use href="#pelletsHeavy" transform="translate(2.4,.4) scale(.86)"/>
     </symbol>
     <symbol id="r-overcast-day" viewBox="0 0 24 24">
-      <use href="#cloudPath" transform="translate(-1.6,-2.6) scale(.78)" fill="url(#cloudStorm)"/>
+      <use href="#cloudPath" transform="translate(-1.2,2.52) scale(.74,.52)" fill="url(#cloudStorm)"/>
       <use href="#cloudPath" transform="translate(2,1.6) scale(.88)" fill="url(#cloudGrey)"/>
     </symbol>
     <symbol id="r-overcast-night" viewBox="0 0 24 24">
-      <use href="#cloudPath" transform="translate(-1.6,-2.6) scale(.78)" fill="url(#cloudStorm)"/>
+      <use href="#cloudPath" transform="translate(-1.2,2.52) scale(.74,.52)" fill="url(#cloudStorm)"/>
       <use href="#cloudPath" transform="translate(2,1.6) scale(.88)" fill="url(#cloudNight)"/>
     </symbol>
     <symbol id="r-unknown" viewBox="0 0 24 24">
@@ -302,6 +333,17 @@
       <path d="M10.3 16.4a1.9 1.9 0 1 1 2.6 1.6c-.7.35-.9.75-.9 1.5" fill="none" stroke="#f4f7fa" stroke-width="1.7" stroke-linecap="round"/>
       <circle cx="12" cy="21.6" r="1" fill="#f4f7fa"/>
     </symbol>
+
+    <!-- moon phases: lit limb + elliptical terminator, rx = 7*cos(2π·phase),
+         over an earthshine ghost disc (extension moon.js litPath/paintMoon) -->
+    <symbol id="ph-new" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#2e4059" stroke="#93a9c4" stroke-width=".7"/></symbol>
+    <symbol id="ph-waxc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#2e4059"/><path d="M12 5A7 7 0 0 1 12 19A4.95 7 0 0 0 12 5Z" fill="url(#moonGrad)"/></symbol>
+    <symbol id="ph-first" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#2e4059"/><path d="M12 5A7 7 0 0 1 12 19Z" fill="url(#moonGrad)"/></symbol>
+    <symbol id="ph-waxg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#2e4059"/><path d="M12 5A7 7 0 0 1 12 19A4.95 7 0 0 1 12 5Z" fill="url(#moonGrad)"/></symbol>
+    <symbol id="ph-full" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="url(#moonGrad)"/><circle cx="10" cy="10.4" r="1.35" fill="#b9c9da"/><circle cx="13.8" cy="13.6" r="1.05" fill="#b9c9da"/><circle cx="14.6" cy="9.6" r=".75" fill="#b9c9da"/></symbol>
+    <symbol id="ph-wang" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#2e4059"/><path d="M12 5A7 7 0 0 0 12 19A4.95 7 0 0 0 12 5Z" fill="url(#moonGrad)"/></symbol>
+    <symbol id="ph-last" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#2e4059"/><path d="M12 5A7 7 0 0 0 12 19Z" fill="url(#moonGrad)"/></symbol>
+    <symbol id="ph-wanc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#2e4059"/><path d="M12 5A7 7 0 0 0 12 19A4.95 7 0 0 1 12 5Z" fill="url(#moonGrad)"/></symbol>
   </defs>
 </svg>
 
@@ -346,7 +388,8 @@
       </div>
       <p>Slashes become teardrops — pointed tip, round belly, one highlight — filled shapes that stay
       legible where a 1.8-unit stroke would hairline out. Count and stagger carry the intensity tier;
-      the fill is the chart's precipitation blue as a soft gradient.</p>
+      the water ink is judged like the extension's: <b>deep navy on bright grounds</b>
+      (the pale blue measured ~1.1–1.4:1 against day sky — it vanished), light aqua glowing on night grounds.</p>
     </div>
     <div class="card"><h3>Snow</h3>
       <div class="trio">
@@ -374,14 +417,33 @@
     <div class="card"><h3>Fog</h3><div class="pair"><div class="cell sky-grey"><svg class="ic"><use href="#r-fog-day"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-fog-day"/></svg><span>Night</span></div></div></div>
     <div class="card"><h3>Wind</h3><div class="pair"><div class="cell sky-day"><svg class="ic"><use href="#r-wind"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-wind"/></svg><span>Night</span></div></div></div>
     <div class="card"><h3>Rain</h3><div class="pair"><div class="cell sky-grey"><svg class="ic"><use href="#r-rain-day"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-rain-night"/></svg><span>Night</span></div></div></div>
-    <div class="card"><h3>Sleet</h3><div class="pair"><div class="cell sky-grey"><svg class="ic"><use href="#r-sleet"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-sleet"/></svg><span>Night</span></div></div></div>
+    <div class="card"><h3>Sleet</h3><div class="pair"><div class="cell sky-grey"><svg class="ic"><use href="#r-sleet"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-sleet-night"/></svg><span>Night</span></div></div></div>
     <div class="card"><h3>Snow</h3><div class="pair"><div class="cell sky-grey"><svg class="ic"><use href="#r-snow"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-snow"/></svg><span>Night</span></div></div></div>
     <div class="card"><h3>Hail</h3><div class="pair"><div class="cell sky-grey"><svg class="ic"><use href="#r-hail"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-hail"/></svg><span>Night</span></div></div></div>
     <div class="card"><h3>Storm</h3><div class="pair"><div class="cell sky-grey"><svg class="ic"><use href="#r-storm"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-storm"/></svg><span>Night</span></div></div></div>
     <div class="card"><h3>Moon (clear night)</h3><div class="pair"><div class="cell sky-night"><svg class="ic"><use href="#r-moon"/></svg><span>Night</span></div><div class="cell side-tint"><svg class="ic"><use href="#r-moon"/></svg><span>On sidebar tint</span></div></div></div>
   </div>
 
-  <h2>3 · Every condition the app can show</h2>
+  <h2>3 · Moon phases</h2>
+  <p class="sub">Like the extension (<code>moon.js paintMoon</code>), the clear-night icon should be the <i>actual</i> moon:
+  a lit limb plus an elliptical terminator whose width follows <code>cos(2π·phase)</code>, over a faint earthshine disc so
+  even new moon never vanishes. Eight named phases; in the app the same two arcs render any date's exact phase,
+  and partly-night swaps its crescent for tonight's shape behind the cloud.</p>
+  <div class="grid fullset">
+    <div class="card"><h3>New Moon</h3><div class="pair"><div class="cell sky-night"><svg class="ic"><use href="#ph-new"/></svg><span>0% lit</span></div><div class="cell side-tint"><svg class="s16"><use href="#ph-new"/></svg><span>16px</span></div></div></div>
+    <div class="card"><h3>Waxing Crescent</h3><div class="pair"><div class="cell sky-night"><svg class="ic"><use href="#ph-waxc"/></svg><span>~15% lit</span></div><div class="cell side-tint"><svg class="s16"><use href="#ph-waxc"/></svg><span>16px</span></div></div></div>
+    <div class="card"><h3>First Quarter</h3><div class="pair"><div class="cell sky-night"><svg class="ic"><use href="#ph-first"/></svg><span>50% lit</span></div><div class="cell side-tint"><svg class="s16"><use href="#ph-first"/></svg><span>16px</span></div></div></div>
+    <div class="card"><h3>Waxing Gibbous</h3><div class="pair"><div class="cell sky-night"><svg class="ic"><use href="#ph-waxg"/></svg><span>~85% lit</span></div><div class="cell side-tint"><svg class="s16"><use href="#ph-waxg"/></svg><span>16px</span></div></div></div>
+    <div class="card"><h3>Full Moon</h3><div class="pair"><div class="cell sky-night"><svg class="ic"><use href="#ph-full"/></svg><span>100% lit</span></div><div class="cell side-tint"><svg class="s16"><use href="#ph-full"/></svg><span>16px</span></div></div></div>
+    <div class="card"><h3>Waning Gibbous</h3><div class="pair"><div class="cell sky-night"><svg class="ic"><use href="#ph-wang"/></svg><span>~85% lit</span></div><div class="cell side-tint"><svg class="s16"><use href="#ph-wang"/></svg><span>16px</span></div></div></div>
+    <div class="card"><h3>Last Quarter</h3><div class="pair"><div class="cell sky-night"><svg class="ic"><use href="#ph-last"/></svg><span>50% lit</span></div><div class="cell side-tint"><svg class="s16"><use href="#ph-last"/></svg><span>16px</span></div></div></div>
+    <div class="card"><h3>Waning Crescent</h3><div class="pair"><div class="cell sky-night"><svg class="ic"><use href="#ph-wanc"/></svg><span>~15% lit</span></div><div class="cell side-tint"><svg class="s16"><use href="#ph-wanc"/></svg><span>16px</span></div></div></div>
+  </div>
+  <p class="sub" style="margin-top:12px">Partly-night with a gibbous moon, for scale:
+  <svg class="s26" viewBox="0 0 24 24" style="vertical-align:-7px"><use href="#ph-waxg" transform="translate(-2.4,-3.4) scale(.72)"/><use href="#cloudPath" transform="translate(2.6,2.9) scale(.84)" fill="url(#cloudNight)"/></svg>
+  — the generic crescent elsewhere in this sheet is the waxing-crescent stand-in.</p>
+
+  <h2>4 · Every condition the app can show</h2>
   <p class="sub">All 28 WMO codes in <code>weather.js</code> (<code>WMO</code>), each with its scene and precipitation-intensity tier
   (<code>CODE_PRECIP_INTENSITY</code>, dots), plus the derived overrides and the unknown-code fallback. Variants within a scene —
   drizzle vs rain, showers vs steady rain, light vs heavy — are drawn by swapping precip parts on the shared cloud, so coverage
@@ -390,7 +452,7 @@
   <div class="covgroup">Derived at runtime (no WMO code of their own)</div>
   <div class="cov" id="derived"></div>
 
-  <h2>4 · Size and ground test</h2>
+  <h2>5 · Size and ground test</h2>
   <p class="sub">The app draws these at 26&nbsp;px (tiles, sidebar) and ~20&nbsp;px (chart strip). If a mark dies at 16&nbsp;px here, it dies in the app.</p>
   <div class="card" style="margin-bottom:10px"><h3>Representative marks, 16 → 54</h3>
     <div class="sizes">
@@ -411,14 +473,14 @@
       <svg class="s26"><use href="#r-sun"/></svg><svg class="s26"><use href="#r-partly-day"/></svg><svg class="s26"><use href="#r-overcast-day"/></svg><svg class="s26"><use href="#r-fog-day"/></svg><svg class="s26"><use href="#r-wind"/></svg><svg class="s26"><use href="#r-rain-day"/></svg><svg class="s26"><use href="#r-sleet"/></svg><svg class="s26"><use href="#r-snow"/></svg><svg class="s26"><use href="#r-hail"/></svg><svg class="s26"><use href="#r-storm"/></svg>
     </div></div>
     <div class="ground sky-night"><h3>Night sky · 26px</h3><div class="strip">
-      <svg class="s26"><use href="#r-moon"/></svg><svg class="s26"><use href="#r-partly-night"/></svg><svg class="s26"><use href="#r-overcast-night"/></svg><svg class="s26"><use href="#r-fog-day"/></svg><svg class="s26"><use href="#r-wind"/></svg><svg class="s26"><use href="#r-rain-night"/></svg><svg class="s26"><use href="#r-sleet"/></svg><svg class="s26"><use href="#r-snow"/></svg><svg class="s26"><use href="#r-hail"/></svg><svg class="s26"><use href="#r-storm"/></svg>
+      <svg class="s26"><use href="#r-moon"/></svg><svg class="s26"><use href="#r-partly-night"/></svg><svg class="s26"><use href="#r-overcast-night"/></svg><svg class="s26"><use href="#r-fog-day"/></svg><svg class="s26"><use href="#r-wind"/></svg><svg class="s26"><use href="#r-rain-night"/></svg><svg class="s26"><use href="#r-sleet-night"/></svg><svg class="s26"><use href="#r-snow"/></svg><svg class="s26"><use href="#r-hail"/></svg><svg class="s26"><use href="#r-storm"/></svg>
     </div></div>
     <div class="ground side-tint"><h3>Sidebar tint · 16px</h3><div class="strip">
-      <svg class="s16"><use href="#r-sun"/></svg><svg class="s16"><use href="#r-moon"/></svg><svg class="s16"><use href="#r-partly-night"/></svg><svg class="s16"><use href="#r-overcast-night"/></svg><svg class="s16"><use href="#r-fog-day"/></svg><svg class="s16"><use href="#r-wind"/></svg><svg class="s16"><use href="#r-rain-night"/></svg><svg class="s16"><use href="#r-sleet"/></svg><svg class="s16"><use href="#r-snow"/></svg><svg class="s16"><use href="#r-hail"/></svg><svg class="s16"><use href="#r-storm"/></svg>
+      <svg class="s16"><use href="#r-sun"/></svg><svg class="s16"><use href="#r-moon"/></svg><svg class="s16"><use href="#r-partly-night"/></svg><svg class="s16"><use href="#r-overcast-night"/></svg><svg class="s16"><use href="#r-fog-day"/></svg><svg class="s16"><use href="#r-wind"/></svg><svg class="s16"><use href="#r-rain-night"/></svg><svg class="s16"><use href="#r-sleet-night"/></svg><svg class="s16"><use href="#r-snow"/></svg><svg class="s16"><use href="#r-hail"/></svg><svg class="s16"><use href="#r-storm"/></svg>
     </div></div>
   </div>
 
-  <h2>5 · In context</h2>
+  <h2>6 · In context</h2>
   <p class="sub">Sidebar rows and a day strip wearing the refined set at production size (26&nbsp;px).</p>
   <div class="context">
     <div class="side">
@@ -442,11 +504,11 @@
     </div>
   </div>
 
-  <h2>6 · Rules if this ports to the app</h2>
+  <h2>7 · Rules if this ports to the app</h2>
   <ul class="rules">
     <li><b>One grid:</b> every mark lives on the 24-unit box; the cloud is a single shared path, precip marks hang from a common baseline.</li>
     <li><b>Severity by shade:</b> cloud gradients step down partly → overcast → rain → storm, so a week strip scans before it reads.</li>
-    <li><b>Borrowed tokens:</b> sun/bolt amber and raindrop blue are the chart series colours (<code>#f5a524</code>, <code>#57a8ff</code>) — icons and chart speak once.</li>
+    <li><b>Borrowed tokens:</b> sun/bolt amber is the chart token (<code>#f5a524</code>); water uses the extension's judged inks — deep navy <code>#0a4a96–#1a61cc</code> by day, aqua <code>#61d1ff</code> by night — because the chart blue fails contrast on bright sky.</li>
     <li><b>Night is a language, not a filter:</b> crescent replaces the disc; clouds drop one shade step; precip colour stays.</li>
     <li><b>Occlusion is honest:</b> sun and moon always draw complete underneath; clouds cover what they cover. (Extension puff and hybrid cloud formations were explored and rejected — the mock dome stays.)</li>
     <li><b>Port path:</b> redraw these paths in <code>glyph.js</code> as Cairo vector ops (static, cached raster) — the animated sky stays the painter's job, icons stay crisp and cheap.</li>
@@ -467,20 +529,20 @@
       [48, 'Depositing rime fog', 'fog', 0, 'r-rime-fog', 'r-rime-fog', 'sky-grey'],
     ]],
     ['Drizzle', [
-      [51, 'Light drizzle', 'rain', 1, 'r-drizzle-1', 'r-drizzle-1', 'sky-grey'],
-      [53, 'Drizzle', 'rain', 2, 'r-drizzle-2', 'r-drizzle-2', 'sky-grey'],
-      [55, 'Dense drizzle', 'rain', 3, 'r-drizzle-3', 'r-drizzle-3', 'sky-grey'],
+      [51, 'Light drizzle', 'rain', 1, 'r-drizzle-1', 'r-drizzle-1-night', 'sky-grey'],
+      [53, 'Drizzle', 'rain', 2, 'r-drizzle-2', 'r-drizzle-2-night', 'sky-grey'],
+      [55, 'Dense drizzle', 'rain', 3, 'r-drizzle-3', 'r-drizzle-3-night', 'sky-grey'],
     ]],
     ['Rain', [
-      [61, 'Light rain', 'rain', 1, 'r-rain-light', 'r-rain-light', 'sky-grey'],
+      [61, 'Light rain', 'rain', 1, 'r-rain-light', 'r-rain-light-night', 'sky-grey'],
       [63, 'Rain', 'rain', 2, 'r-rain-day', 'r-rain-night', 'sky-grey'],
-      [65, 'Heavy rain', 'rain', 3, 'r-rain-heavy', 'r-rain-heavy', 'sky-grey'],
+      [65, 'Heavy rain', 'rain', 3, 'r-rain-heavy', 'r-rain-heavy-night', 'sky-grey'],
     ]],
     ['Freezing precipitation (sleet scene)', [
-      [56, 'Light freezing drizzle', 'sleet', 3, 'r-freezing-light', 'r-freezing-light', 'sky-grey'],
-      [57, 'Dense freezing drizzle', 'sleet', 4, 'r-sleet', 'r-sleet', 'sky-grey'],
-      [66, 'Light freezing rain', 'sleet', 3, 'r-freezing-light', 'r-freezing-light', 'sky-grey'],
-      [67, 'Heavy freezing rain', 'sleet', 4, 'r-freezing-heavy', 'r-freezing-heavy', 'sky-grey'],
+      [56, 'Light freezing drizzle', 'sleet', 3, 'r-freezing-light', 'r-freezing-light-night', 'sky-grey'],
+      [57, 'Dense freezing drizzle', 'sleet', 4, 'r-sleet', 'r-sleet-night', 'sky-grey'],
+      [66, 'Light freezing rain', 'sleet', 3, 'r-freezing-light', 'r-freezing-light-night', 'sky-grey'],
+      [67, 'Heavy freezing rain', 'sleet', 4, 'r-freezing-heavy', 'r-freezing-heavy-night', 'sky-grey'],
     ]],
     ['Snow', [
       [71, 'Light snow', 'snow', 1, 'r-snow-light', 'r-snow-light', 'sky-grey'],
