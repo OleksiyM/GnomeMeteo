@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WeatherGlass — icon mocks</title>
+<style>
+  :root{
+    --ink:#f4f7fa; --dim:rgba(244,247,250,.62); --faint:rgba(244,247,250,.38);
+    --slab:rgba(13,18,26,.52); --line:rgba(255,255,255,.14); --page:#22262b;
+    --amber:#f5a524; --blue:#57a8ff; --green:#3ecf8e;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);
+    font-family:Cantarell,"Noto Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  header.bar{position:sticky;top:0;z-index:9;background:#2b3036;border-bottom:1px solid #3a4046;
+    padding:10px 16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  header.bar h1{font-size:15px;margin:0;font-weight:650}
+  header.bar p{margin:0;font-size:12.5px;color:#aeb6bf;max-width:860px}
+  main{max-width:1080px;margin:0 auto;padding:22px 16px 46px}
+  h2{font-size:15px;margin:30px 0 4px}
+  h2:first-child{margin-top:2px}
+  .sub{font-size:12.5px;color:var(--dim);margin:0 0 12px;max-width:860px}
+  .grid{display:grid;gap:10px}
+  .before-after{grid-template-columns:repeat(3,1fr)}
+  .fullset{grid-template-columns:repeat(4,1fr)}
+  .card{background:#2b3036;border:1px solid #3a4046;border-radius:12px;padding:12px 14px}
+  .card h3{margin:0 0 8px;font-size:13px}
+  .card p{margin:8px 0 0;font-size:12px;color:var(--dim);line-height:1.45}
+  .trio{display:flex;gap:10px}
+  .cell{flex:1;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 2px 7px}
+  .cell span{font-size:10.5px;color:var(--dim)}
+  .sky-day{background:linear-gradient(180deg,#27609c,#84b4da)}
+  .sky-night{background:linear-gradient(180deg,#0d1524,#31445f)}
+  .sky-grey{background:linear-gradient(180deg,#46566a,#7c8b9c)}
+  .side-tint{background:linear-gradient(180deg,rgba(13,20,32,.92),rgba(31,44,63,.92))}
+  .ic{width:54px;height:54px;flex:none}
+  .pair{display:flex;gap:10px}
+  .pair .cell{padding:8px 2px 6px}
+  .pair .ic{width:44px;height:44px}
+  .sizes{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+  .sizes figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .sizes figcaption{font-size:10.5px;color:var(--dim)}
+  .s16{width:16px;height:16px}.s20{width:20px;height:20px}.s26{width:26px;height:26px}.s32{width:32px;height:32px}
+  .groundrow{display:flex;gap:10px;flex-wrap:wrap}
+  .ground{flex:1;min-width:220px;border-radius:12px;padding:12px}
+  .ground h3{margin:0 0 8px;font-size:12px;font-weight:700}
+  .ground .strip{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .context{display:flex;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.10)}
+  .context .side{width:262px;flex:none;background:rgba(8,12,18,.58);padding:8px 0}
+  .context .panel{flex:1;padding:14px 16px;background:linear-gradient(180deg,#24476e,#7ea6c6)}
+  .crow{display:flex;gap:10px;align-items:center;padding:8px 12px;margin:3px 8px;border-radius:9px}
+  .crow.sel{background:rgba(255,255,255,.11)}
+  .crow .nm{font-size:13.5px;font-weight:600}
+  .crow .sb{font-size:11px;color:#98a1ab}
+  .crow .tp{margin-left:auto;text-align:right;font-size:15px;font-weight:700}
+  .crow .tp div{font-size:11px;color:#98a1ab;font-weight:400}
+  .crow .ic{width:26px;height:26px}
+  .days{display:flex;gap:5px;margin-top:8px}
+  .day{flex:1;text-align:center;border-radius:12px;padding:9px 2px 8px;font-size:11.5px}
+  .day.sel{background:rgba(16,20,28,.48)}
+  .day .ic{width:26px;height:26px}
+  .day b{font-weight:650}
+  .day span{opacity:.8}
+  ul.rules{font-size:12.5px;color:var(--dim);line-height:1.55;margin:6px 0 0;padding-left:18px;max-width:860px}
+  ul.rules b{color:var(--ink)}
+  code{font-family:ui-monospace,monospace;font-size:11.5px;color:#cfd6dd}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1>WeatherGlass — icon mocks</h1>
+  <p><b style="color:#fff">Source: the whole-window mock's six flat icons</b> (sun · moon · cloud · partly · rain · snow),
+  refined on one 24-unit grid and completed to the app's 11 scenes with night variants. Mock only — the app still paints its painter glyphs.</p>
+</header>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- ===== originals, verbatim from main-panel-mocks.html ===== -->
+    <symbol id="o-moon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#e8edf4"/><circle cx="9.5" cy="10" r="1.6" fill="#c9d2dd"/><circle cx="13.5" cy="14" r="1.2" fill="#c9d2dd"/><circle cx="14.5" cy="9.5" r=".9" fill="#c9d2dd"/></symbol>
+    <symbol id="o-sun" viewBox="0 0 24 24"><g stroke="#f7b733" stroke-width="1.7" stroke-linecap="round"><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.5 4.5l2 2M17.5 17.5l2 2M19.5 4.5l-2 2M6.5 17.5l-2 2"/></g><circle cx="12" cy="12" r="4.6" fill="#ffcf5c"/></symbol>
+    <symbol id="o-cloud" viewBox="0 0 24 24"><path d="M7 18h9.5a4.2 4.2 0 0 0 .6-8.35A6 6 0 0 0 5.6 11 3.8 3.8 0 0 0 7 18Z" fill="#dbe4ec"/></symbol>
+    <symbol id="o-partly" viewBox="0 0 24 24"><circle cx="8" cy="8" r="3.4" fill="#ffcf5c"/><path d="M10 20h8.2a3.6 3.6 0 0 0 .5-7.15A5.4 5.4 0 0 0 8.6 13.4 3.3 3.3 0 0 0 10 20Z" fill="#dbe4ec"/></symbol>
+    <symbol id="o-rain" viewBox="0 0 24 24"><path d="M7 14h9.5a4.2 4.2 0 0 0 .6-8.35A6 6 0 0 0 5.6 7 3.8 3.8 0 0 0 7 14Z" fill="#c3cfdb"/><g stroke="#57a8ff" stroke-width="1.7" stroke-linecap="round"><path d="M8 17l-1 3M12.5 17l-1 3M17 17l-1 3"/></g></symbol>
+    <symbol id="o-snow" viewBox="0 0 24 24"><path d="M7 14h9.5a4.2 4.2 0 0 0 .6-8.35A6 6 0 0 0 5.6 7 3.8 3.8 0 0 0 7 14Z" fill="#e6edf4"/><g fill="#fff"><circle cx="8" cy="18" r="1.1"/><circle cx="12.5" cy="19.5" r="1.1"/><circle cx="17" cy="18" r="1.1"/></g></symbol>
+
+    <!-- ===== refined set: shared parts ===== -->
+    <linearGradient id="sunGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe9a8"/><stop offset="1" stop-color="#ffb52e"/>
+    </linearGradient>
+    <linearGradient id="moonGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6f9fc"/><stop offset="1" stop-color="#c3d3e4"/>
+    </linearGradient>
+    <linearGradient id="cloudDay" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f2f7fc"/><stop offset="1" stop-color="#c7d6e6"/>
+    </linearGradient>
+    <linearGradient id="cloudNight" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d9e5f1"/><stop offset="1" stop-color="#93a9c4"/>
+    </linearGradient>
+    <linearGradient id="cloudGrey" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ccd9e7"/><stop offset="1" stop-color="#93a9c0"/>
+    </linearGradient>
+    <linearGradient id="cloudStorm" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a9bccd"/><stop offset="1" stop-color="#637b99"/>
+    </linearGradient>
+    <linearGradient id="boltGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd964"/><stop offset="1" stop-color="#f5a524"/>
+    </linearGradient>
+    <path id="cloudPath" d="M7 19h10.2a4.3 4.3 0 0 0 .8-8.5A6.2 6.2 0 0 0 5.4 12 4 4 0 0 0 7 19Z"/>
+    <g id="flake" stroke="#f4fbff" stroke-width="1.35" stroke-linecap="round" style="filter:drop-shadow(0 .8px .8px rgba(16,24,35,.5))">
+      <path d="M0-2.1V2.1M-1.8-1.05 1.8 1.05M1.8-1.05-1.8 1.05"/>
+    </g>
+    <path id="spark" d="M0-2.2.62-.62 2.2 0 .62.62 0 2.2-.62.62-2.2 0-.62-.62Z"/>
+
+    <!-- sun: gradient disc, rays gapped off the rim so they survive 16px -->
+    <symbol id="r-sun" viewBox="0 0 24 24">
+      <g stroke="#f5a524" stroke-width="1.8" stroke-linecap="round">
+        <path d="M12 3.2v2.3M12 18.5v2.3M3.2 12h2.3M18.5 12h2.3M16.4 7.6l1.7-1.7M16.4 16.4l1.7 1.7M7.6 16.4l-1.7 1.7M7.6 7.6 5.9 5.9"/>
+      </g>
+      <circle cx="12" cy="12" r="4.7" fill="url(#sunGrad)"/>
+    </symbol>
+    <!-- moon: crescent reads as night at 16px where the cratered disc read as a ball -->
+    <symbol id="r-moon" viewBox="0 0 24 24">
+      <path d="M19.6 14.6A8.2 8.2 0 1 1 9.4 4.4a6.6 6.6 0 0 0 10.2 10.2Z" fill="url(#moonGrad)"/>
+      <use href="#spark" transform="translate(17.6 5.4)" fill="#ffffff"/>
+    </symbol>
+    <symbol id="r-cloud-day" viewBox="0 0 24 24"><use href="#cloudPath" fill="url(#cloudDay)"/></symbol>
+    <symbol id="r-cloud-night" viewBox="0 0 24 24"><use href="#cloudPath" fill="url(#cloudNight)"/></symbol>
+    <symbol id="r-partly-day" viewBox="0 0 24 24">
+      <g stroke="#f5a524" stroke-width="1.6" stroke-linecap="round"><path d="M8 2.8v1.9M3.4 5.6l1.4 1.1M2.8 10.4h1.9"/></g>
+      <circle cx="8" cy="8.4" r="3.1" fill="url(#sunGrad)"/>
+      <use href="#cloudPath" transform="translate(2.6 2.9) scale(.84)" fill="url(#cloudDay)"/>
+    </symbol>
+    <symbol id="r-partly-night" viewBox="0 0 24 24">
+      <path d="M12.9 9.8A5.4 5.4 0 1 1 6.2 3.1a4.3 4.3 0 0 0 6.7 6.7Z" fill="url(#moonGrad)"/>
+      <use href="#cloudPath" transform="translate(2.6 2.9) scale(.84)" fill="url(#cloudNight)"/>
+    </symbol>
+    <symbol id="r-fog-day" viewBox="0 0 24 24">
+      <use href="#cloudPath" transform="translate(1,-5) scale(.92)" fill="url(#cloudGrey)"/>
+      <g stroke="#d7e4f0" stroke-width="1.8" stroke-linecap="round"><path d="M5 15.6h13M7.5 18.4h10M9 21h6.5"/></g>
+    </symbol>
+    <symbol id="r-wind" viewBox="0 0 24 24">
+      <g fill="none" stroke="rgba(16,24,35,.30)" stroke-width="3.4" stroke-linecap="round" transform="translate(0 .45)">
+        <path d="M3 8.6h9.2a2.6 2.6 0 1 0-2.5-3.3"/>
+        <path d="M2.6 12.8h13.2a2.9 2.9 0 1 1-2.8 3.7"/>
+        <path d="M4.5 17h6"/>
+      </g>
+      <g fill="none" stroke="#eef7ff" stroke-width="1.9" stroke-linecap="round">
+        <path d="M3 8.6h9.2a2.6 2.6 0 1 0-2.5-3.3"/>
+        <path d="M2.6 12.8h13.2a2.9 2.9 0 1 1-2.8 3.7"/>
+        <path d="M4.5 17h6"/>
+      </g>
+    </symbol>
+    <symbol id="r-rain-day" viewBox="0 0 24 24">
+      <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/>
+      <g stroke="#57a8ff" stroke-width="1.8" stroke-linecap="round"><path d="M8.2 16.8l-1.2 3M12.6 16.8l-1.2 3.4M17 16.8l-1.2 3"/></g>
+    </symbol>
+    <symbol id="r-rain-night" viewBox="0 0 24 24">
+      <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudNight)"/>
+      <g stroke="#57a8ff" stroke-width="1.8" stroke-linecap="round"><path d="M8.2 16.8l-1.2 3M12.6 16.8l-1.2 3.4M17 16.8l-1.2 3"/></g>
+    </symbol>
+    <symbol id="r-sleet" viewBox="0 0 24 24">
+      <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/>
+      <path d="M8 16.8l-1.2 3.2" stroke="#57a8ff" stroke-width="1.8" stroke-linecap="round"/>
+      <use href="#flake" transform="translate(12.4 18.6) scale(.85)"/>
+      <circle cx="16.8" cy="17.6" r="1.15" fill="#eaf6ff"/>
+    </symbol>
+    <symbol id="r-snow" viewBox="0 0 24 24">
+      <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudDay)"/>
+      <use href="#flake" transform="translate(7.8 18.2) scale(.8)"/>
+      <use href="#flake" transform="translate(12.4 19.6) scale(.95)"/>
+      <use href="#flake" transform="translate(17 18.2) scale(.8)"/>
+    </symbol>
+    <symbol id="r-hail" viewBox="0 0 24 24">
+      <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/>
+      <g fill="#eaf6ff" stroke="#9fc9ee" stroke-width=".7">
+        <circle cx="7.8" cy="17.4" r="1.55"/><circle cx="12.4" cy="19.2" r="1.8"/><circle cx="17" cy="17.4" r="1.4"/>
+      </g>
+      <g fill="#ffffff"><circle cx="7.3" cy="16.9" r=".45"/><circle cx="11.8" cy="18.6" r=".5"/><circle cx="16.6" cy="17" r=".4"/></g>
+    </symbol>
+    <symbol id="r-storm" viewBox="0 0 24 24">
+      <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudStorm)"/>
+      <path d="M13.2 13.4 9.7 19h2.4l-1.2 3.4L15.7 16.6h-2.7l1.7-3.2Z" fill="url(#boltGrad)" stroke="#e89b1c" stroke-width=".6" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<main>
+  <h2>1 · The original six, refined</h2>
+  <p class="sub">Left: verbatim from <code>main-panel-mocks.html</code>. Middle/right: the same silhouettes rebuilt —
+  one shared cloud path, gradient discs, marks sized to survive 16&nbsp;px, and a real night language instead of a grey ball.</p>
+  <div class="grid before-after">
+    <div class="card"><h3>Clear — sun / moon</h3>
+      <div class="trio">
+        <div class="cell sky-day"><svg class="ic"><use href="#o-sun"/></svg><span>Original</span></div>
+        <div class="cell sky-day"><svg class="ic"><use href="#r-sun"/></svg><span>Refined day</span></div>
+        <div class="cell sky-night"><svg class="ic"><use href="#r-moon"/></svg><span>Refined night</span></div>
+      </div>
+      <p>Rays step off the rim so they don't fuse at 16&nbsp;px; the disc takes the chart's amber as a soft gradient.
+      Night becomes a crescent + spark — the original cratered disc read as a grey ball when small.</p>
+    </div>
+    <div class="card"><h3>Partly cloudy</h3>
+      <div class="trio">
+        <div class="cell sky-day"><svg class="ic"><use href="#o-partly"/></svg><span>Original</span></div>
+        <div class="cell sky-day"><svg class="ic"><use href="#r-partly-day"/></svg><span>Refined day</span></div>
+        <div class="cell sky-night"><svg class="ic"><use href="#r-partly-night"/></svg><span>Refined night</span></div>
+      </div>
+      <p>The sun gains three short rays so “partly” doesn't read as “ball behind cloud”; at night a crescent
+      takes its place behind the same cloud, matching how the app scenes already work.</p>
+    </div>
+    <div class="card"><h3>Overcast</h3>
+      <div class="trio">
+        <div class="cell sky-grey"><svg class="ic"><use href="#o-cloud"/></svg><span>Original</span></div>
+        <div class="cell sky-grey"><svg class="ic"><use href="#r-cloud-day"/></svg><span>Refined day</span></div>
+        <div class="cell sky-night"><svg class="ic"><use href="#r-cloud-night"/></svg><span>Refined night</span></div>
+      </div>
+      <p>One cloud silhouette for the whole set, lit from above by a two-stop gradient. Brightness steps —
+      partly → overcast → rain → storm — now encode severity before any precip marks are read.</p>
+    </div>
+    <div class="card"><h3>Rain</h3>
+      <div class="trio">
+        <div class="cell sky-grey"><svg class="ic"><use href="#o-rain"/></svg><span>Original</span></div>
+        <div class="cell sky-grey"><svg class="ic"><use href="#r-rain-day"/></svg><span>Refined day</span></div>
+        <div class="cell sky-night"><svg class="ic"><use href="#r-rain-night"/></svg><span>Refined night</span></div>
+      </div>
+      <p>Same three slashes, re-spaced on the shared cloud with the middle drop longer — a rhythm the eye
+      catches at tile size. Drop colour is the chart's precipitation blue.</p>
+    </div>
+    <div class="card"><h3>Snow</h3>
+      <div class="trio">
+        <div class="cell sky-grey"><svg class="ic"><use href="#o-snow"/></svg><span>Original</span></div>
+        <div class="cell sky-grey"><svg class="ic"><use href="#r-snow"/></svg><span>Refined day</span></div>
+        <div class="cell sky-night"><svg class="ic"><use href="#r-snow"/></svg><span>Refined night</span></div>
+      </div>
+      <p>Dots become six-spoke flakes: snow reads as snow, and no longer collides with hail's pellets
+      or drizzle's specks in the completed set below.</p>
+    </div>
+    <div class="card"><h3>What changed, in one breath</h3>
+      <p style="margin-top:0">Kept: the mock's flat silhouettes and 24-unit grid. Added: a shared cloud,
+      amber/blue tokens borrowed from the chart series, crescent night language, severity-by-cloud-shade,
+      and precip marks that stay distinct at 16&nbsp;px. Still static — the sky behind them does the moving.</p>
+    </div>
+  </div>
+
+  <h2>2 · Completed to the app's 11 scenes</h2>
+  <p class="sub">Fog, wind, sleet, hail, and storm are new, drawn from the same parts bin: the shared cloud,
+  the rain slash, the flake, the pellet, the bolt. Night cells reuse the day mark unless the scene itself changes.</p>
+  <div class="grid fullset">
+    <div class="card"><h3>Sun</h3><div class="pair"><div class="cell sky-day"><svg class="ic"><use href="#r-sun"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-moon"/></svg><span>Night</span></div></div></div>
+    <div class="card"><h3>Partly</h3><div class="pair"><div class="cell sky-day"><svg class="ic"><use href="#r-partly-day"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-partly-night"/></svg><span>Night</span></div></div></div>
+    <div class="card"><h3>Cloud</h3><div class="pair"><div class="cell sky-grey"><svg class="ic"><use href="#r-cloud-day"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-cloud-night"/></svg><span>Night</span></div></div></div>
+    <div class="card"><h3>Fog</h3><div class="pair"><div class="cell sky-grey"><svg class="ic"><use href="#r-fog-day"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-fog-day"/></svg><span>Night</span></div></div></div>
+    <div class="card"><h3>Wind</h3><div class="pair"><div class="cell sky-day"><svg class="ic"><use href="#r-wind"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-wind"/></svg><span>Night</span></div></div></div>
+    <div class="card"><h3>Rain</h3><div class="pair"><div class="cell sky-grey"><svg class="ic"><use href="#r-rain-day"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-rain-night"/></svg><span>Night</span></div></div></div>
+    <div class="card"><h3>Sleet</h3><div class="pair"><div class="cell sky-grey"><svg class="ic"><use href="#r-sleet"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-sleet"/></svg><span>Night</span></div></div></div>
+    <div class="card"><h3>Snow</h3><div class="pair"><div class="cell sky-grey"><svg class="ic"><use href="#r-snow"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-snow"/></svg><span>Night</span></div></div></div>
+    <div class="card"><h3>Hail</h3><div class="pair"><div class="cell sky-grey"><svg class="ic"><use href="#r-hail"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-hail"/></svg><span>Night</span></div></div></div>
+    <div class="card"><h3>Storm</h3><div class="pair"><div class="cell sky-grey"><svg class="ic"><use href="#r-storm"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-storm"/></svg><span>Night</span></div></div></div>
+    <div class="card"><h3>Moon (clear night)</h3><div class="pair"><div class="cell sky-night"><svg class="ic"><use href="#r-moon"/></svg><span>Night</span></div><div class="cell side-tint"><svg class="ic"><use href="#r-moon"/></svg><span>On sidebar tint</span></div></div></div>
+  </div>
+
+  <h2>3 · Size and ground test</h2>
+  <p class="sub">The app draws these at 26&nbsp;px (tiles, sidebar) and ~20&nbsp;px (chart strip). If a mark dies at 16&nbsp;px here, it dies in the app.</p>
+  <div class="card" style="margin-bottom:10px"><h3>Representative marks, 16 → 54</h3>
+    <div class="sizes">
+      <figure><svg class="s16"><use href="#r-sun"/></svg><figcaption>16</figcaption></figure>
+      <figure><svg class="s20"><use href="#r-partly-day"/></svg><figcaption>20</figcaption></figure>
+      <figure><svg class="s26"><use href="#r-rain-day"/></svg><figcaption>26</figcaption></figure>
+      <figure><svg class="s32"><use href="#r-snow"/></svg><figcaption>32</figcaption></figure>
+      <figure><svg class="ic"><use href="#r-storm"/></svg><figcaption>54</figcaption></figure>
+      <figure><svg class="s16"><use href="#r-moon"/></svg><figcaption>16</figcaption></figure>
+      <figure><svg class="s20"><use href="#r-fog-day"/></svg><figcaption>20</figcaption></figure>
+      <figure><svg class="s26"><use href="#r-wind"/></svg><figcaption>26</figcaption></figure>
+      <figure><svg class="s32"><use href="#r-hail"/></svg><figcaption>32</figcaption></figure>
+      <figure><svg class="ic"><use href="#r-sleet"/></svg><figcaption>54</figcaption></figure>
+    </div>
+  </div>
+  <div class="groundrow">
+    <div class="ground sky-day"><h3>Day sky · 26px</h3><div class="strip">
+      <svg class="s26"><use href="#r-sun"/></svg><svg class="s26"><use href="#r-partly-day"/></svg><svg class="s26"><use href="#r-cloud-day"/></svg><svg class="s26"><use href="#r-fog-day"/></svg><svg class="s26"><use href="#r-wind"/></svg><svg class="s26"><use href="#r-rain-day"/></svg><svg class="s26"><use href="#r-sleet"/></svg><svg class="s26"><use href="#r-snow"/></svg><svg class="s26"><use href="#r-hail"/></svg><svg class="s26"><use href="#r-storm"/></svg>
+    </div></div>
+    <div class="ground sky-night"><h3>Night sky · 26px</h3><div class="strip">
+      <svg class="s26"><use href="#r-moon"/></svg><svg class="s26"><use href="#r-partly-night"/></svg><svg class="s26"><use href="#r-cloud-night"/></svg><svg class="s26"><use href="#r-fog-day"/></svg><svg class="s26"><use href="#r-wind"/></svg><svg class="s26"><use href="#r-rain-night"/></svg><svg class="s26"><use href="#r-sleet"/></svg><svg class="s26"><use href="#r-snow"/></svg><svg class="s26"><use href="#r-hail"/></svg><svg class="s26"><use href="#r-storm"/></svg>
+    </div></div>
+    <div class="ground side-tint"><h3>Sidebar tint · 16px</h3><div class="strip">
+      <svg class="s16"><use href="#r-sun"/></svg><svg class="s16"><use href="#r-moon"/></svg><svg class="s16"><use href="#r-partly-night"/></svg><svg class="s16"><use href="#r-cloud-night"/></svg><svg class="s16"><use href="#r-fog-day"/></svg><svg class="s16"><use href="#r-wind"/></svg><svg class="s16"><use href="#r-rain-night"/></svg><svg class="s16"><use href="#r-sleet"/></svg><svg class="s16"><use href="#r-snow"/></svg><svg class="s16"><use href="#r-hail"/></svg><svg class="s16"><use href="#r-storm"/></svg>
+    </div></div>
+  </div>
+
+  <h2>4 · In context</h2>
+  <p class="sub">Sidebar rows and a day strip wearing the refined set at production size (26&nbsp;px).</p>
+  <div class="context">
+    <div class="side">
+      <div class="crow"><svg class="ic"><use href="#r-sun"/></svg><div><div class="nm">Bengaluru</div><div class="sb">Karnataka · IN</div></div><div class="tp">29°<div>17:42</div></div></div>
+      <div class="crow"><svg class="ic"><use href="#r-partly-day"/></svg><div><div class="nm">San Francisco</div><div class="sb">California · US</div></div><div class="tp">14°<div>05:12</div></div></div>
+      <div class="crow"><svg class="ic"><use href="#r-rain-day"/></svg><div><div class="nm">London</div><div class="sb">England · GB</div></div><div class="tp">11°<div>13:12</div></div></div>
+      <div class="crow sel"><svg class="ic"><use href="#r-moon"/></svg><div><div class="nm">Tokyo</div><div class="sb">Tokyo · JP</div></div><div class="tp">16°<div>22:12</div></div></div>
+    </div>
+    <div class="panel">
+      <div style="font-size:12.5px;font-weight:700">8-day forecast</div>
+      <div class="days">
+        <div class="day sel"><div>Today 18</div><svg class="ic"><use href="#r-partly-day"/></svg><div><b>21°</b> <span>14°</span></div></div>
+        <div class="day"><div>Fri 19</div><svg class="ic"><use href="#r-sun"/></svg><div><b>23°</b> <span>15°</span></div></div>
+        <div class="day"><div>Sat 20</div><svg class="ic"><use href="#r-rain-day"/></svg><div><b>19°</b> <span>14°</span></div></div>
+        <div class="day"><div>Sun 21</div><svg class="ic"><use href="#r-cloud-day"/></svg><div><b>20°</b> <span>13°</span></div></div>
+        <div class="day"><div>Mon 22</div><svg class="ic"><use href="#r-storm"/></svg><div><b>24°</b> <span>16°</span></div></div>
+        <div class="day"><div>Tue 23</div><svg class="ic"><use href="#r-fog-day"/></svg><div><b>22°</b> <span>15°</span></div></div>
+        <div class="day"><div>Wed 24</div><svg class="ic"><use href="#r-snow"/></svg><div><b>18°</b> <span>12°</span></div></div>
+        <div class="day"><div>Thu 25</div><svg class="ic"><use href="#r-wind"/></svg><div><b>20°</b> <span>13°</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>5 · Rules if this ports to the app</h2>
+  <ul class="rules">
+    <li><b>One grid:</b> every mark lives on the 24-unit box; the cloud is a single shared path, precip marks hang from a common baseline.</li>
+    <li><b>Severity by shade:</b> cloud gradients step down partly → overcast → rain → storm, so a week strip scans before it reads.</li>
+    <li><b>Borrowed tokens:</b> sun/bolt amber and rain blue are the chart series colours (<code>#f5a524</code>, <code>#57a8ff</code>) — icons and chart speak once.</li>
+    <li><b>Night is a language, not a filter:</b> crescent replaces the disc; clouds drop one shade step; precip colour stays.</li>
+    <li><b>Port path:</b> redraw these paths in <code>glyph.js</code> as Cairo vector ops (static, cached raster) — the animated sky stays the painter's job, icons stay crisp and cheap.</li>
+  </ul>
+</main>
+</body>
+</html>
