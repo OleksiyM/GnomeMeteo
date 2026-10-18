@@ -118,9 +118,16 @@
     <linearGradient id="boltGrad" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#ffd964"/><stop offset="1" stop-color="#f5a524"/>
     </linearGradient>
+    <linearGradient id="dropGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9fd6ff"/><stop offset="1" stop-color="#3f96f5"/>
+    </linearGradient>
     <path id="cloudPath" d="M7 19h10.2a4.3 4.3 0 0 0 .8-8.5A6.2 6.2 0 0 0 5.4 12 4 4 0 0 0 7 19Z"/>
     <g id="flake" stroke="#f4fbff" stroke-width="1.35" stroke-linecap="round" style="filter:drop-shadow(0 .8px .8px rgba(16,24,35,.5))">
       <path d="M0-2.1V2.1M-1.8-1.05 1.8 1.05M1.8-1.05-1.8 1.05"/>
+    </g>
+    <g id="dropShape">
+      <path d="M0-2.3C.95-.9 1.45.05 1.45.85A1.45 1.45 0 1 1-1.45.85C-1.45.05-.95-.9 0-2.3Z" fill="url(#dropGrad)"/>
+      <circle cx="-.45" cy=".55" r=".34" fill="#ffffff" opacity=".75"/>
     </g>
     <path id="spark" d="M0-2.2.62-.62 2.2 0 .62.62 0 2.2-.62.62-2.2 0-.62-.62Z"/>
 
@@ -167,15 +174,15 @@
     </symbol>
     <symbol id="r-rain-day" viewBox="0 0 24 24">
       <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/>
-      <g stroke="#57a8ff" stroke-width="1.8" stroke-linecap="round"><path d="M8.2 16.8l-1.2 3M12.6 16.8l-1.2 3.4M17 16.8l-1.2 3"/></g>
+      <use href="#dropsMid"/>
     </symbol>
     <symbol id="r-rain-night" viewBox="0 0 24 24">
       <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudNight)"/>
-      <g stroke="#57a8ff" stroke-width="1.8" stroke-linecap="round"><path d="M8.2 16.8l-1.2 3M12.6 16.8l-1.2 3.4M17 16.8l-1.2 3"/></g>
+      <use href="#dropsMid"/>
     </symbol>
     <symbol id="r-sleet" viewBox="0 0 24 24">
       <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/>
-      <path d="M8 16.8l-1.2 3.2" stroke="#57a8ff" stroke-width="1.8" stroke-linecap="round"/>
+      <use href="#dropShape" transform="translate(7.8,18.4) scale(.92)"/>
       <use href="#flake" transform="translate(12.4 18.6) scale(.85)"/>
       <circle cx="16.8" cy="17.6" r="1.15" fill="#eaf6ff"/>
     </symbol>
@@ -198,10 +205,11 @@
     </symbol>
 
     <!-- ===== per-condition variants (coverage matrix) ===== -->
-    <g id="dropsLight" stroke="#57a8ff" stroke-width="1.8" stroke-linecap="round"><path d="M9.6 16.8l-1 2.4M14.8 16.8l-1 2.4"/></g>
-    <g id="dropsHeavy" stroke="#57a8ff" stroke-width="1.7" stroke-linecap="round"><path d="M6.6 16.6l-1.1 2.8M9.8 16.6l-1.1 3.2M13 16.6l-1.1 2.8M16.2 16.6l-1.1 3.2M19.2 16.6l-1 2.6"/></g>
-    <g id="drizzleLight" stroke="#7cc0ff" stroke-width="1.5" stroke-linecap="round"><path d="M9 16.8v1.5M12.4 17.4v1.5M15.8 16.8v1.5"/></g>
-    <g id="drizzleDense" stroke="#7cc0ff" stroke-width="1.5" stroke-linecap="round"><path d="M7 16.6v1.5M9.7 17.4v1.5M12.4 16.6v1.5M15.1 17.4v1.5M17.8 16.6v1.5M10.8 20v1.2M14.2 20.4v1.2"/></g>
+    <g id="dropsLight"><use href="#dropShape" transform="translate(9.2,18.4) scale(.88)"/><use href="#dropShape" transform="translate(14.6,18.8) scale(.88)"/></g>
+    <g id="dropsMid"><use href="#dropShape" transform="translate(7.8,18.4) scale(.92)"/><use href="#dropShape" transform="translate(12.2,19) scale(.98)"/><use href="#dropShape" transform="translate(16.6,18.4) scale(.92)"/></g>
+    <g id="dropsHeavy"><use href="#dropShape" transform="translate(6.4,18.2) scale(.8)"/><use href="#dropShape" transform="translate(9.4,19) scale(.86)"/><use href="#dropShape" transform="translate(12.4,18.2) scale(.8)"/><use href="#dropShape" transform="translate(15.4,19) scale(.86)"/><use href="#dropShape" transform="translate(18.4,18.2) scale(.8)"/></g>
+    <g id="drizzleLight" opacity=".9"><use href="#dropShape" transform="translate(9,17.8) scale(.52)"/><use href="#dropShape" transform="translate(12.4,18.5) scale(.52)"/><use href="#dropShape" transform="translate(15.8,17.8) scale(.52)"/></g>
+    <g id="drizzleDense" opacity=".9"><use href="#dropShape" transform="translate(7,17.6) scale(.5)"/><use href="#dropShape" transform="translate(9.7,18.6) scale(.5)"/><use href="#dropShape" transform="translate(12.4,17.6) scale(.5)"/><use href="#dropShape" transform="translate(15.1,18.6) scale(.5)"/><use href="#dropShape" transform="translate(17.8,17.6) scale(.5)"/><use href="#dropShape" transform="translate(10.8,20.6) scale(.44)"/><use href="#dropShape" transform="translate(14.2,20.9) scale(.44)"/></g>
     <g id="flakesLight"><use href="#flake" transform="translate(9.4 18.4) scale(.85)"/><use href="#flake" transform="translate(14.8 19.2) scale(.85)"/></g>
     <g id="flakesHeavy"><use href="#flake" transform="translate(6.8 17.6) scale(.75)"/><use href="#flake" transform="translate(10.2 19.6) scale(.9)"/><use href="#flake" transform="translate(13.8 17.8) scale(.8)"/><use href="#flake" transform="translate(17.2 19.4) scale(.9)"/></g>
     <g id="grains" fill="#f4fbff"><circle cx="7.6" cy="17.4" r=".85"/><circle cx="10.4" cy="19.4" r=".85"/><circle cx="13.2" cy="17.8" r=".85"/><circle cx="16" cy="19.6" r=".85"/><circle cx="18.4" cy="17.6" r=".75"/></g>
@@ -234,7 +242,7 @@
     <symbol id="r-showers-day" viewBox="0 0 24 24">
       <use href="#sunFull" transform="translate(0.8,0.8) scale(.5)"/>
       <use href="#cloudPath" transform="translate(4.2,0.8) scale(.78)" fill="url(#cloudGrey)"/>
-      <g stroke="#57a8ff" stroke-width="1.8" stroke-linecap="round"><path d="M9.4 17.4l-1.1 2.8M13.8 17.4l-1.1 3.1M18.2 17.4l-1.1 2.8"/></g>
+      <use href="#dropsMid" transform="translate(1.1,0.2)"/>
     </symbol>
     <symbol id="r-showers-heavy-day" viewBox="0 0 24 24">
       <use href="#sunFull" transform="translate(0.8,0.8) scale(.5)"/>
@@ -243,16 +251,16 @@
     <symbol id="r-showers-night" viewBox="0 0 24 24">
       <path d="M11.8 9.2A5 5 0 1 1 5.6 3a4 4 0 0 0 6.2 6.2Z" fill="url(#moonGrad)"/>
       <use href="#cloudPath" transform="translate(4.2,0.8) scale(.78)" fill="url(#cloudNight)"/>
-      <g stroke="#57a8ff" stroke-width="1.8" stroke-linecap="round"><path d="M9.4 17.4l-1.1 2.8M13.8 17.4l-1.1 3.1M18.2 17.4l-1.1 2.8"/></g>
+      <use href="#dropsMid" transform="translate(1.1,0.2)"/>
     </symbol>
     <symbol id="r-freezing-light" viewBox="0 0 24 24">
       <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/>
-      <path d="M9 16.8l-1.1 2.8" stroke="#57a8ff" stroke-width="1.8" stroke-linecap="round"/>
+      <use href="#dropShape" transform="translate(8.8,18.4) scale(.9)"/>
       <use href="#flake" transform="translate(14.6 18.4) scale(.85)"/>
     </symbol>
     <symbol id="r-freezing-heavy" viewBox="0 0 24 24">
       <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudStorm)"/>
-      <path d="M8 16.6l-1.1 2.8M16.8 16.6l-1.1 2.8" stroke="#57a8ff" stroke-width="1.8" stroke-linecap="round"/>
+      <use href="#dropShape" transform="translate(7.8,18.2) scale(.88)"/><use href="#dropShape" transform="translate(16.6,18.2) scale(.88)"/>
       <use href="#flake" transform="translate(12.2 18.2) scale(.9)"/>
       <path d="M6 21.8h12" stroke="#bfe3ff" stroke-width="1.3" stroke-linecap="round"/>
     </symbol>
@@ -329,8 +337,9 @@
         <div class="cell sky-grey"><svg class="ic"><use href="#r-rain-day"/></svg><span>Refined day</span></div>
         <div class="cell sky-night"><svg class="ic"><use href="#r-rain-night"/></svg><span>Refined night</span></div>
       </div>
-      <p>Same three slashes, re-spaced on the shared cloud with the middle drop longer — a rhythm the eye
-      catches at tile size. Drop colour is the chart's precipitation blue.</p>
+      <p>Slashes become teardrops — pointed tip, round belly, one highlight — filled shapes that stay
+      legible where a 1.8-unit stroke would hairline out. Count and stagger carry the intensity tier;
+      the fill is the chart's precipitation blue as a soft gradient.</p>
     </div>
     <div class="card"><h3>Snow</h3>
       <div class="trio">
@@ -430,7 +439,7 @@
   <ul class="rules">
     <li><b>One grid:</b> every mark lives on the 24-unit box; the cloud is a single shared path, precip marks hang from a common baseline.</li>
     <li><b>Severity by shade:</b> cloud gradients step down partly → overcast → rain → storm, so a week strip scans before it reads.</li>
-    <li><b>Borrowed tokens:</b> sun/bolt amber and rain blue are the chart series colours (<code>#f5a524</code>, <code>#57a8ff</code>) — icons and chart speak once.</li>
+    <li><b>Borrowed tokens:</b> sun/bolt amber and raindrop blue are the chart series colours (<code>#f5a524</code>, <code>#57a8ff</code>) — icons and chart speak once.</li>
     <li><b>Night is a language, not a filter:</b> crescent replaces the disc; clouds drop one shade step; precip colour stays.</li>
     <li><b>Occlusion is honest:</b> sun and moon always draw complete underneath; clouds cover what they cover. (Extension puff and hybrid cloud formations were explored and rejected — the mock dome stays.)</li>
     <li><b>Port path:</b> redraw these paths in <code>glyph.js</code> as Cairo vector ops (static, cached raster) — the animated sky stays the painter's job, icons stay crisp and cheap.</li>
