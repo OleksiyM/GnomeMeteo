@@ -121,7 +121,9 @@
     <linearGradient id="dropGrad" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#9fd6ff"/><stop offset="1" stop-color="#3f96f5"/>
     </linearGradient>
-    <path id="cloudPath" d="M7 19h10.2a4.3 4.3 0 0 0 .8-8.5A6.2 6.2 0 0 0 5.4 12 4 4 0 0 0 7 19Z"/>
+    <!-- shared cloud: dome vertically squashed 15% (base y=19 and width unchanged,
+         so precip hang points and partly occlusion stay put) -->
+    <path id="cloudPath" d="M7 19h10.2a4.3 3.66 0 0 0 .8-7.23A6.2 5.27 0 0 0 5.4 13.05 4 3.4 0 0 0 7 19Z"/>
     <g id="flake" stroke="#f4fbff" stroke-width="1.35" stroke-linecap="round" style="filter:drop-shadow(0 .8px .8px rgba(16,24,35,.5))">
       <path d="M0-2.1V2.1M-1.8-1.05 1.8 1.05M1.8-1.05-1.8 1.05"/>
     </g>
@@ -359,7 +361,7 @@
 
   <h2>2 · Completed to the app's 11 scenes</h2>
   <p class="sub">Fog, wind, sleet, hail, and storm are new, drawn from the same parts bin: the shared cloud,
-  the rain slash, the flake, the pellet, the bolt. Night cells reuse the day mark unless the scene itself changes.</p>
+  the teardrop, the flake, the pellet, the bolt. Night cells reuse the day mark unless the scene itself changes.</p>
   <div class="grid fullset">
     <div class="card"><h3>Sun</h3><div class="pair"><div class="cell sky-day"><svg class="ic"><use href="#r-sun"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-moon"/></svg><span>Night</span></div></div></div>
     <div class="card"><h3>Partly</h3><div class="pair"><div class="cell sky-day"><svg class="ic"><use href="#r-partly-day"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-partly-night"/></svg><span>Night</span></div></div></div>
