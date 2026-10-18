@@ -49,14 +49,6 @@
   .tier{color:var(--blue);letter-spacing:1px;font-size:10px}
   .covcell{border-radius:8px;display:flex;justify-content:center;padding:5px}
   .covcell .ic{width:26px;height:26px}
-  .cloudmatrix{display:flex;flex-direction:column;gap:6px;margin-top:10px}
-  .cmrow{display:grid;grid-template-columns:104px 1fr 1fr 1fr;gap:8px;align-items:stretch}
-  .cmlabel{font-size:12.5px;font-weight:600;align-self:center}
-  .cmlabel div{font-size:11px;color:var(--dim);font-weight:400}
-  .cmhead{font-size:11px;color:var(--dim);text-align:center;align-self:end}
-  .cmcell{border-radius:10px;display:flex;justify-content:center;align-items:center;padding:7px}
-  .cmcell svg{width:44px;height:44px}
-  .cmcell.mini svg{width:16px;height:16px}
   .sizes{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
   .sizes figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:4px}
   .sizes figcaption{font-size:10.5px;color:var(--dim)}
@@ -132,33 +124,16 @@
     </g>
     <path id="spark" d="M0-2.2.62-.62 2.2 0 .62.62 0 2.2-.62.62-2.2 0-.62-.62Z"/>
 
-    <!-- extension cloud tiers (painter.js CLOUD_LIGHT / RAIN / DEEP / DARK, as hex) -->
-    <linearGradient id="extLight" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c2d1de"/><stop offset="1" stop-color="#99adbf"/></linearGradient>
-    <linearGradient id="extRain" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9499a3"/><stop offset="1" stop-color="#666e7a"/></linearGradient>
-    <linearGradient id="extDeep" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#828fa1"/><stop offset="1" stop-color="#545e73"/></linearGradient>
-    <linearGradient id="extDark" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a8596"/><stop offset="1" stop-color="#525c6e"/></linearGradient>
-    <!-- extension formation, painter.js cloud() at scale 1.55 about (12,13):
-         bumps r2.4/r2.6 at ∓3.2/±3.1, r3.2 on top, flat 11.2-wide base -->
-    <g id="cloudExt">
-      <circle cx="7" cy="12.5" r="3.7"/><circle cx="16.8" cy="12.8" r="4"/>
-      <circle cx="12" cy="10.2" r="5"/>
-      <rect x="3.3" y="12.2" width="17.4" height="4.5"/>
-    </g>
-    <!-- hybrid: extension bumps, softened — unequal lobes, rounded base corners -->
-    <g id="cloudHybrid">
-      <circle cx="8.4" cy="12.8" r="3.4"/><circle cx="16" cy="12.6" r="4.1"/>
-      <circle cx="12.1" cy="10.4" r="5.2"/>
-      <rect x="5" y="12.2" width="14.6" height="4.9" rx="2.45"/>
-    </g>
-    <g id="dropsMid" stroke="#57a8ff" stroke-width="1.8" stroke-linecap="round"><path d="M8.2 18l-1.1 2.8M12.4 18l-1.1 3.2M16.6 18l-1.1 2.8"/></g>
-
-    <!-- sun: gradient disc, rays gapped off the rim so they survive 16px -->
-    <symbol id="r-sun" viewBox="0 0 24 24">
+    <!-- the full sun, drawn complete wherever it appears: partly/showers
+         layer the cloud OVER it, so right/bottom rays exist and are
+         genuinely occluded rather than omitted -->
+    <g id="sunFull">
       <g stroke="#f5a524" stroke-width="1.8" stroke-linecap="round">
         <path d="M12 3.2v2.3M12 18.5v2.3M3.2 12h2.3M18.5 12h2.3M16.4 7.6l1.7-1.7M16.4 16.4l1.7 1.7M7.6 16.4l-1.7 1.7M7.6 7.6 5.9 5.9"/>
       </g>
       <circle cx="12" cy="12" r="4.7" fill="url(#sunGrad)"/>
-    </symbol>
+    </g>
+    <symbol id="r-sun" viewBox="0 0 24 24"><use href="#sunFull"/></symbol>
     <!-- moon: crescent reads as night at 16px where the cratered disc read as a ball -->
     <symbol id="r-moon" viewBox="0 0 24 24">
       <path d="M19.6 14.6A8.2 8.2 0 1 1 9.4 4.4a6.6 6.6 0 0 0 10.2 10.2Z" fill="url(#moonGrad)"/>
@@ -167,8 +142,7 @@
     <symbol id="r-cloud-day" viewBox="0 0 24 24"><use href="#cloudPath" fill="url(#cloudDay)"/></symbol>
     <symbol id="r-cloud-night" viewBox="0 0 24 24"><use href="#cloudPath" fill="url(#cloudNight)"/></symbol>
     <symbol id="r-partly-day" viewBox="0 0 24 24">
-      <g stroke="#f5a524" stroke-width="1.6" stroke-linecap="round"><path d="M8 2.8v1.9M3.4 5.6l1.4 1.1M2.8 10.4h1.9"/></g>
-      <circle cx="8" cy="8.4" r="3.1" fill="url(#sunGrad)"/>
+      <use href="#sunFull" transform="translate(1.3,0.9) scale(.6)"/>
       <use href="#cloudPath" transform="translate(2.6 2.9) scale(.84)" fill="url(#cloudDay)"/>
     </symbol>
     <symbol id="r-partly-night" viewBox="0 0 24 24">
@@ -235,8 +209,7 @@
     <path id="boltPath" d="M13.2 13.4 9.7 19h2.4l-1.2 3.4L15.7 16.6h-2.7l1.7-3.2Z"/>
 
     <symbol id="r-mainly-day" viewBox="0 0 24 24">
-      <g stroke="#f5a524" stroke-width="1.7" stroke-linecap="round"><path d="M10 3v2M4.6 5.4l1.4 1.4M3 10.6h2M15.4 5.4l-1.4 1.4"/></g>
-      <circle cx="10" cy="10" r="4.1" fill="url(#sunGrad)"/>
+      <use href="#sunFull" transform="translate(1.36,1.36) scale(.72)"/>
       <use href="#cloudPath" transform="translate(9.5,10.5) scale(.52)" fill="url(#cloudDay)"/>
     </symbol>
     <symbol id="r-mainly-night" viewBox="0 0 24 24">
@@ -255,16 +228,16 @@
     <symbol id="r-rain-light" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/><use href="#dropsLight"/></symbol>
     <symbol id="r-rain-heavy" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudStorm)"/><use href="#dropsHeavy"/></symbol>
     <symbol id="r-showers-light-day" viewBox="0 0 24 24">
-      <circle cx="6.8" cy="6.8" r="2.9" fill="url(#sunGrad)"/>
+      <use href="#sunFull" transform="translate(0.8,0.8) scale(.5)"/>
       <use href="#cloudPath" transform="translate(4.2,0.8) scale(.78)" fill="url(#cloudDay)"/><use href="#dropsLight" transform="translate(1.2,.6)"/>
     </symbol>
     <symbol id="r-showers-day" viewBox="0 0 24 24">
-      <circle cx="6.8" cy="6.8" r="2.9" fill="url(#sunGrad)"/>
+      <use href="#sunFull" transform="translate(0.8,0.8) scale(.5)"/>
       <use href="#cloudPath" transform="translate(4.2,0.8) scale(.78)" fill="url(#cloudGrey)"/>
       <g stroke="#57a8ff" stroke-width="1.8" stroke-linecap="round"><path d="M9.4 17.4l-1.1 2.8M13.8 17.4l-1.1 3.1M18.2 17.4l-1.1 2.8"/></g>
     </symbol>
     <symbol id="r-showers-heavy-day" viewBox="0 0 24 24">
-      <circle cx="6.8" cy="6.8" r="2.9" fill="url(#sunGrad)"/>
+      <use href="#sunFull" transform="translate(0.8,0.8) scale(.5)"/>
       <use href="#cloudPath" transform="translate(4.2,0.8) scale(.78)" fill="url(#cloudStorm)"/><use href="#dropsHeavy" transform="translate(.8,.8) scale(.92)"/>
     </symbol>
     <symbol id="r-showers-night" viewBox="0 0 24 24">
@@ -287,11 +260,11 @@
     <symbol id="r-snow-heavy" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/><use href="#flakesHeavy"/></symbol>
     <symbol id="r-snow-grains" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudDay)"/><use href="#grains"/></symbol>
     <symbol id="r-snow-showers-day" viewBox="0 0 24 24">
-      <circle cx="6.8" cy="6.8" r="2.9" fill="url(#sunGrad)"/>
+      <use href="#sunFull" transform="translate(0.8,0.8) scale(.5)"/>
       <use href="#cloudPath" transform="translate(4.2,0.8) scale(.78)" fill="url(#cloudDay)"/><use href="#flakesLight" transform="translate(1.4,1)"/>
     </symbol>
     <symbol id="r-snow-showers-heavy-day" viewBox="0 0 24 24">
-      <circle cx="6.8" cy="6.8" r="2.9" fill="url(#sunGrad)"/>
+      <use href="#sunFull" transform="translate(0.8,0.8) scale(.5)"/>
       <use href="#cloudPath" transform="translate(4.2,0.8) scale(.78)" fill="url(#cloudGrey)"/><use href="#flakesHeavy" transform="translate(.8,.8) scale(.92)"/>
     </symbol>
     <symbol id="r-snow-showers-night" viewBox="0 0 24 24">
@@ -338,8 +311,8 @@
         <div class="cell sky-day"><svg class="ic"><use href="#r-partly-day"/></svg><span>Refined day</span></div>
         <div class="cell sky-night"><svg class="ic"><use href="#r-partly-night"/></svg><span>Refined night</span></div>
       </div>
-      <p>The sun gains three short rays so “partly” doesn't read as “ball behind cloud”; at night a crescent
-      takes its place behind the same cloud, matching how the app scenes already work.</p>
+      <p>The <b>complete</b> sun — disc and all eight rays — is drawn first and the cloud laid over it, so the
+      right and bottom rays are genuinely occluded, never omitted. At night the full crescent sits under the same cloud.</p>
     </div>
     <div class="card"><h3>Overcast</h3>
       <div class="trio">
@@ -375,73 +348,7 @@
     </div>
   </div>
 
-  <h2>2 · Cloud formation — three ways to pick from</h2>
-  <p class="sub">The extension's cloud (<code>painter.js cloud()</code>) is not a silhouette path: three circular bumps —
-  small left, medium right, big on top — fused over a flat base, in one vertical gradient. Precipitation gets a
-  <i>pair</i>: a smaller, dimmer companion behind-right, so the glyph reads as a cloud bank. Its ink also adapts to the ground
-  (light / rain / deep / dark tiers). Ported flat, next to what this sheet already uses and a hybrid of the two:</p>
-  <div class="grid before-after">
-    <div class="card"><h3>A · Current mock cloud</h3>
-      <div class="trio"><div class="cell sky-grey"><svg class="ic" viewBox="0 0 24 24"><use href="#cloudPath" fill="url(#cloudDay)"/></svg><span>Single path</span></div>
-      <div class="cell sky-night"><svg class="ic" viewBox="0 0 24 24"><use href="#cloudPath" fill="url(#cloudNight)"/></svg><span>Night</span></div>
-      <div class="cell sky-grey"><svg class="ic"><use href="#r-rain-day"/></svg><span>As rain</span></div></div>
-      <p>One smooth dome. Cleanest at 16&nbsp;px, but generic — nothing ties it to the extension's hand.</p>
-    </div>
-    <div class="card"><h3>B · Extension puff, ported flat</h3>
-      <div class="trio"><div class="cell sky-grey"><svg class="ic" viewBox="0 0 24 24"><use href="#cloudExt" fill="url(#extLight)"/></svg><span>3-bump + flat base</span></div>
-      <div class="cell sky-grey"><svg class="ic" viewBox="0 0 24 24"><use href="#cloudExt" transform="translate(9.1,5.8) scale(.66)" fill="url(#extRain)" opacity=".8"/><use href="#cloudExt" fill="url(#extRain)"/><use href="#dropsMid"/></svg><span>Precip pair</span></div>
-      <div class="cell sky-day"><svg class="ic" viewBox="0 0 24 24"><use href="#cloudExt" fill="url(#extDeep)"/></svg><span>Deep tier</span></div></div>
-      <p>Faithful geometry (bumps r2.4 / r2.6 / r3.2 over an 11.2-wide base, companion at 0.66×, 0.8 alpha).
-      The flat base corners are the extension's signature — and its roughest edge at icon size.</p>
-    </div>
-    <div class="card"><h3>C · Hybrid</h3>
-      <div class="trio"><div class="cell sky-grey"><svg class="ic" viewBox="0 0 24 24"><use href="#cloudHybrid" fill="url(#cloudDay)"/></svg><span>Softened bumps</span></div>
-      <div class="cell sky-grey"><svg class="ic" viewBox="0 0 24 24"><use href="#cloudHybrid" fill="url(#cloudGrey)"/><use href="#dropsMid"/></svg><span>Rain, single</span></div>
-      <div class="cell sky-grey"><svg class="ic" viewBox="0 0 24 24"><use href="#cloudHybrid" transform="translate(8.6,5.4) scale(.66)" fill="url(#cloudStorm)" opacity=".8"/><use href="#cloudHybrid" fill="url(#cloudStorm)"/><use href="#dropsHeavy" transform="translate(0,1.2)"/></svg><span>Heavy, paired</span></div></div>
-      <p>Extension lobes with unequal heights and rounded base corners; the companion bank appears only for
-      heavy precipitation, so light rain stays quiet and heavy weather visibly stacks up.</p>
-    </div>
-  </div>
-  <div class="cloudmatrix">
-    <div class="cmrow"><div></div><div class="cmhead">A · Mock cloud</div><div class="cmhead">B · Extension puff</div><div class="cmhead">C · Hybrid</div></div>
-    <div class="cmrow"><div class="cmlabel">Partly</div>
-      <div class="cmcell sky-day"><svg viewBox="0 0 24 24"><use href="#r-partly-day"/></svg></div>
-      <div class="cmcell sky-day"><svg viewBox="0 0 24 24"><g stroke="#f5a524" stroke-width="1.6" stroke-linecap="round"><path d="M7 2.6v1.8M2.8 5.4l1.3 1.1M2.4 9.8h1.8"/></g><circle cx="7" cy="7.6" r="2.9" fill="url(#sunGrad)"/><use href="#cloudExt" transform="translate(5.2,4.4) scale(.76)" fill="url(#extLight)"/></svg></div>
-      <div class="cmcell sky-day"><svg viewBox="0 0 24 24"><g stroke="#f5a524" stroke-width="1.6" stroke-linecap="round"><path d="M7 2.6v1.8M2.8 5.4l1.3 1.1M2.4 9.8h1.8"/></g><circle cx="7" cy="7.6" r="2.9" fill="url(#sunGrad)"/><use href="#cloudHybrid" transform="translate(5.2,4.4) scale(.76)" fill="url(#cloudDay)"/></svg></div></div>
-    <div class="cmrow"><div class="cmlabel">Overcast</div>
-      <div class="cmcell sky-grey"><svg viewBox="0 0 24 24"><use href="#r-overcast-day"/></svg></div>
-      <div class="cmcell sky-grey"><svg viewBox="0 0 24 24"><use href="#cloudExt" fill="url(#extRain)"/></svg></div>
-      <div class="cmcell sky-grey"><svg viewBox="0 0 24 24"><use href="#cloudHybrid" fill="url(#cloudGrey)"/></svg></div></div>
-    <div class="cmrow"><div class="cmlabel">Rain</div>
-      <div class="cmcell sky-grey"><svg viewBox="0 0 24 24"><use href="#r-rain-day"/></svg></div>
-      <div class="cmcell sky-grey"><svg viewBox="0 0 24 24"><use href="#cloudExt" transform="translate(9.1,5.8) scale(.66)" fill="url(#extRain)" opacity=".8"/><use href="#cloudExt" fill="url(#extRain)"/><use href="#dropsMid"/></svg></div>
-      <div class="cmcell sky-grey"><svg viewBox="0 0 24 24"><use href="#cloudHybrid" fill="url(#cloudGrey)"/><use href="#dropsMid"/></svg></div></div>
-    <div class="cmrow"><div class="cmlabel">Heavy rain</div>
-      <div class="cmcell sky-grey"><svg viewBox="0 0 24 24"><use href="#r-rain-heavy"/></svg></div>
-      <div class="cmcell sky-grey"><svg viewBox="0 0 24 24"><use href="#cloudExt" transform="translate(9.1,5.8) scale(.66)" fill="url(#extDark)" opacity=".8"/><use href="#cloudExt" fill="url(#extDark)"/><use href="#dropsHeavy" transform="translate(0,1.2)"/></svg></div>
-      <div class="cmcell sky-grey"><svg viewBox="0 0 24 24"><use href="#cloudHybrid" transform="translate(8.6,5.4) scale(.66)" fill="url(#cloudStorm)" opacity=".8"/><use href="#cloudHybrid" fill="url(#cloudStorm)"/><use href="#dropsHeavy" transform="translate(0,1.2)"/></svg></div></div>
-    <div class="cmrow"><div class="cmlabel">Snow</div>
-      <div class="cmcell sky-grey"><svg viewBox="0 0 24 24"><use href="#r-snow"/></svg></div>
-      <div class="cmcell sky-grey"><svg viewBox="0 0 24 24"><use href="#cloudExt" transform="translate(9.1,5.8) scale(.66)" fill="url(#extLight)" opacity=".8"/><use href="#cloudExt" fill="url(#extLight)"/><use href="#flakesLight" transform="translate(0,-.4)"/></svg></div>
-      <div class="cmcell sky-grey"><svg viewBox="0 0 24 24"><use href="#cloudHybrid" fill="url(#cloudDay)"/><use href="#flakesLight" transform="translate(0,-.4)"/></svg></div></div>
-    <div class="cmrow"><div class="cmlabel">Storm</div>
-      <div class="cmcell sky-grey"><svg viewBox="0 0 24 24"><use href="#r-storm"/></svg></div>
-      <div class="cmcell sky-grey"><svg viewBox="0 0 24 24"><use href="#cloudExt" transform="translate(9.1,5.8) scale(.66)" fill="url(#extDark)" opacity=".8"/><use href="#cloudExt" fill="url(#extDark)"/><use href="#boltPath" transform="translate(0,1)" fill="url(#boltGrad)" stroke="#e89b1c" stroke-width=".6" stroke-linejoin="round"/></svg></div>
-      <div class="cmcell sky-grey"><svg viewBox="0 0 24 24"><use href="#cloudHybrid" transform="translate(8.6,5.4) scale(.66)" fill="url(#cloudStorm)" opacity=".8"/><use href="#cloudHybrid" fill="url(#cloudStorm)"/><use href="#boltPath" transform="translate(0,1)" fill="url(#boltGrad)" stroke="#e89b1c" stroke-width=".6" stroke-linejoin="round"/></svg></div></div>
-    <div class="cmrow"><div class="cmlabel">Fog</div>
-      <div class="cmcell sky-grey"><svg viewBox="0 0 24 24"><use href="#r-fog-day"/></svg></div>
-      <div class="cmcell sky-grey"><svg viewBox="0 0 24 24"><use href="#cloudExt" transform="translate(1.2,-3.4) scale(.9)" fill="url(#extLight)"/><g stroke="#d7e4f0" stroke-width="1.8" stroke-linecap="round"><path d="M5 16.4h13M7.5 19.2h10M9 21.8h6.5"/></g></svg></div>
-      <div class="cmcell sky-grey"><svg viewBox="0 0 24 24"><use href="#cloudHybrid" transform="translate(1.2,-3.4) scale(.9)" fill="url(#cloudGrey)"/><g stroke="#d7e4f0" stroke-width="1.8" stroke-linecap="round"><path d="M5 16.4h13M7.5 19.2h10M9 21.8h6.5"/></g></svg></div></div>
-    <div class="cmrow"><div class="cmlabel">Rain at 16px<div>sidebar scale</div></div>
-      <div class="cmcell mini side-tint"><svg viewBox="0 0 24 24"><use href="#r-rain-night"/></svg></div>
-      <div class="cmcell mini side-tint"><svg viewBox="0 0 24 24"><use href="#cloudExt" transform="translate(9.1,5.8) scale(.66)" fill="url(#extLight)" opacity=".8"/><use href="#cloudExt" fill="url(#extLight)"/><use href="#dropsMid"/></svg></div>
-      <div class="cmcell mini side-tint"><svg viewBox="0 0 24 24"><use href="#cloudHybrid" fill="url(#cloudNight)"/><use href="#dropsMid"/></svg></div></div>
-  </div>
-  <p class="sub" style="margin-top:12px">Pick a column and the whole sheet — all 28 conditions, size tests, in-context strip —
-  gets rebuilt on that formation. The extension also judges cloud ink against the ground (its four tiers above);
-  that behaviour belongs to the app port, where the sky referee already exists.</p>
-
-  <h2>3 · Completed to the app's 11 scenes</h2>
+  <h2>2 · Completed to the app's 11 scenes</h2>
   <p class="sub">Fog, wind, sleet, hail, and storm are new, drawn from the same parts bin: the shared cloud,
   the rain slash, the flake, the pellet, the bolt. Night cells reuse the day mark unless the scene itself changes.</p>
   <div class="grid fullset">
@@ -458,7 +365,7 @@
     <div class="card"><h3>Moon (clear night)</h3><div class="pair"><div class="cell sky-night"><svg class="ic"><use href="#r-moon"/></svg><span>Night</span></div><div class="cell side-tint"><svg class="ic"><use href="#r-moon"/></svg><span>On sidebar tint</span></div></div></div>
   </div>
 
-  <h2>4 · Every condition the app can show</h2>
+  <h2>3 · Every condition the app can show</h2>
   <p class="sub">All 28 WMO codes in <code>weather.js</code> (<code>WMO</code>), each with its scene and precipitation-intensity tier
   (<code>CODE_PRECIP_INTENSITY</code>, dots), plus the derived overrides and the unknown-code fallback. Variants within a scene —
   drizzle vs rain, showers vs steady rain, light vs heavy — are drawn by swapping precip parts on the shared cloud, so coverage
@@ -467,7 +374,7 @@
   <div class="covgroup">Derived at runtime (no WMO code of their own)</div>
   <div class="cov" id="derived"></div>
 
-  <h2>5 · Size and ground test</h2>
+  <h2>4 · Size and ground test</h2>
   <p class="sub">The app draws these at 26&nbsp;px (tiles, sidebar) and ~20&nbsp;px (chart strip). If a mark dies at 16&nbsp;px here, it dies in the app.</p>
   <div class="card" style="margin-bottom:10px"><h3>Representative marks, 16 → 54</h3>
     <div class="sizes">
@@ -495,7 +402,7 @@
     </div></div>
   </div>
 
-  <h2>6 · In context</h2>
+  <h2>5 · In context</h2>
   <p class="sub">Sidebar rows and a day strip wearing the refined set at production size (26&nbsp;px).</p>
   <div class="context">
     <div class="side">
@@ -519,12 +426,13 @@
     </div>
   </div>
 
-  <h2>7 · Rules if this ports to the app</h2>
+  <h2>6 · Rules if this ports to the app</h2>
   <ul class="rules">
     <li><b>One grid:</b> every mark lives on the 24-unit box; the cloud is a single shared path, precip marks hang from a common baseline.</li>
     <li><b>Severity by shade:</b> cloud gradients step down partly → overcast → rain → storm, so a week strip scans before it reads.</li>
     <li><b>Borrowed tokens:</b> sun/bolt amber and rain blue are the chart series colours (<code>#f5a524</code>, <code>#57a8ff</code>) — icons and chart speak once.</li>
     <li><b>Night is a language, not a filter:</b> crescent replaces the disc; clouds drop one shade step; precip colour stays.</li>
+    <li><b>Occlusion is honest:</b> sun and moon always draw complete underneath; clouds cover what they cover. (Extension puff and hybrid cloud formations were explored and rejected — the mock dome stays.)</li>
     <li><b>Port path:</b> redraw these paths in <code>glyph.js</code> as Cairo vector ops (static, cached raster) — the animated sky stays the painter's job, icons stay crisp and cheap.</li>
   </ul>
 </main>
