@@ -148,8 +148,6 @@
       <path d="M19.6 14.6A8.2 8.2 0 1 1 9.4 4.4a6.6 6.6 0 0 0 10.2 10.2Z" fill="url(#moonGrad)"/>
       <use href="#spark" transform="translate(17.6 5.4)" fill="#ffffff"/>
     </symbol>
-    <symbol id="r-cloud-day" viewBox="0 0 24 24"><use href="#cloudPath" fill="url(#cloudDay)"/></symbol>
-    <symbol id="r-cloud-night" viewBox="0 0 24 24"><use href="#cloudPath" fill="url(#cloudNight)"/></symbol>
     <symbol id="r-partly-day" viewBox="0 0 24 24">
       <use href="#sunFull" transform="translate(1.3,0.9) scale(.6)"/>
       <use href="#cloudPath" transform="translate(2.6 2.9) scale(.84)" fill="url(#cloudDay)"/>
@@ -291,8 +289,14 @@
       <use href="#boltPath" transform="translate(-3,.2) scale(.9)" fill="url(#boltGrad)" stroke="#e89b1c" stroke-width=".6" stroke-linejoin="round"/>
       <use href="#pelletsHeavy" transform="translate(2.4,.4) scale(.86)"/>
     </symbol>
-    <symbol id="r-overcast-day" viewBox="0 0 24 24"><use href="#cloudPath" fill="url(#cloudGrey)"/></symbol>
-    <symbol id="r-overcast-night" viewBox="0 0 24 24"><use href="#cloudPath" fill="url(#cloudNight)"/></symbol>
+    <symbol id="r-overcast-day" viewBox="0 0 24 24">
+      <use href="#cloudPath" transform="translate(-1.6,-2.6) scale(.78)" fill="url(#cloudStorm)"/>
+      <use href="#cloudPath" transform="translate(2,1.6) scale(.88)" fill="url(#cloudGrey)"/>
+    </symbol>
+    <symbol id="r-overcast-night" viewBox="0 0 24 24">
+      <use href="#cloudPath" transform="translate(-1.6,-2.6) scale(.78)" fill="url(#cloudStorm)"/>
+      <use href="#cloudPath" transform="translate(2,1.6) scale(.88)" fill="url(#cloudNight)"/>
+    </symbol>
     <symbol id="r-unknown" viewBox="0 0 24 24">
       <use href="#cloudPath" transform="translate(0,-3.4)" fill="url(#cloudGrey)"/>
       <path d="M10.3 16.4a1.9 1.9 0 1 1 2.6 1.6c-.7.35-.9.75-.9 1.5" fill="none" stroke="#f4f7fa" stroke-width="1.7" stroke-linecap="round"/>
@@ -327,11 +331,12 @@
     <div class="card"><h3>Overcast</h3>
       <div class="trio">
         <div class="cell sky-grey"><svg class="ic"><use href="#o-cloud"/></svg><span>Original</span></div>
-        <div class="cell sky-grey"><svg class="ic"><use href="#r-cloud-day"/></svg><span>Refined day</span></div>
-        <div class="cell sky-night"><svg class="ic"><use href="#r-cloud-night"/></svg><span>Refined night</span></div>
+        <div class="cell sky-grey"><svg class="ic"><use href="#r-overcast-day"/></svg><span>Refined day</span></div>
+        <div class="cell sky-night"><svg class="ic"><use href="#r-overcast-night"/></svg><span>Refined night</span></div>
       </div>
-      <p>One cloud silhouette for the whole set, lit from above by a two-stop gradient. Brightness steps —
-      partly → overcast → rain → storm — now encode severity before any precip marks are read.</p>
+      <p>Like the extension's overcast, a <b>darker cloud banks behind</b> the front one — overcast is a deck,
+      not a puff. The dark rear edge also keeps the silhouette readable on bright skies, where a single pale
+      cloud washes out. Every other scene keeps the one shared cloud.</p>
     </div>
     <div class="card"><h3>Rain</h3>
       <div class="trio">
@@ -365,7 +370,7 @@
   <div class="grid fullset">
     <div class="card"><h3>Sun</h3><div class="pair"><div class="cell sky-day"><svg class="ic"><use href="#r-sun"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-moon"/></svg><span>Night</span></div></div></div>
     <div class="card"><h3>Partly</h3><div class="pair"><div class="cell sky-day"><svg class="ic"><use href="#r-partly-day"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-partly-night"/></svg><span>Night</span></div></div></div>
-    <div class="card"><h3>Cloud</h3><div class="pair"><div class="cell sky-grey"><svg class="ic"><use href="#r-cloud-day"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-cloud-night"/></svg><span>Night</span></div></div></div>
+    <div class="card"><h3>Cloud</h3><div class="pair"><div class="cell sky-grey"><svg class="ic"><use href="#r-overcast-day"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-overcast-night"/></svg><span>Night</span></div></div></div>
     <div class="card"><h3>Fog</h3><div class="pair"><div class="cell sky-grey"><svg class="ic"><use href="#r-fog-day"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-fog-day"/></svg><span>Night</span></div></div></div>
     <div class="card"><h3>Wind</h3><div class="pair"><div class="cell sky-day"><svg class="ic"><use href="#r-wind"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-wind"/></svg><span>Night</span></div></div></div>
     <div class="card"><h3>Rain</h3><div class="pair"><div class="cell sky-grey"><svg class="ic"><use href="#r-rain-day"/></svg><span>Day</span></div><div class="cell sky-night"><svg class="ic"><use href="#r-rain-night"/></svg><span>Night</span></div></div></div>
@@ -403,13 +408,13 @@
   </div>
   <div class="groundrow">
     <div class="ground sky-day"><h3>Day sky · 26px</h3><div class="strip">
-      <svg class="s26"><use href="#r-sun"/></svg><svg class="s26"><use href="#r-partly-day"/></svg><svg class="s26"><use href="#r-cloud-day"/></svg><svg class="s26"><use href="#r-fog-day"/></svg><svg class="s26"><use href="#r-wind"/></svg><svg class="s26"><use href="#r-rain-day"/></svg><svg class="s26"><use href="#r-sleet"/></svg><svg class="s26"><use href="#r-snow"/></svg><svg class="s26"><use href="#r-hail"/></svg><svg class="s26"><use href="#r-storm"/></svg>
+      <svg class="s26"><use href="#r-sun"/></svg><svg class="s26"><use href="#r-partly-day"/></svg><svg class="s26"><use href="#r-overcast-day"/></svg><svg class="s26"><use href="#r-fog-day"/></svg><svg class="s26"><use href="#r-wind"/></svg><svg class="s26"><use href="#r-rain-day"/></svg><svg class="s26"><use href="#r-sleet"/></svg><svg class="s26"><use href="#r-snow"/></svg><svg class="s26"><use href="#r-hail"/></svg><svg class="s26"><use href="#r-storm"/></svg>
     </div></div>
     <div class="ground sky-night"><h3>Night sky · 26px</h3><div class="strip">
-      <svg class="s26"><use href="#r-moon"/></svg><svg class="s26"><use href="#r-partly-night"/></svg><svg class="s26"><use href="#r-cloud-night"/></svg><svg class="s26"><use href="#r-fog-day"/></svg><svg class="s26"><use href="#r-wind"/></svg><svg class="s26"><use href="#r-rain-night"/></svg><svg class="s26"><use href="#r-sleet"/></svg><svg class="s26"><use href="#r-snow"/></svg><svg class="s26"><use href="#r-hail"/></svg><svg class="s26"><use href="#r-storm"/></svg>
+      <svg class="s26"><use href="#r-moon"/></svg><svg class="s26"><use href="#r-partly-night"/></svg><svg class="s26"><use href="#r-overcast-night"/></svg><svg class="s26"><use href="#r-fog-day"/></svg><svg class="s26"><use href="#r-wind"/></svg><svg class="s26"><use href="#r-rain-night"/></svg><svg class="s26"><use href="#r-sleet"/></svg><svg class="s26"><use href="#r-snow"/></svg><svg class="s26"><use href="#r-hail"/></svg><svg class="s26"><use href="#r-storm"/></svg>
     </div></div>
     <div class="ground side-tint"><h3>Sidebar tint · 16px</h3><div class="strip">
-      <svg class="s16"><use href="#r-sun"/></svg><svg class="s16"><use href="#r-moon"/></svg><svg class="s16"><use href="#r-partly-night"/></svg><svg class="s16"><use href="#r-cloud-night"/></svg><svg class="s16"><use href="#r-fog-day"/></svg><svg class="s16"><use href="#r-wind"/></svg><svg class="s16"><use href="#r-rain-night"/></svg><svg class="s16"><use href="#r-sleet"/></svg><svg class="s16"><use href="#r-snow"/></svg><svg class="s16"><use href="#r-hail"/></svg><svg class="s16"><use href="#r-storm"/></svg>
+      <svg class="s16"><use href="#r-sun"/></svg><svg class="s16"><use href="#r-moon"/></svg><svg class="s16"><use href="#r-partly-night"/></svg><svg class="s16"><use href="#r-overcast-night"/></svg><svg class="s16"><use href="#r-fog-day"/></svg><svg class="s16"><use href="#r-wind"/></svg><svg class="s16"><use href="#r-rain-night"/></svg><svg class="s16"><use href="#r-sleet"/></svg><svg class="s16"><use href="#r-snow"/></svg><svg class="s16"><use href="#r-hail"/></svg><svg class="s16"><use href="#r-storm"/></svg>
     </div></div>
   </div>
 
@@ -428,7 +433,7 @@
         <div class="day sel"><div>Today 18</div><svg class="ic"><use href="#r-partly-day"/></svg><div><b>21°</b> <span>14°</span></div></div>
         <div class="day"><div>Fri 19</div><svg class="ic"><use href="#r-sun"/></svg><div><b>23°</b> <span>15°</span></div></div>
         <div class="day"><div>Sat 20</div><svg class="ic"><use href="#r-rain-day"/></svg><div><b>19°</b> <span>14°</span></div></div>
-        <div class="day"><div>Sun 21</div><svg class="ic"><use href="#r-cloud-day"/></svg><div><b>20°</b> <span>13°</span></div></div>
+        <div class="day"><div>Sun 21</div><svg class="ic"><use href="#r-overcast-day"/></svg><div><b>20°</b> <span>13°</span></div></div>
         <div class="day"><div>Mon 22</div><svg class="ic"><use href="#r-storm"/></svg><div><b>24°</b> <span>16°</span></div></div>
         <div class="day"><div>Tue 23</div><svg class="ic"><use href="#r-fog-day"/></svg><div><b>22°</b> <span>15°</span></div></div>
         <div class="day"><div>Wed 24</div><svg class="ic"><use href="#r-snow"/></svg><div><b>18°</b> <span>12°</span></div></div>
