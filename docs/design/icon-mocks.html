@@ -38,6 +38,17 @@
   .pair{display:flex;gap:10px}
   .pair .cell{padding:8px 2px 6px}
   .pair .ic{width:44px;height:44px}
+  .cov{display:flex;flex-direction:column;gap:6px}
+  .covgroup{font-size:12.5px;font-weight:700;color:var(--dim);margin:14px 0 3px}
+  .covrow{display:grid;grid-template-columns:46px 1fr 58px 58px;gap:10px;align-items:center;
+    background:#2b3036;border:1px solid #3a4046;border-radius:10px;padding:6px 10px}
+  .code{font-family:ui-monospace,monospace;font-size:12px;background:rgba(255,255,255,.08);
+    border-radius:999px;text-align:center;padding:3px 0}
+  .covdesc{font-size:13px;font-weight:600}
+  .covmeta{font-size:11px;color:var(--dim)}
+  .tier{color:var(--blue);letter-spacing:1px;font-size:10px}
+  .covcell{border-radius:8px;display:flex;justify-content:center;padding:5px}
+  .covcell .ic{width:26px;height:26px}
   .sizes{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
   .sizes figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:4px}
   .sizes figcaption{font-size:10.5px;color:var(--dim)}
@@ -72,7 +83,7 @@
 <header class="bar">
   <h1>WeatherGlass — icon mocks</h1>
   <p><b style="color:#fff">Source: the whole-window mock's six flat icons</b> (sun · moon · cloud · partly · rain · snow),
-  refined on one 24-unit grid and completed to the app's 11 scenes with night variants. Mock only — the app still paints its painter glyphs.</p>
+  refined on one 24-unit grid, completed to the app's 11 scenes, and mapped over every WMO condition the app can display. Mock only — the app still paints its painter glyphs.</p>
 </header>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -183,6 +194,99 @@
       <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudStorm)"/>
       <path d="M13.2 13.4 9.7 19h2.4l-1.2 3.4L15.7 16.6h-2.7l1.7-3.2Z" fill="url(#boltGrad)" stroke="#e89b1c" stroke-width=".6" stroke-linejoin="round"/>
     </symbol>
+
+    <!-- ===== per-condition variants (coverage matrix) ===== -->
+    <g id="dropsLight" stroke="#57a8ff" stroke-width="1.8" stroke-linecap="round"><path d="M9.6 16.8l-1 2.4M14.8 16.8l-1 2.4"/></g>
+    <g id="dropsHeavy" stroke="#57a8ff" stroke-width="1.7" stroke-linecap="round"><path d="M6.6 16.6l-1.1 2.8M9.8 16.6l-1.1 3.2M13 16.6l-1.1 2.8M16.2 16.6l-1.1 3.2M19.2 16.6l-1 2.6"/></g>
+    <g id="drizzleLight" stroke="#7cc0ff" stroke-width="1.5" stroke-linecap="round"><path d="M9 16.8v1.5M12.4 17.4v1.5M15.8 16.8v1.5"/></g>
+    <g id="drizzleDense" stroke="#7cc0ff" stroke-width="1.5" stroke-linecap="round"><path d="M7 16.6v1.5M9.7 17.4v1.5M12.4 16.6v1.5M15.1 17.4v1.5M17.8 16.6v1.5M10.8 20v1.2M14.2 20.4v1.2"/></g>
+    <g id="flakesLight"><use href="#flake" transform="translate(9.4 18.4) scale(.85)"/><use href="#flake" transform="translate(14.8 19.2) scale(.85)"/></g>
+    <g id="flakesHeavy"><use href="#flake" transform="translate(6.8 17.6) scale(.75)"/><use href="#flake" transform="translate(10.2 19.6) scale(.9)"/><use href="#flake" transform="translate(13.8 17.8) scale(.8)"/><use href="#flake" transform="translate(17.2 19.4) scale(.9)"/></g>
+    <g id="grains" fill="#f4fbff"><circle cx="7.6" cy="17.4" r=".85"/><circle cx="10.4" cy="19.4" r=".85"/><circle cx="13.2" cy="17.8" r=".85"/><circle cx="16" cy="19.6" r=".85"/><circle cx="18.4" cy="17.6" r=".75"/></g>
+    <g id="pelletsHeavy" fill="#eaf6ff" stroke="#9fc9ee" stroke-width=".7"><circle cx="6.6" cy="17.2" r="1.35"/><circle cx="9.8" cy="19.4" r="1.55"/><circle cx="13.2" cy="17.6" r="1.45"/><circle cx="16.4" cy="19.6" r="1.6"/><circle cx="19" cy="17.4" r="1.25"/></g>
+    <path id="boltPath" d="M13.2 13.4 9.7 19h2.4l-1.2 3.4L15.7 16.6h-2.7l1.7-3.2Z"/>
+
+    <symbol id="r-mainly-day" viewBox="0 0 24 24">
+      <g stroke="#f5a524" stroke-width="1.7" stroke-linecap="round"><path d="M10 3v2M4.6 5.4l1.4 1.4M3 10.6h2M15.4 5.4l-1.4 1.4"/></g>
+      <circle cx="10" cy="10" r="4.1" fill="url(#sunGrad)"/>
+      <use href="#cloudPath" transform="translate(9.5,10.5) scale(.52)" fill="url(#cloudDay)"/>
+    </symbol>
+    <symbol id="r-mainly-night" viewBox="0 0 24 24">
+      <path d="M15.8 11.8A6.6 6.6 0 1 1 7.6 3.6a5.3 5.3 0 0 0 8.2 8.2Z" fill="url(#moonGrad)"/>
+      <use href="#cloudPath" transform="translate(9.5,10.5) scale(.52)" fill="url(#cloudNight)"/>
+    </symbol>
+    <symbol id="r-rime-fog" viewBox="0 0 24 24">
+      <use href="#cloudPath" transform="translate(1,-5) scale(.92)" fill="url(#cloudGrey)"/>
+      <g stroke="#d7e4f0" stroke-width="1.8" stroke-linecap="round"><path d="M5 15.6h13M7.5 18.4h10M9 21h6.5"/></g>
+      <use href="#spark" transform="translate(19.4 6.4) scale(.8)" fill="#ffffff"/>
+      <use href="#spark" transform="translate(4.6 10.6) scale(.6)" fill="#ffffff"/>
+    </symbol>
+    <symbol id="r-drizzle-1" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudDay)"/><use href="#drizzleLight"/></symbol>
+    <symbol id="r-drizzle-2" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/><use href="#drizzleLight"/><use href="#drizzleLight" transform="translate(1.6,2.8) scale(.85)"/></symbol>
+    <symbol id="r-drizzle-3" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/><use href="#drizzleDense"/></symbol>
+    <symbol id="r-rain-light" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/><use href="#dropsLight"/></symbol>
+    <symbol id="r-rain-heavy" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudStorm)"/><use href="#dropsHeavy"/></symbol>
+    <symbol id="r-showers-light-day" viewBox="0 0 24 24">
+      <circle cx="6.8" cy="6.8" r="2.9" fill="url(#sunGrad)"/>
+      <use href="#cloudPath" transform="translate(4.2,0.8) scale(.78)" fill="url(#cloudDay)"/><use href="#dropsLight" transform="translate(1.2,.6)"/>
+    </symbol>
+    <symbol id="r-showers-day" viewBox="0 0 24 24">
+      <circle cx="6.8" cy="6.8" r="2.9" fill="url(#sunGrad)"/>
+      <use href="#cloudPath" transform="translate(4.2,0.8) scale(.78)" fill="url(#cloudGrey)"/>
+      <g stroke="#57a8ff" stroke-width="1.8" stroke-linecap="round"><path d="M9.4 17.4l-1.1 2.8M13.8 17.4l-1.1 3.1M18.2 17.4l-1.1 2.8"/></g>
+    </symbol>
+    <symbol id="r-showers-heavy-day" viewBox="0 0 24 24">
+      <circle cx="6.8" cy="6.8" r="2.9" fill="url(#sunGrad)"/>
+      <use href="#cloudPath" transform="translate(4.2,0.8) scale(.78)" fill="url(#cloudStorm)"/><use href="#dropsHeavy" transform="translate(.8,.8) scale(.92)"/>
+    </symbol>
+    <symbol id="r-showers-night" viewBox="0 0 24 24">
+      <path d="M11.8 9.2A5 5 0 1 1 5.6 3a4 4 0 0 0 6.2 6.2Z" fill="url(#moonGrad)"/>
+      <use href="#cloudPath" transform="translate(4.2,0.8) scale(.78)" fill="url(#cloudNight)"/>
+      <g stroke="#57a8ff" stroke-width="1.8" stroke-linecap="round"><path d="M9.4 17.4l-1.1 2.8M13.8 17.4l-1.1 3.1M18.2 17.4l-1.1 2.8"/></g>
+    </symbol>
+    <symbol id="r-freezing-light" viewBox="0 0 24 24">
+      <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/>
+      <path d="M9 16.8l-1.1 2.8" stroke="#57a8ff" stroke-width="1.8" stroke-linecap="round"/>
+      <use href="#flake" transform="translate(14.6 18.4) scale(.85)"/>
+    </symbol>
+    <symbol id="r-freezing-heavy" viewBox="0 0 24 24">
+      <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudStorm)"/>
+      <path d="M8 16.6l-1.1 2.8M16.8 16.6l-1.1 2.8" stroke="#57a8ff" stroke-width="1.8" stroke-linecap="round"/>
+      <use href="#flake" transform="translate(12.2 18.2) scale(.9)"/>
+      <path d="M6 21.8h12" stroke="#bfe3ff" stroke-width="1.3" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="r-snow-light" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudDay)"/><use href="#flakesLight"/></symbol>
+    <symbol id="r-snow-heavy" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/><use href="#flakesHeavy"/></symbol>
+    <symbol id="r-snow-grains" viewBox="0 0 24 24"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudDay)"/><use href="#grains"/></symbol>
+    <symbol id="r-snow-showers-day" viewBox="0 0 24 24">
+      <circle cx="6.8" cy="6.8" r="2.9" fill="url(#sunGrad)"/>
+      <use href="#cloudPath" transform="translate(4.2,0.8) scale(.78)" fill="url(#cloudDay)"/><use href="#flakesLight" transform="translate(1.4,1)"/>
+    </symbol>
+    <symbol id="r-snow-showers-heavy-day" viewBox="0 0 24 24">
+      <circle cx="6.8" cy="6.8" r="2.9" fill="url(#sunGrad)"/>
+      <use href="#cloudPath" transform="translate(4.2,0.8) scale(.78)" fill="url(#cloudGrey)"/><use href="#flakesHeavy" transform="translate(.8,.8) scale(.92)"/>
+    </symbol>
+    <symbol id="r-snow-showers-night" viewBox="0 0 24 24">
+      <path d="M11.8 9.2A5 5 0 1 1 5.6 3a4 4 0 0 0 6.2 6.2Z" fill="url(#moonGrad)"/>
+      <use href="#cloudPath" transform="translate(4.2,0.8) scale(.78)" fill="url(#cloudNight)"/><use href="#flakesLight" transform="translate(1.4,1)"/>
+    </symbol>
+    <symbol id="r-storm-hail" viewBox="0 0 24 24">
+      <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudStorm)"/>
+      <use href="#boltPath" transform="translate(-2.6,.4) scale(.88)" fill="url(#boltGrad)" stroke="#e89b1c" stroke-width=".6" stroke-linejoin="round"/>
+      <g fill="#eaf6ff" stroke="#9fc9ee" stroke-width=".7"><circle cx="16.4" cy="17.6" r="1.45"/><circle cx="18.8" cy="19.8" r="1.25"/></g>
+    </symbol>
+    <symbol id="r-storm-hail-heavy" viewBox="0 0 24 24">
+      <use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudStorm)"/>
+      <use href="#boltPath" transform="translate(-3,.2) scale(.9)" fill="url(#boltGrad)" stroke="#e89b1c" stroke-width=".6" stroke-linejoin="round"/>
+      <use href="#pelletsHeavy" transform="translate(2.4,.4) scale(.86)"/>
+    </symbol>
+    <symbol id="r-overcast-day" viewBox="0 0 24 24"><use href="#cloudPath" fill="url(#cloudGrey)"/></symbol>
+    <symbol id="r-overcast-night" viewBox="0 0 24 24"><use href="#cloudPath" fill="url(#cloudNight)"/></symbol>
+    <symbol id="r-unknown" viewBox="0 0 24 24">
+      <use href="#cloudPath" transform="translate(0,-3.4)" fill="url(#cloudGrey)"/>
+      <path d="M10.3 16.4a1.9 1.9 0 1 1 2.6 1.6c-.7.35-.9.75-.9 1.5" fill="none" stroke="#f4f7fa" stroke-width="1.7" stroke-linecap="round"/>
+      <circle cx="12" cy="21.6" r="1" fill="#f4f7fa"/>
+    </symbol>
   </defs>
 </svg>
 
@@ -260,7 +364,16 @@
     <div class="card"><h3>Moon (clear night)</h3><div class="pair"><div class="cell sky-night"><svg class="ic"><use href="#r-moon"/></svg><span>Night</span></div><div class="cell side-tint"><svg class="ic"><use href="#r-moon"/></svg><span>On sidebar tint</span></div></div></div>
   </div>
 
-  <h2>3 · Size and ground test</h2>
+  <h2>3 · Every condition the app can show</h2>
+  <p class="sub">All 28 WMO codes in <code>weather.js</code> (<code>WMO</code>), each with its scene and precipitation-intensity tier
+  (<code>CODE_PRECIP_INTENSITY</code>, dots), plus the derived overrides and the unknown-code fallback. Variants within a scene —
+  drizzle vs rain, showers vs steady rain, light vs heavy — are drawn by swapping precip parts on the shared cloud, so coverage
+  stays systematic rather than 28 one-off drawings.</p>
+  <div class="cov" id="coverage"></div>
+  <div class="covgroup">Derived at runtime (no WMO code of their own)</div>
+  <div class="cov" id="derived"></div>
+
+  <h2>4 · Size and ground test</h2>
   <p class="sub">The app draws these at 26&nbsp;px (tiles, sidebar) and ~20&nbsp;px (chart strip). If a mark dies at 16&nbsp;px here, it dies in the app.</p>
   <div class="card" style="margin-bottom:10px"><h3>Representative marks, 16 → 54</h3>
     <div class="sizes">
@@ -288,7 +401,7 @@
     </div></div>
   </div>
 
-  <h2>4 · In context</h2>
+  <h2>5 · In context</h2>
   <p class="sub">Sidebar rows and a day strip wearing the refined set at production size (26&nbsp;px).</p>
   <div class="context">
     <div class="side">
@@ -312,7 +425,7 @@
     </div>
   </div>
 
-  <h2>5 · Rules if this ports to the app</h2>
+  <h2>6 · Rules if this ports to the app</h2>
   <ul class="rules">
     <li><b>One grid:</b> every mark lives on the 24-unit box; the cloud is a single shared path, precip marks hang from a common baseline.</li>
     <li><b>Severity by shade:</b> cloud gradients step down partly → overcast → rain → storm, so a week strip scans before it reads.</li>
@@ -321,5 +434,76 @@
     <li><b>Port path:</b> redraw these paths in <code>glyph.js</code> as Cairo vector ops (static, cached raster) — the animated sky stays the painter's job, icons stay crisp and cheap.</li>
   </ul>
 </main>
+<script>
+  // Coverage data mirrors app/src/weather.js: WMO descriptions/scenes and
+  // CODE_PRECIP_INTENSITY tiers, checked 2026-10-18. [code, desc, scene, tier, dayIcon, nightIcon, dayGround]
+  const GROUPS = [
+    ['Clear & cloud', [
+      [0, 'Clear sky', 'sun', 0, 'r-sun', 'r-moon', 'sky-day'],
+      [1, 'Mainly clear', 'sun', 0, 'r-mainly-day', 'r-mainly-night', 'sky-day'],
+      [2, 'Partly cloudy', 'partly', 0, 'r-partly-day', 'r-partly-night', 'sky-day'],
+      [3, 'Overcast', 'cloud', 0, 'r-overcast-day', 'r-overcast-night', 'sky-grey'],
+    ]],
+    ['Fog', [
+      [45, 'Fog', 'fog', 0, 'r-fog-day', 'r-fog-day', 'sky-grey'],
+      [48, 'Depositing rime fog', 'fog', 0, 'r-rime-fog', 'r-rime-fog', 'sky-grey'],
+    ]],
+    ['Drizzle', [
+      [51, 'Light drizzle', 'rain', 1, 'r-drizzle-1', 'r-drizzle-1', 'sky-grey'],
+      [53, 'Drizzle', 'rain', 2, 'r-drizzle-2', 'r-drizzle-2', 'sky-grey'],
+      [55, 'Dense drizzle', 'rain', 3, 'r-drizzle-3', 'r-drizzle-3', 'sky-grey'],
+    ]],
+    ['Rain', [
+      [61, 'Light rain', 'rain', 1, 'r-rain-light', 'r-rain-light', 'sky-grey'],
+      [63, 'Rain', 'rain', 2, 'r-rain-day', 'r-rain-night', 'sky-grey'],
+      [65, 'Heavy rain', 'rain', 3, 'r-rain-heavy', 'r-rain-heavy', 'sky-grey'],
+    ]],
+    ['Freezing precipitation (sleet scene)', [
+      [56, 'Light freezing drizzle', 'sleet', 3, 'r-freezing-light', 'r-freezing-light', 'sky-grey'],
+      [57, 'Dense freezing drizzle', 'sleet', 4, 'r-sleet', 'r-sleet', 'sky-grey'],
+      [66, 'Light freezing rain', 'sleet', 3, 'r-freezing-light', 'r-freezing-light', 'sky-grey'],
+      [67, 'Heavy freezing rain', 'sleet', 4, 'r-freezing-heavy', 'r-freezing-heavy', 'sky-grey'],
+    ]],
+    ['Snow', [
+      [71, 'Light snow', 'snow', 1, 'r-snow-light', 'r-snow-light', 'sky-grey'],
+      [73, 'Snow', 'snow', 2, 'r-snow', 'r-snow', 'sky-grey'],
+      [75, 'Heavy snow', 'snow', 3, 'r-snow-heavy', 'r-snow-heavy', 'sky-grey'],
+      [77, 'Snow grains', 'snow', 1, 'r-snow-grains', 'r-snow-grains', 'sky-grey'],
+    ]],
+    ['Showers', [
+      [80, 'Light showers', 'rain', 1, 'r-showers-light-day', 'r-showers-night', 'sky-day'],
+      [81, 'Showers', 'rain', 2, 'r-showers-day', 'r-showers-night', 'sky-day'],
+      [82, 'Violent showers', 'rain', 3, 'r-showers-heavy-day', 'r-showers-night', 'sky-day'],
+      [85, 'Snow showers', 'snow', 2, 'r-snow-showers-day', 'r-snow-showers-night', 'sky-day'],
+      [86, 'Heavy snow showers', 'snow', 3, 'r-snow-showers-heavy-day', 'r-snow-showers-night', 'sky-day'],
+    ]],
+    ['Thunderstorm', [
+      [95, 'Thunderstorm', 'storm', 5, 'r-storm', 'r-storm', 'sky-grey'],
+      [96, 'Thunderstorm with hail', 'hail', 6, 'r-storm-hail', 'r-storm-hail', 'sky-grey'],
+      [99, 'Thunderstorm with heavy hail', 'hail', 6, 'r-storm-hail-heavy', 'r-storm-hail-heavy', 'sky-grey'],
+    ]],
+  ];
+  // deriveScene() / effectiveScene() / wmoInfo() fallback in weather.js
+  const DERIVED = [
+    ['CAPE ≥1200', 'Thunderstorm (from any liquid-precip code)', 'storm', 'r-storm', 'r-storm'],
+    ['CAPE ≥2500', 'Thunderstorm with hail (from any liquid-precip code)', 'hail', 'r-storm-hail', 'r-storm-hail'],
+    ['Vis <1 km', 'Fog (visibility-derived, no precipitation)', 'fog', 'r-fog-day', 'r-fog-day'],
+    ['Wind ≥30', 'Wind override (calm scenes only; description unchanged)', 'wind', 'r-wind', 'r-wind'],
+    ['Other', 'Unknown (unlisted code → cloud fallback)', 'cloud', 'r-unknown', 'r-unknown'],
+  ];
+  const cell = (icon, ground) =>
+    `<div class="covcell ${ground}"><svg class="ic"><use href="#${icon}"/></svg></div>`;
+  const tierDots = t => t ? `<span class="tier">${'●'.repeat(t)}${'○'.repeat(6 - t)}</span> tier ${t}` : 'no precip';
+  document.getElementById('coverage').innerHTML = GROUPS.map(([group, rows]) =>
+    `<div class="covgroup">${group}</div>` + rows.map(([code, desc, scene, tier, day, night, ground]) =>
+      `<div class="covrow"><div class="code">${code}</div>
+       <div><div class="covdesc">${desc}</div><div class="covmeta">scene <b>${scene}</b> · ${tierDots(tier)}</div></div>
+       ${cell(day, ground)}${cell(night, 'sky-night')}</div>`).join('')
+  ).join('');
+  document.getElementById('derived').innerHTML = DERIVED.map(([code, desc, scene, day, night]) =>
+    `<div class="covrow"><div class="code" style="font-size:10px">${code}</div>
+     <div><div class="covdesc">${desc}</div><div class="covmeta">scene <b>${scene}</b></div></div>
+     ${cell(day, 'sky-grey')}${cell(night, 'sky-night')}</div>`).join('');
+</script>
 </body>
 </html>
