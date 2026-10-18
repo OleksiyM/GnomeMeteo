@@ -76,6 +76,30 @@
   ul.rules{font-size:12.5px;color:var(--dim);line-height:1.55;margin:6px 0 0;padding-left:18px;max-width:860px}
   ul.rules b{color:var(--ink)}
   code{font-family:ui-monospace,monospace;font-size:11.5px;color:#cfd6dd}
+  .pausebtn{font:inherit;font-size:12px;font-weight:650;color:var(--ink);
+    background:rgba(16,20,28,.45);border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer}
+  @keyframes wg-spin{to{transform:rotate(360deg)}}
+  @keyframes wg-drift{0%,100%{transform:translateX(-.55px)}50%{transform:translateX(.55px)}}
+  @keyframes wg-fall{0%{transform:translate(.45px,-2.4px);opacity:0}16%{opacity:1}78%{opacity:1}100%{transform:translate(-.55px,3.1px);opacity:0}}
+  @keyframes wg-snow{0%{transform:translate(-.5px,-2.1px) rotate(-24deg);opacity:0}16%{opacity:1}50%{transform:translate(.55px,.4px) rotate(18deg)}84%{opacity:1}100%{transform:translate(-.4px,2.9px) rotate(52deg);opacity:0}}
+  @keyframes wg-flash{0%,52%,100%{opacity:.22}58%,68%{opacity:1}63%{opacity:.45}}
+  @keyframes wg-twinkle{0%,100%{opacity:.2}50%{opacity:1}}
+  @keyframes wg-fog{from{transform:translateX(1.5px)}to{transform:translateX(-1.5px)}}
+  @keyframes wg-wind{0%{transform:translateX(-1.5px);opacity:.35}30%,70%{opacity:1}100%{transform:translateX(1.7px);opacity:.35}}
+  @keyframes wg-glow{0%,100%{opacity:.45}50%{opacity:.85}}
+  .spin-slow{transform-box:fill-box;transform-origin:center;animation:wg-spin 44s linear infinite}
+  .spin-fast{transform-box:view-box;transform-origin:center;animation:wg-spin 1.1s linear infinite}
+  .drift{animation:wg-drift 5.5s ease-in-out infinite}
+  .drift2{animation:wg-drift 7s ease-in-out infinite reverse}
+  .fall{animation:wg-fall 1.15s linear infinite}
+  .fall-fast{animation:wg-fall .78s linear infinite}
+  .snowfall{transform-box:view-box;animation:wg-snow 2.7s linear infinite}
+  .flash{animation:wg-flash 3.6s linear infinite}
+  .twinkle{animation:wg-twinkle 2.3s ease-in-out infinite}
+  .fogslide{animation:wg-fog 4.5s ease-in-out infinite alternate}
+  .windmove{animation:wg-wind 2.9s ease-in-out infinite}
+  .glowpulse{animation:wg-glow 3.2s ease-in-out infinite}
+  .anim-paused *{animation-play-state:paused!important}
   @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -140,10 +164,11 @@
     <!-- the full sun, drawn complete wherever it appears: partly/showers
          layer the cloud OVER it, so right/bottom rays exist and are
          genuinely occluded rather than omitted -->
+    <g id="sunRays" stroke="#f5a524" stroke-width="1.8" stroke-linecap="round">
+      <path d="M12 3.2v2.3M12 18.5v2.3M3.2 12h2.3M18.5 12h2.3M16.4 7.6l1.7-1.7M16.4 16.4l1.7 1.7M7.6 16.4l-1.7 1.7M7.6 7.6 5.9 5.9"/>
+    </g>
     <g id="sunFull">
-      <g stroke="#f5a524" stroke-width="1.8" stroke-linecap="round">
-        <path d="M12 3.2v2.3M12 18.5v2.3M3.2 12h2.3M18.5 12h2.3M16.4 7.6l1.7-1.7M16.4 16.4l1.7 1.7M7.6 16.4l-1.7 1.7M7.6 7.6 5.9 5.9"/>
-      </g>
+      <use href="#sunRays"/>
       <circle cx="12" cy="12" r="4.7" fill="url(#sunGrad)"/>
     </g>
     <symbol id="r-sun" viewBox="0 0 24 24"><use href="#sunFull"/></symbol>
@@ -443,7 +468,30 @@
   <svg class="s26" viewBox="0 0 24 24" style="vertical-align:-7px"><use href="#ph-waxg" transform="translate(-2.4,-3.4) scale(.72)"/><use href="#cloudPath" transform="translate(2.6,2.9) scale(.84)" fill="url(#cloudNight)"/></svg>
   — the generic crescent elsewhere in this sheet is the waxing-crescent stand-in.</p>
 
-  <h2>4 · Every condition the app can show</h2>
+  <h2>4 · Animated, like the extension</h2>
+  <p class="sub">The extension's glyphs are alive: sun rays turn once in ~45s while the glow breathes, stars twinkle,
+  clouds drift against each other, teardrops fall and fade in under the cloud, flakes sway and rotate, fog bands slide,
+  wind streaks travel, and the storm bolt flashes and rests. The same loops in CSS (wrappers animate, so positioned parts keep their places):
+  <button class="pausebtn" id="animToggle" type="button">Pause motion</button></p>
+  <div class="grid fullset" id="animGrid">
+    <div class="card"><h3>Sun</h3><div class="cell sky-day"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4" fill="#ffcf5c" class="glowpulse" opacity=".5"/><g class="spin-slow"><use href="#sunRays"/></g><circle cx="12" cy="12" r="4.7" fill="url(#sunGrad)"/></svg></div></div>
+    <div class="card"><h3>Moon · Waxing Crescent</h3><div class="cell sky-night"><svg class="ic" viewBox="0 0 24 24"><use href="#ph-waxc" width="24" height="24"/><g class="twinkle"><use href="#spark" transform="translate(19 5.5) scale(.8)" fill="#ffffff"/></g><g class="twinkle" style="animation-delay:-1.15s"><use href="#spark" transform="translate(17.5 14) scale(.55)" fill="#ffffff"/></g></svg></div></div>
+    <div class="card"><h3>Partly</h3><div class="cell sky-day"><svg class="ic" viewBox="0 0 24 24"><g transform="translate(1.3,0.9) scale(.6)"><g class="spin-slow"><use href="#sunRays"/></g><circle cx="12" cy="12" r="4.7" fill="url(#sunGrad)"/></g><g class="drift"><use href="#cloudPath" transform="translate(2.6,2.9) scale(.84)" fill="url(#cloudDay)"/></g></svg></div></div>
+    <div class="card"><h3>Overcast</h3><div class="cell sky-grey"><svg class="ic" viewBox="0 0 24 24"><g class="drift2"><use href="#cloudPath" transform="translate(-1.2,2.52) scale(.74,.52)" fill="url(#cloudStorm)"/></g><g class="drift"><use href="#cloudPath" transform="translate(2,1.6) scale(.88)" fill="url(#cloudGrey)"/></g></svg></div></div>
+    <div class="card"><h3>Fog</h3><div class="cell sky-grey"><svg class="ic" viewBox="0 0 24 24"><g class="drift"><use href="#cloudPath" transform="translate(1,-5) scale(.92)" fill="url(#cloudGrey)"/></g><g class="fogslide"><g stroke="#d7e4f0" stroke-width="1.8" stroke-linecap="round"><path d="M5 15.6h13M7.5 18.4h10M9 21h6.5"/></g></g></svg></div></div>
+    <div class="card"><h3>Wind</h3><div class="cell sky-day"><svg class="ic" viewBox="0 0 24 24"><g class="windmove"><use href="#r-wind" width="24" height="24"/></g></svg></div></div>
+    <div class="card"><h3>Rain</h3><div class="cell sky-grey"><svg class="ic" viewBox="0 0 24 24"><g class="drift"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/></g><g class="fall" style="animation-delay:-.15s"><use href="#dropDay" transform="translate(7.8,18.4) scale(.92)"/></g><g class="fall" style="animation-delay:-.55s"><use href="#dropDay" transform="translate(12.2,19) scale(.98)"/></g><g class="fall" style="animation-delay:-.9s"><use href="#dropDay" transform="translate(16.6,18.4) scale(.92)"/></g></svg></div></div>
+    <div class="card"><h3>Sleet</h3><div class="cell sky-grey"><svg class="ic" viewBox="0 0 24 24"><g class="drift"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/></g><g class="fall" style="animation-delay:-.3s"><use href="#dropDay" transform="translate(7.8,18.4) scale(.92)"/></g><g class="snowfall" style="transform-origin:14.6px 18.6px"><use href="#flake" transform="translate(14.6,18.6)"/></g></svg></div></div>
+    <div class="card"><h3>Snow</h3><div class="cell sky-grey"><svg class="ic" viewBox="0 0 24 24"><g class="drift"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudDay)"/></g><g class="snowfall" style="transform-origin:7.8px 18.2px;animation-delay:-.4s"><use href="#flake" transform="translate(7.8,18.2) scale(.8)"/></g><g class="snowfall" style="transform-origin:12.4px 19.6px;animation-delay:-1.5s"><use href="#flake" transform="translate(12.4,19.6) scale(.95)"/></g><g class="snowfall" style="transform-origin:17px 18.2px;animation-delay:-2.2s"><use href="#flake" transform="translate(17,18.2) scale(.8)"/></g></svg></div></div>
+    <div class="card"><h3>Hail</h3><div class="cell sky-grey"><svg class="ic" viewBox="0 0 24 24"><g class="drift"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudGrey)"/></g><g class="fall-fast" style="animation-delay:-.1s"><circle cx="7.8" cy="17.4" r="1.55" fill="#eaf6ff" stroke="#9fc9ee" stroke-width=".7"/></g><g class="fall-fast" style="animation-delay:-.45s"><circle cx="12.4" cy="19.2" r="1.8" fill="#eaf6ff" stroke="#9fc9ee" stroke-width=".7"/></g><g class="fall-fast" style="animation-delay:-.65s"><circle cx="17" cy="17.4" r="1.4" fill="#eaf6ff" stroke="#9fc9ee" stroke-width=".7"/></g></svg></div></div>
+    <div class="card"><h3>Storm</h3><div class="cell sky-night"><svg class="ic" viewBox="0 0 24 24"><g class="drift2"><use href="#cloudPath" transform="translate(0,-3.8)" fill="url(#cloudStorm)"/></g><g class="flash"><use href="#boltPath" fill="url(#boltGrad)" stroke="#e89b1c" stroke-width=".6" stroke-linejoin="round"/></g><g class="fall" style="animation-delay:-.5s"><use href="#dropNight" transform="translate(6.8,18.6) scale(.85)"/></g><g class="fall" style="animation-delay:-.95s"><use href="#dropNight" transform="translate(17.4,18.6) scale(.85)"/></g></svg></div></div>
+    <div class="card"><h3>Loading (extension spinner)</h3><div class="cell sky-grey"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="2"/><g class="spin-fast"><path d="M12 6a6 6 0 0 1 5.2 3" fill="none" stroke="#dfe7ef" stroke-width="2" stroke-linecap="round"/></g></svg></div></div>
+  </div>
+  <p class="sub" style="margin-top:12px">Motion rules carry over from the painter: precip fades in under the cloud and out at the floor,
+  counts (never drop size) carry intensity, and nothing here animates under <code>prefers-reduced-motion</code>.
+  In the app these loops belong to the existing frame-clock painter — the CSS above is the timing spec (fall 1.15s, snow 2.7s, rays 44s/rev, bolt flash every 3.6s).</p>
+
+  <h2>5 · Every condition the app can show</h2>
   <p class="sub">All 28 WMO codes in <code>weather.js</code> (<code>WMO</code>), each with its scene and precipitation-intensity tier
   (<code>CODE_PRECIP_INTENSITY</code>, dots), plus the derived overrides and the unknown-code fallback. Variants within a scene —
   drizzle vs rain, showers vs steady rain, light vs heavy — are drawn by swapping precip parts on the shared cloud, so coverage
@@ -452,7 +500,7 @@
   <div class="covgroup">Derived at runtime (no WMO code of their own)</div>
   <div class="cov" id="derived"></div>
 
-  <h2>5 · Size and ground test</h2>
+  <h2>6 · Size and ground test</h2>
   <p class="sub">The app draws these at 26&nbsp;px (tiles, sidebar) and ~20&nbsp;px (chart strip). If a mark dies at 16&nbsp;px here, it dies in the app.</p>
   <div class="card" style="margin-bottom:10px"><h3>Representative marks, 16 → 54</h3>
     <div class="sizes">
@@ -480,7 +528,7 @@
     </div></div>
   </div>
 
-  <h2>6 · In context</h2>
+  <h2>7 · In context</h2>
   <p class="sub">Sidebar rows and a day strip wearing the refined set at production size (26&nbsp;px).</p>
   <div class="context">
     <div class="side">
@@ -504,7 +552,7 @@
     </div>
   </div>
 
-  <h2>7 · Rules if this ports to the app</h2>
+  <h2>8 · Rules if this ports to the app</h2>
   <ul class="rules">
     <li><b>One grid:</b> every mark lives on the 24-unit box; the cloud is a single shared path, precip marks hang from a common baseline.</li>
     <li><b>Severity by shade:</b> cloud gradients step down partly → overcast → rain → storm, so a week strip scans before it reads.</li>
@@ -584,6 +632,13 @@
     `<div class="covrow"><div class="code" style="font-size:10px">${code}</div>
      <div><div class="covdesc">${desc}</div><div class="covmeta">scene <b>${scene}</b></div></div>
      ${cell(day, 'sky-grey')}${cell(night, 'sky-night')}</div>`).join('');
+</script>
+<script>
+  document.getElementById('animToggle').addEventListener('click', (e) => {
+    const grid = document.getElementById('animGrid');
+    const paused = grid.classList.toggle('anim-paused');
+    e.currentTarget.textContent = paused ? 'Resume motion' : 'Pause motion';
+  });
 </script>
 </body>
 </html>
