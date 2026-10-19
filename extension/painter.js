@@ -262,37 +262,55 @@ function windStreaks(cr, time, alphaScale, count = 3) {
  *  (strip glyphs, day tiles) stagger in a two-row-deep constellation
  *  centred on the cloud. Either way the shape is a teardrop, and
  *  intensity decides the COUNT -- heavier rain, more drops. */
+/* Animated rain follows the mock's wg-fall: a ~1.15s cycle over a
+ * 5.8-unit fall, fading in by 16% and out from 78%, drifting gently
+ * leftward as it falls (further with wind slant). Each drop owns a
+ * phase and cycle length and re-seeds its lane every cycle, so falls
+ * stagger like real rain -- no pop-in at the cloud base, no bunching
+ * into waves, no two drops ever in lockstep. */
+function animatedRain(cr, particles, time, total, slant, alpha, waterColor, dropScale) {
+    const lean = 0.6 + slant * 2.6;
+    for (let i = 0; i < total; i++) {
+        const drop = particles.drops[i];
+        const seedF = ((drop.length ?? drop.len) * 0.371 + i * 0.618) % 1;
+        const period = 1.15 * (0.85 + 0.35 * seedF);
+        const t = time / period + seedF * 7.0;
+        const cycle = Math.floor(t);
+        const p = t - cycle;
+        const fade = Math.min(p / 0.16, 1, Math.max(0, (1 - p) / 0.22));
+        if (fade <= 0)
+            continue;
+        const lane = (seedF * 7.13 + cycle * 0.618) % 1;
+        const x = 4.4 + lane * 15.2 + (0.5 - p) * lean;
+        const y = 16.8 + p * 5.8;
+        const s = Math.min(0.98, 0.72 + (drop.length ?? drop.len) * 0.08) * dropScale;
+        cr.setSourceRGBA(waterColor[0], waterColor[1], waterColor[2], alpha * fade);
+        teardrop(cr, x, y, s);
+        cr.fill();
+        cr.setSourceRGBA(1, 1, 1, 0.8 * alpha * fade);
+        circle(cr, x - 0.45 * s, y - 0.30 * s, 0.34 * s);
+        cr.fill();
+    }
+}
+
 function rainDrops(cr, particles, time, count, slant, alpha, band = [18.4, 20.0], dropScale = 1, xBand = [5.8, 18.2]) {
-    const lastTime = particles.lastTime ?? particles.lastT;
-    const dt = lastTime === null ? 0 : Math.min(0.06, time - lastTime);
     const waterColor = INK_WATER();
-    cr.setSourceRGBA(waterColor[0], waterColor[1], waterColor[2], alpha);
     const total = Math.min(count, particles.drops.length);
+    if (!particles.static) {
+        animatedRain(cr, particles, time, total, slant, alpha, waterColor, dropScale);
+        return;
+    }
+    cr.setSourceRGBA(waterColor[0], waterColor[1], waterColor[2], alpha);
     // bulb diameter 2.9 at full scale: the zigzag keeps every pair
     // of bulbs at least 2.75 apart (they step past each other
     // diagonally like falling rain, never into each other)
-    const spots = particles.static
-        ? staggeredSpots(total, particles.seed ?? 7,
-            (xBand[0] + xBand[1]) / 2, (xBand[1] - xBand[0]) / 2 - 0.4,
-            band[0], band[1], 2.75 * dropScale)
-        : null;
+    const spots = staggeredSpots(total, particles.seed ?? 7,
+        (xBand[0] + xBand[1]) / 2, (xBand[1] - xBand[0]) / 2 - 0.4,
+        band[0], band[1], 2.75 * dropScale);
     const marks = [];
     for (let i = 0; i < total; i++) {
-        let x, y, s;
-        if (particles.static) {
-            [x, y] = spots[i];
-            s = (i % 2 ? 0.88 : 0.98) * dropScale;
-        } else {
-            const drop = particles.drops[i];
-            drop.y += (drop.speed ?? drop.sp) * dt;
-            if (drop.y > 23.5) {
-                drop.y = rand(14.6, 16.2);
-                drop.x = rand(2.5, 21.5);
-            }
-            x = drop.x;
-            y = drop.y;
-            s = Math.min(0.98, 0.72 + (drop.length ?? drop.len) * 0.08) * dropScale;
-        }
+        const [x, y] = spots[i];
+        const s = (i % 2 ? 0.88 : 0.98) * dropScale;
         const drawX = x - slant * (y - 10) * 0.18;
         marks.push([drawX, y, s]);
         teardrop(cr, drawX, y, s);
@@ -305,10 +323,13 @@ function rainDrops(cr, particles, time, count, slant, alpha, band = [18.4, 20.0]
     cr.fill();
 }
 
-/** Snowflakes (six spokes), drifting side to side. */
+/** Snowflakes (six spokes). Static poses stagger; animated falls
+ *  follow the mock's wg-snow: a ~2.7s soft float -- slow descent,
+ *  a gentle side-to-side sway, a lazy tumble (-24deg to +52deg
+ *  across the cycle, never a continuous spin), fading in and out
+ *  at the ends. Each flake owns a phase and re-seeds its lane per
+ *  cycle, like the rain. */
 function snowFlakes(cr, particles, time, count, flakeBand = [17.8, 20.2], xBand = [6.6, 17.2]) {
-    const lastTime = particles.lastTime ?? particles.lastT;
-    const dt = lastTime === null ? 0 : Math.min(0.06, time - lastTime);
     cr.setLineCap(Cairo.LineCap.ROUND);
     cr.setLineWidth(0.75);
     const total = Math.min(count, particles.flakes.length);
@@ -318,7 +339,7 @@ function snowFlakes(cr, particles, time, count, flakeBand = [17.8, 20.2], xBand 
             flakeBand[0], flakeBand[1], 3.5)
         : null;
     for (let i = 0; i < total; i++) {
-        let x, y, rot, radius;
+        let x, y, rot, radius, flakeAlpha = 0.95;
         if (particles.static) {
             [x, y] = flakeSpots[i];
             radius = 1.7;
@@ -326,21 +347,28 @@ function snowFlakes(cr, particles, time, count, flakeBand = [17.8, 20.2], xBand 
         } else {
             const flake = particles.flakes[i];
             const phase = flake.phase ?? flake.ph;
-            flake.y += (flake.speed ?? flake.sp) * dt;
-            if (flake.y > 23.5) {
-                flake.y = rand(14.0, 15.6);
-                flake.x = rand(3, 21);
-            }
-            x = flake.x + Math.sin(time * 1.4 + phase) * 1.1;
-            y = flake.y;
-            rot = time * 1.2 + phase;
+            const seedF = (phase / TWO_PI) % 1;
+            const period = 2.7 * (0.85 + 0.4 * seedF);
+            const t = time / period + seedF * 5.0;
+            const cycle = Math.floor(t);
+            const p = t - cycle;
+            const fade = Math.min(p / 0.16, 1, Math.max(0, (1 - p) / 0.16));
+            if (fade <= 0)
+                continue;
+            flakeAlpha = 0.95 * fade;
+            const lane = (seedF * 7.13 + cycle * 0.618) % 1;
+            x = 4.6 + lane * 14.8 + Math.sin(p * TWO_PI) * 0.55;
+            y = 16.6 + p * 5.6;
+            rot = p < 0.5
+                ? -0.42 + (p / 0.5) * 0.73
+                : 0.31 + ((p - 0.5) / 0.5) * 0.60;
             radius = (flake.radius ?? flake.r) * 1.45;
         }
         cr.save();
         cr.translate(x, y);
         cr.rotate(rot);
         const flakeColor = INK_FLAKE();
-        cr.setSourceRGBA(flakeColor[0], flakeColor[1], flakeColor[2], 0.95);
+        cr.setSourceRGBA(flakeColor[0], flakeColor[1], flakeColor[2], flakeAlpha);
         for (let k = 0; k < 6; k++) {
             const angle = (k / 6) * TWO_PI;
             line(cr, 0, 0, Math.cos(angle) * radius, Math.sin(angle) * radius);
@@ -671,29 +699,34 @@ function sceneRain(cr, ctx) {
 /** Snow grains (code 77): opaque white pellets, not flakes. Rides the
  *  flake particles for motion; only the mark changes. */
 function snowGrains(cr, particles, time, count, cloudCx = 12) {
-    const lastTime = particles.lastTime ?? particles.lastT;
-    const dt = lastTime === null ? 0 : Math.min(0.06, time - lastTime);
     const total = Math.min(count, particles.flakes.length);
     const spots = particles.static
         ? staggeredSpots(total, (particles.seed ?? 7) + 37, cloudCx, 4.9,
             17.6, 20.0, 1.75)
         : null;
     const grainColor = INK_FLAKE();
-    cr.setSourceRGBA(grainColor[0], grainColor[1], grainColor[2], 0.95);
     for (let i = 0; i < total; i++) {
-        let x, y;
+        let x, y, grainAlpha = 0.95;
         if (particles.static) {
             [x, y] = spots[i];
         } else {
+            // pellets fall faster and straighter than flakes: same
+            // phase cycle at 0.55x the period, a third of the sway
             const flake = particles.flakes[i];
-            flake.y += (flake.speed ?? flake.sp) * dt;
-            if (flake.y > 23.5) {
-                flake.y = rand(14.0, 15.6);
-                flake.x = rand(3, 21);
-            }
-            x = flake.x + Math.sin(time * 1.4 + (flake.phase ?? flake.ph)) * 0.7;
-            y = flake.y;
+            const seedF = ((flake.phase ?? flake.ph) / TWO_PI) % 1;
+            const period = 1.5 * (0.85 + 0.4 * seedF);
+            const t = time / period + seedF * 5.0;
+            const cycle = Math.floor(t);
+            const p = t - cycle;
+            const fade = Math.min(p / 0.16, 1, Math.max(0, (1 - p) / 0.16));
+            if (fade <= 0)
+                continue;
+            grainAlpha = 0.95 * fade;
+            const lane = (seedF * 7.13 + cycle * 0.618) % 1;
+            x = 4.6 + lane * 14.8 + Math.sin(p * TWO_PI) * 0.18;
+            y = 16.6 + p * 5.6;
         }
+        cr.setSourceRGBA(grainColor[0], grainColor[1], grainColor[2], grainAlpha);
         circle(cr, x, y, 0.8);
         cr.fill();
     }
