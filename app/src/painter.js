@@ -55,14 +55,16 @@ function line(cr, x1, y1, x2, y2) {
 }
 
 /** Teardrop droplet: round bottom, pointed tip, always upright.
- *  (x, y) is the centre of the round bottom; s the drop scale. */
+ *  (x, y) is the centre of the round bottom; s the drop scale.
+ *  Traced from the mock dropPath: bulb radius 1.45, tip 3.15 above
+ *  the bulb centre (2.9 wide x 4.6 tall at s=1). */
 function teardrop(cr, x, y, s) {
-    cr.moveTo(x, y - 2.35 * s);
-    cr.curveTo(x + 0.62 * s, y - 1.35 * s, x + 0.95 * s, y - 0.72 * s,
-        x + 0.95 * s, y - 0.05 * s);
-    cr.arc(x, y - 0.05 * s, 0.95 * s, 0, Math.PI);
-    cr.curveTo(x - 0.95 * s, y - 0.72 * s, x - 0.62 * s, y - 1.35 * s,
-        x, y - 2.35 * s);
+    cr.moveTo(x, y - 3.15 * s);
+    cr.curveTo(x + 0.95 * s, y - 1.75 * s, x + 1.45 * s, y - 0.80 * s,
+        x + 1.45 * s, y);
+    cr.arc(x, y, 1.45 * s, 0, Math.PI);
+    cr.curveTo(x - 1.45 * s, y - 0.80 * s, x - 0.95 * s, y - 1.75 * s,
+        x, y - 3.15 * s);
     cr.closePath();
 }
 
@@ -78,6 +80,7 @@ function seededSpots(count, seed, x0, x1, y0, y1, minDx, minDy) {
     const spots = [];
     for (let i = 0; i < count; i++) {
         let x = x0, y = y0, ok = false;
+        let bestX = x0, bestY = y0, bestScore = -1;
         for (let k = 0; k < 24 && !ok; k++) {
             u += golden;
             x = x0 + (u % 1) * (x1 - x0);
@@ -85,10 +88,22 @@ function seededSpots(count, seed, x0, x1, y0, y1, minDx, minDy) {
             y = y0 + (u % 1) * (y1 - y0);
             ok = spots.every(([ox, oy]) =>
                 Math.abs(ox - x) >= minDx || Math.abs(oy - y) >= minDy);
+            // tight bands make the constraint unsatisfiable some seeds;
+            // remember the best-spaced miss instead of grid-placing an
+            // overlapping spot (merged drops read as one fat drop)
+            const score = spots.length
+                ? Math.min(...spots.map(([ox, oy]) =>
+                    Math.abs(ox - x) / minDx + Math.abs(oy - y) / minDy))
+                : 1;
+            if (score > bestScore) {
+                bestScore = score;
+                bestX = x;
+                bestY = y;
+            }
         }
         if (!ok) {
-            x = x0 + (i % 3) * ((x1 - x0) / 2);
-            y = y0 + Math.floor(i / 3) * minDy;
+            x = bestX;
+            y = bestY;
         }
         spots.push([x, y]);
     }
@@ -250,21 +265,41 @@ function windStreaks(cr, time, alphaScale, count = 3) {
  *  (strip glyphs, day tiles) sit in an even staggered grid. Either way the
  *  shape is a teardrop, and intensity decides the COUNT -- heavier rain,
  *  more drops. */
-function rainDrops(cr, particles, time, count, slant, alpha, band = [18.8, 20.0], dropScale = 1, xBand = [6.0, 18.0]) {
+function rainDrops(cr, particles, time, count, slant, alpha, band = [19.1, 19.7], dropScale = 1, xBand = [5.8, 18.2]) {
     const lastTime = particles.lastTime ?? particles.lastT;
     const dt = lastTime === null ? 0 : Math.min(0.06, time - lastTime);
     const waterColor = INK_WATER();
     cr.setSourceRGBA(waterColor[0], waterColor[1], waterColor[2], alpha);
     const total = Math.min(count, particles.drops.length);
+    // mock spacing: drops hang in ONE even staggered row and never
+    // touch -- heavy counts shrink the drop (mock heavy scale
+    // .80/.86) instead of letting bulbs merge. The seed only jitters
+    // the row, so neighbouring glyphs differ without ever colliding
     const spots = particles.static
-        ? seededSpots(total, particles.seed ?? 7, xBand[0], xBand[1], band[0], band[1], 2.6, 0.9)
+        ? (() => {
+            const golden = 0.6180339887;
+            let u = ((particles.seed ?? 7) % 977) * golden;
+            const jit = () => { u += golden; return (u % 1) - 0.5; };
+            const cx = (xBand[0] + xBand[1]) / 2;
+            const baseStep = total <= 2 ? 5.4 : total === 3 ? 4.4 : total === 4 ? 3.6 : 3.0;
+            const step = total > 1
+                ? Math.min(baseStep, (xBand[1] - xBand[0]) / (total - 1))
+                : 0;
+            const midY = (band[0] + band[1]) / 2;
+            // jitter may never close the gap between neighbouring bulbs
+            const xAmp = Math.max(0, Math.min(0.35, (step - 2.6) / 2));
+            return Array.from({ length: total }, (_, i) => [
+                cx + (i - (total - 1) / 2) * step + jit() * 2 * xAmp,
+                midY + (i % 2 ? 0.22 : -0.12) + jit() * 0.24,
+            ]);
+        })()
         : null;
     const marks = [];
     for (let i = 0; i < total; i++) {
         let x, y, s;
         if (particles.static) {
             [x, y] = spots[i];
-            s = (i % 2 ? 1.05 : 1.25) * dropScale;
+            s = (total >= 5 ? (i % 2 ? 0.80 : 0.86) : (i % 2 ? 0.88 : 0.98)) * dropScale;
         } else {
             const drop = particles.drops[i];
             drop.y += (drop.speed ?? drop.sp) * dt;
@@ -274,7 +309,7 @@ function rainDrops(cr, particles, time, count, slant, alpha, band = [18.8, 20.0]
             }
             x = drop.x;
             y = drop.y;
-            s = Math.min(1.4, 0.75 + (drop.length ?? drop.len) * 0.22) * dropScale;
+            s = Math.min(0.98, 0.72 + (drop.length ?? drop.len) * 0.08) * dropScale;
         }
         const drawX = x - slant * (y - 10) * 0.18;
         marks.push([drawX, y, s]);
@@ -284,7 +319,7 @@ function rainDrops(cr, particles, time, count, slant, alpha, band = [18.8, 20.0]
     // the mock drop's white catch-light, upper-left of the bulb
     cr.setSourceRGBA(1, 1, 1, 0.8 * alpha);
     for (const [x, y, s] of marks)
-        circle(cr, x - 0.34 * s, y - 0.28 * s, 0.20 * s);
+        circle(cr, x - 0.45 * s, y - 0.30 * s, 0.34 * s);
     cr.fill();
 }
 
@@ -622,7 +657,7 @@ function sceneRain(cr, ctx) {
     if (variant === 'drizzle') {
         // drizzle reads by SIZE, not count: mini drops, denser by tier
         const dropCount = intensity <= 1 ? 3 : intensity === 2 ? 5 : 7;
-        rainDrops(cr, particles, time, dropCount, slant, 0.85, [17.9, 19.0], 0.55);
+        rainDrops(cr, particles, time, dropCount, slant, 0.85, [18.2, 18.9], 0.55);
     } else {
         const dropCount = intensity <= 1 ? 2 : intensity === 2 ? 3 : 5;
         rainDrops(cr, particles, time, dropCount, slant, 0.9);
@@ -686,9 +721,9 @@ function sceneSleet(cr, ctx) {
     // one shared baseline row, as the mock composes freezing marks:
     // drop(s) flank the flake, never on top of it
     rainDrops(cr, particles, time, heavy ? 2 : 1,
-        Math.min(1.1, windKmh / 36 + 0.25), 0.8, [18.6, 19.6], 1,
+        Math.min(1.1, windKmh / 36 + 0.25), 0.8, [19.0, 19.4], 1,
         heavy ? [6.4, 17.6] : [6.8, 10.2]);
-    snowFlakes(cr, particles, time, 1, [18.2, 19.4],
+    snowFlakes(cr, particles, time, 1, [18.2, 18.8],
         heavy ? [11.2, 13.2] : [13.2, 16.8]);
     if (heavy) {
         // freezing rain lands as ice: the mock's underline glaze

@@ -8,7 +8,7 @@ import { paintWeather } from './painter.js';
 
 const PADDING_TOP = 38, PADDING_BOTTOM = 30, PADDING_X = 2;
 const LINE_WIDTH = 3, DEFAULT_LABEL_INTERVAL = 3;
-const STRIP_CENTER_Y = 13, STRIP_ICON_SCALE = 0.6;
+const STRIP_CENTER_Y = 13, STRIP_ICON_SCALE = 0.72;
 /* uniform medallion radius for 'icons' mode: half the widest glyph box
  * (moon: 12 * 0.6 * 1.5) plus ~2 px padding -- every condition gets the
  * same coin, only the glyph varies */
@@ -206,11 +206,13 @@ function tracePath(cr, pts) {
  * }
  */
 
-/* Footprint scale adjustments */
-const ICON_FOOTPRINT_SCALE = {
-    moon: 1.5, cloud: 1.35, fog: 1.25, rain: 1.2, drizzle: 1.2,
-    sleet: 1.2, snow: 1.2, partly: 1.15, hail: 1.1, storm: 1.1,
-};
+/* Per-scene strip footprint adjustments. EMPTY on purpose: the
+ * painter's mock-true geometry already lands every scene's ink in a
+ * 17-19 unit band of the 24 box (measured), so the strip scales
+ * uniformly like the mock sheet and the day tiles do. The old table
+ * (moon 1.5, cloud 1.35, ...) was tuned for the pre-2026 painter and
+ * inflated the clear-night moon to 25 units against the sun's 19. */
+const ICON_FOOTPRINT_SCALE = {};
 
 function pillPath(cr, x0, y0, x1, y1, radius) {
     radius = Math.min(radius, (x1 - x0) / 2, (y1 - y0) / 2);
@@ -664,7 +666,7 @@ export function paintChart(cr, opts) {
         };
 
         if (opts.pills) {
-            const PILL_HALF_HEIGHT = 10.5, PILL_ICON_SCALE = 0.58, MIN_PILL_WIDTH = 23, PILL_RADIUS = 6, BOTTOM_BORDER_HEIGHT = 1.9;
+            const PILL_HALF_HEIGHT = 10.5, PILL_ICON_SCALE = 0.70, MIN_PILL_WIDTH = 23, PILL_RADIUS = 6, BOTTOM_BORDER_HEIGHT = 1.9;
             const isGlass = !!opts.pillGlass;
             // the plate is now only a grouping whisper: with the glyphs
             // embossed they separate from the sky on their own, so the
