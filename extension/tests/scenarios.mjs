@@ -113,6 +113,58 @@ for (const scene of SCENES) {
     surf.writeToPNG(`${OUT}/matrix-${scene}.png`);
     cr.$dispose();
 }
+
+// per-code variant poses (mock coverage families): same grounds, same
+// referee -- variant art must hold the same contrast contract as the
+// plain scenes it decorates
+const VARIANTS = [
+    { id: 'mainly', variant: 'mainly', intensity: 0, scene: night => night ? 'moon' : 'sun' },
+    { id: 'rime', variant: 'rime', intensity: 0, scene: () => 'fog' },
+    { id: 'drizzle', variant: 'drizzle', intensity: 2, scene: () => 'rain' },
+    { id: 'showers-rain', variant: 'showers', intensity: 2, scene: () => 'rain' },
+    { id: 'grains', variant: 'grains', intensity: 1, scene: () => 'snow' },
+    { id: 'showers-snow', variant: 'showers', intensity: 2, scene: () => 'snow' },
+    { id: 'freezingheavy', variant: 'freezingheavy', intensity: 4, scene: () => 'sleet' },
+    { id: 'stormhail', variant: 'stormhail', intensity: 6, scene: () => 'hail' },
+    { id: 'unknown', variant: 'unknown', intensity: 0, scene: () => 'cloud' },
+];
+for (const v of VARIANTS) {
+    const cols = GROUNDS.length, rows = 2;
+    const w = cols * (CELL + PAD) + PAD, h = rows * (CELL + PAD) + PAD;
+    const surf = new Cairo.ImageSurface(Cairo.Format.ARGB32, w, h);
+    const cr = new Cairo.Context(surf);
+    const particles = createParticles();
+    for (let row = 0; row < rows; row++) {
+        const night = row >= 1;
+        const scene = v.scene(night);
+        GROUNDS.forEach((g, col) => {
+            if (!isRealistic(scene, night))
+                return;
+            const x = PAD + col * (CELL + PAD), y = PAD + row * (CELL + PAD);
+            cr.setSourceRGB(...g.rgb);
+            cr.rectangle(x, y, CELL, CELL);
+            cr.fill();
+            cr.save();
+            cr.translate(x + (CELL - GRID) / 2, y + (CELL - GRID) / 2);
+            paintWeather(cr, {
+                scene, variant: v.variant, time: 1.25, night, dark: true,
+                intensity: v.intensity, windKmh: 14, phase: 0.25, seed: 11,
+                groundLum: g.wcag,
+                pale: g.wcag < GLYPH_BAR,
+                staticPose: true, particles,
+            });
+            cr.restore();
+            manifest.push({
+                png: `matrix-variant-${v.id}.png`, scene, variant: v.variant, night,
+                ground: g.name, wcag: g.wcag,
+                expected: expectFamily(scene, night, g.wcag),
+                x, y, size: CELL,
+            });
+        });
+    }
+    surf.writeToPNG(`${OUT}/matrix-variant-${v.id}.png`);
+    cr.$dispose();
+}
 const json = new GLib.Bytes(
     `${JSON.stringify({ bar: GLYPH_BAR, cells: manifest }, null, 1)}\n`).toArray();
 GLib.file_set_contents(`${OUT}/manifest.json`, json);

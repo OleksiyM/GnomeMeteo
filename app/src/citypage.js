@@ -675,6 +675,7 @@ class CityPage extends Gtk.Box {
             scene: scene.scene,
             night: scene.night,
             intensity: precipIntensity(c.code),
+            variant: scene.variant ?? null,
             phase: mp.phase,
         };
         this.#syncSkyScene();
@@ -829,6 +830,7 @@ class CityPage extends Gtk.Box {
                 scene: info.scene,
                 night: false,
                 intensity: precipIntensity(day.code),
+                variant: info.variant ?? null,
                 seed: i * 13 + 5,
                 pale: false,
             };

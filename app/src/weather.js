@@ -246,11 +246,31 @@ export function wmoInfo(code) {
     return WMO[code] ?? { desc: 'Unknown', scene: 'cloud' };
 }
 
+// Per-code glyph variants: family art WITHIN a scene, mirroring the
+// mock coverage matrix (docs/design/icon-mocks.html) -- drizzle's mini
+// drops, showers' peeking sun/moon, grains instead of flakes, the
+// bolt beside hailstones. Kept in lockstep with the extension's
+// variantForCode (weather.js there); the painter consumes the names.
+const CODE_VARIANT = {
+    1: 'mainly', 48: 'rime',
+    51: 'drizzle', 53: 'drizzle', 55: 'drizzle',
+    56: 'freezinglight', 66: 'freezinglight', 67: 'freezingheavy',
+    77: 'grains',
+    80: 'showers', 81: 'showers', 82: 'showers',
+    85: 'showers', 86: 'showers',
+    96: 'stormhail', 99: 'stormhailheavy',
+};
+
+export function variantForCode(code) {
+    return WMO[code] ? (CODE_VARIANT[code] ?? null) : 'unknown';
+}
+
 export function sceneFor(code, isDay) {
     const { desc, scene } = wmoInfo(code);
     const night = !isDay;
-    if (scene === 'sun' && night) return { desc, scene: 'moon', night: true };
-    return { desc, scene, night };
+    const variant = variantForCode(code);
+    if (scene === 'sun' && night) return { desc, scene: 'moon', night: true, variant };
+    return { desc, scene, night, variant };
 }
 
 // Open-Meteo rarely emits 45/48/95/96/99 — raw physics wins, as in the
@@ -260,11 +280,14 @@ export function deriveScene(current) {
     const { code, cape, visibility, precip } = current;
     const liquid = code >= 51 && code <= 82 && ![56, 57, 66, 67].includes(code);
     if (code === 96 || code === 99 || ((cape ?? 0) >= 2500 && liquid))
-        return { desc: 'Thunderstorm with hail', scene: 'hail', night: !current.isDay };
+        return {
+            desc: 'Thunderstorm with hail', scene: 'hail', night: !current.isDay,
+            variant: code === 99 ? 'stormhailheavy' : 'stormhail',
+        };
     if (code === 95 || ((cape ?? 0) >= 1200 && liquid))
-        return { desc: 'Thunderstorm', scene: 'storm', night: !current.isDay };
+        return { desc: 'Thunderstorm', scene: 'storm', night: !current.isDay, variant: null };
     if ((visibility ?? Infinity) < 1000 && !(precip > 0))
-        return { desc: 'Fog', scene: 'fog', night: !current.isDay };
+        return { desc: 'Fog', scene: 'fog', night: !current.isDay, variant: null };
     return sceneFor(code, current.isDay);
 }
 

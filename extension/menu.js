@@ -16,7 +16,7 @@ import {
     paintChart, ease, lerp, morphPair, contrastSafe, lumOf, pickInk,
     judgeInk, INK_DARK, tileGlyphPale, STRIP_PRECIP_INTENSITY, CODE_PRECIP_INTENSITY
 } from './chart.js';
-import { sceneFor, fmtTemp, dayName, daySlice, nowFracIn, sunGeometry } from './weather.js';
+import { sceneFor, variantForCode, fmtTemp, dayName, daySlice, nowFracIn, sunGeometry } from './weather.js';
 
 const SKY_FRAME_INTERVAL_MS = 50;         // sky: 20 fps is plenty
 const STATIC_TIME = 1.1;                  // frame that makes static mini icons look lively
@@ -211,6 +211,7 @@ const ChartArea = GObject.registerClass(
                 scenes: strip ? strip.scenes : null,
                 nights: strip ? strip.nights : null,
                 iconIntensities: strip ? strip.intensities : null,
+                iconVariants: strip ? strip.variants : null,
                 pills: panel._conditions === 'pills',
                 dark: panel._paintDark(),
                 // Arabic/Hebrew sessions: the chart mirrors (earliest hour at
@@ -741,6 +742,7 @@ export class ForecastPanel {
                 scenes: hourlyIndices.map((i, k) => sceneFor(state.hourly.code[i], days[k]).scene),
                 nights: days.map(d => !d),
                 intensities: hourlyIndices.map(i => CODE_PRECIP_INTENSITY[state.hourly.code[i]] ?? null),
+                variants: hourlyIndices.map(i => variantForCode(state.hourly.code[i])),
             };
         }
         // today's window starts 2 h early: the now marker sits that far in
@@ -853,7 +855,10 @@ export class ForecastPanel {
                 // canonical pose (shared with the chart strip): the WMO code
                 // sets the severity tier, never the day's live precip/wind --
                 // same code always paints the identical glyph
-                icon.setScene(scene, { intensity: CODE_PRECIP_INTENSITY[dayItem.code] ?? STRIP_PRECIP_INTENSITY[scene] ?? 0 });
+                icon.setScene(scene, {
+                    intensity: CODE_PRECIP_INTENSITY[dayItem.code] ?? STRIP_PRECIP_INTENSITY[scene] ?? 0,
+                    variant: variantForCode(dayItem.code),
+                });
                 col.add_child(icon);
                 const hl = new St.BoxLayout({
                     style_class: 'aw-day-hl',

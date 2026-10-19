@@ -412,6 +412,7 @@ const WeatherIndicator = GObject.registerClass(
                 intensity: current.intensity,
                 windKmh: current.wind,
                 phase,
+                variant: effective.variant ?? null,
             });
 
             this._temperatureLabel.set_text(

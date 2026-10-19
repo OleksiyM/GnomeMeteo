@@ -27,6 +27,7 @@ export function drawScene(cr, size, opts = {}) {
         scene: opts.scene ?? 'partly',
         night: !!opts.night,
         intensity: opts.intensity ?? 0,
+        variant: opts.variant ?? null,
         phase: opts.phase ?? null,
         pale: !!opts.pale,
         groundLum: opts.groundLum ?? -1,

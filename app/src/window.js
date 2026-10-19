@@ -200,7 +200,7 @@ class CityRow extends Gtk.ListBoxRow {
 
     #hydrate(data) {
         const s = sceneFor(data.current.code, data.current.isDay);
-        this.#glyphState = { scene: s.scene, night: s.night };
+        this.#glyphState = { scene: s.scene, night: s.night, variant: s.variant ?? null };
         this.#relabel();
     }
 

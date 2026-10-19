@@ -39,8 +39,8 @@ export const WeatherIcon = GObject.registerClass(
         }
 
         setScene(scene, { windy = false, night = false, intensity = 0, windKmh = 0,
-            phase = null, dark } = {}) {
-            Object.assign(this._opts, { scene, windy, night, intensity, windKmh, phase });
+            phase = null, variant = null, dark } = {}) {
+            Object.assign(this._opts, { scene, windy, night, intensity, windKmh, phase, variant });
             if (dark !== undefined)
                 this._dark = dark;
             this.queue_repaint();

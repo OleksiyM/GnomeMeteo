@@ -190,6 +190,8 @@ function tracePath(cr, pts) {
  *   iconIntensities: int[] | null -- per-slot severity overrides (WMO tiers
  *                    from CODE_PRECIP_INTENSITY); null entries fall back to
  *                    the per-scene base pose
+ *   iconVariants:    (string | null)[] | null -- per-slot glyph family
+ *                    variants (variantForCode); null paints the plain scene
  *   labelEvery:      label stride (default 3; narrow cards pass a bigger one)
  *   fontSize:        label font size in pt (default 8.5)
  *   slotsProbe:      fn({i, keep, left, own, lastSlotRight}) -- layout
@@ -628,7 +630,9 @@ export function paintChart(cr, opts) {
         // default reads "no overrides", so every lookup below is branch-free
         const iconIntensities = opts.iconIntensities ?? [];
         const intensityAt = index => iconIntensities[index] ?? null;
-        const paintSingleIcon = (scene, centerX, isNight, scale, centerY = stripCenterY, intensity = null) => {
+        const iconVariants = opts.iconVariants ?? [];
+        const variantAt = index => iconVariants[index] ?? null;
+        const paintSingleIcon = (scene, centerX, isNight, scale, centerY = stripCenterY, intensity = null, variant = null) => {
             const iconIntensity = intensity ?? STRIP_PRECIP_INTENSITY[scene] ?? 0;
             // judge the live backdrop under this glyph (same referee as
             // the ink labels); un-sampled surfaces (accent style, preview)
@@ -648,7 +652,7 @@ export function paintChart(cr, opts) {
                 scene: scene ?? 'cloud', time: 4.1,
                 phase: opts.phase ?? null,
                 night: !!isNight, dark: !inkHere,
-                intensity: iconIntensity, staticPose: true,
+                intensity: iconIntensity, variant, staticPose: true,
                 // per-column layout variety that stays put across repaints
                 seed: Math.round(centerX * 3),
                 groundLum: bgLum,
@@ -682,7 +686,7 @@ export function paintChart(cr, opts) {
                 const x0 = startIndex === 0 ? scaleX(0) : (mapX(startIndex - 1) + mapX(startIndex)) / 2;
                 const x1 = endIndex === pointCount - 1 ? scaleX(1) : (mapX(endIndex) + mapX(endIndex + 1)) / 2;
                 conditionRuns.push({ scene: conditionScenes[startIndex], night: nights[startIndex],
-                    intensity: intensityAt(startIndex),
+                    intensity: intensityAt(startIndex), variant: variantAt(startIndex),
                     width: Math.abs(x1 - x0) });
                 startIndex = endIndex + 1;
             }
@@ -728,7 +732,7 @@ export function paintChart(cr, opts) {
             for (const [k, run] of conditionRuns.entries()) {
                 paintSingleIcon(run.scene, currX + flowDir * pillWidths[k] / 2, run.night,
                     PILL_ICON_SCALE * (ICON_FOOTPRINT_SCALE[run.scene] ?? 1), stripCenterY,
-                    run.intensity);
+                    run.intensity, run.variant);
                 currX += flowDir * pillWidths[k];
             }
             cr.restore();
@@ -750,7 +754,7 @@ export function paintChart(cr, opts) {
                     ground: bgFn ? bgFn(stripCenterY) : null,
                 });
                 paintSingleIcon(conditionScenes[slot.i], slot.iconX, nights[slot.i],
-                    iconScale, stripCenterY, intensityAt(slot.i));
+                    iconScale, stripCenterY, intensityAt(slot.i), variantAt(slot.i));
             }
         }
     }

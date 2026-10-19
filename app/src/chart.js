@@ -7,7 +7,7 @@ import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Cairo from 'gi://cairo?version=1.0';
 import { drawScene } from './glyph.js';
-import { fmtTemp, shortHourLabel, sceneFor } from './weather.js';
+import { fmtTemp, shortHourLabel, sceneFor, precipIntensity } from './weather.js';
 
 export const CHART_SERIES = {
     temp: { rgb: [0.96, 0.65, 0.14], label: 'Temperature' },
@@ -179,7 +179,8 @@ export function paintChart(cr, w, h, state) {
             cr.save();
             cr.translate(x - 17, stripTop);
             drawScene(cr, 34, { scene: sc.scene, night: sc.night,
-                pale, intensity: 2, seed: i });
+                pale, intensity: precipIntensity(slice.code[i]),
+                variant: sc.variant ?? null, seed: i });
             cr.restore();
         }
         const lbl = shortHourLabel(slice.time[i], h12);

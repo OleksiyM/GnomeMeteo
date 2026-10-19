@@ -52,9 +52,33 @@ export const WMO = {
     99: {desc: N_('Thunderstorm, hail'), day: 'hail', night: 'hail'},
 };
 
+/* Per-code glyph variants: family art WITHIN a scene, mirroring the
+ * mock coverage matrix (docs/design/icon-mocks.html). The scene says
+ * what falls; the variant says in what pattern -- drizzle's mini
+ * drops, showers' peeking sun/moon, grains instead of flakes, the
+ * bolt beside hailstones. Callers that know the code pass it through
+ * to the painter; code-less poses (prefs demos) paint the plain scene. */
+const CODE_VARIANT = {
+    1: 'mainly', 48: 'rime',
+    51: 'drizzle', 53: 'drizzle', 55: 'drizzle',
+    56: 'freezinglight', 66: 'freezinglight', 67: 'freezingheavy',
+    77: 'grains',
+    80: 'showers', 81: 'showers', 82: 'showers',
+    85: 'showers', 86: 'showers',
+    96: 'stormhail', 99: 'stormhailheavy',
+};
+
+export function variantForCode(code) {
+    return WMO[code] ? (CODE_VARIANT[code] ?? null) : 'unknown';
+}
+
 export function sceneFor(code, isDay = true) {
     const entry = WMO[code] ?? {desc: N_('Unknown'), day: 'cloud', night: 'cloud'};
-    return {scene: isDay ? entry.day : entry.night, desc: entry.desc};
+    return {
+        scene: isDay ? entry.day : entry.night,
+        desc: entry.desc,
+        variant: variantForCode(code),
+    };
 }
 
 /**
@@ -70,13 +94,16 @@ export function deriveScene(current) {
     const {code, visibility, cape, isDay} = current;
     const isLiquidPrecip = code >= 51 && code <= 82;   // drizzle ... showers
     if (code === 96 || code === 99 || (cape >= 2500 && isLiquidPrecip))
-        return {scene: 'hail', desc: N_('Thunderstorm, hail')};
+        return {
+            scene: 'hail', desc: N_('Thunderstorm, hail'),
+            variant: code === 99 ? 'stormhailheavy' : 'stormhail',
+        };
     if (code === 95 || (cape >= 1200 && isLiquidPrecip))
-        return {scene: 'storm', desc: N_('Thunderstorm')};
+        return {scene: 'storm', desc: N_('Thunderstorm'), variant: null};
     if (code === 45 || code === 48)
         return sceneFor(code, isDay);
     if (visibility !== null && visibility < 1000 && !isLiquidPrecip)
-        return {scene: 'fog', desc: N_('Fog')};
+        return {scene: 'fog', desc: N_('Fog'), variant: null};
     return sceneFor(code, isDay);
 }
 
