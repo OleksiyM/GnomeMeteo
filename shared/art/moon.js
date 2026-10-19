@@ -148,9 +148,25 @@ export function paintMoon(cr, centerX, centerY, radius, phase, style = 'sky', op
     litPath(cr, radius, phase);
 
     if (style === 'icon') {
+        // 2026 icon set: the lit face is a neutral light-gray gradient
+        // (near-white top to gray base) so moonlight reads as its own
+        // material against blue-gray cloud and night sky alike. Only the
+        // default (dark-ground) face takes it; opts.face still wins flat
+        // on bright grounds, where the referee's porcelain/ink twins own
+        // the contrast and a gradient would muddy their verdict.
+        if (!opts.face) {
+            const faceGrad = new Cairo.LinearGradient(0, -radius, 0, radius);
+            faceGrad.addColorStopRGB(0, 0.957, 0.965, 0.973);
+            faceGrad.addColorStopRGB(1, 0.557, 0.600, 0.651);
+            cr.setSource(faceGrad);
+            cr.fill();
+            cr.restore();
+            cr.restore();
+            return;
+        }
         // opts.face: light-card palette dims the disc to porcelain --
         // bare 0.95 white blows out over bright day skies
-        const faceColor = opts.face ?? [0.95, 0.95, 0.99];
+        const faceColor = opts.face;
         if (opts.outline) {           // pale disc needs an edge on light cards
             const outlineColor = opts.outline;
             cr.setSourceRGBA(faceColor[0], faceColor[1], faceColor[2], 1);

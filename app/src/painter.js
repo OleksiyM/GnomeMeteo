@@ -95,16 +95,30 @@ function seededSpots(count, seed, x0, x1, y0, y1, minDx, minDy) {
     return spots;
 }
 
-/** Puffy cloud made of three bumps over a flat base, one gradient fill. */
-function cloud(cr, centerX, centerY, scale, topColor, bottomColor, alpha = 1) {
-    const gradient = new Cairo.LinearGradient(0, centerY - 5 * scale, 0, centerY + 2.4 * scale);
+/** Smooth dome cloud (2026 icon set): one flattened silhouette over a
+ *  flat base, one gradient fill. Same contract as the old three-bump
+ *  puff — 11.2 wide, base at centerY + 2.4 — so every scene's layout,
+ *  precip band and drift math is unchanged. squash < 1 flattens the
+ *  dome vertically (the overcast back bank). */
+function cloud(cr, centerX, centerY, scale, topColor, bottomColor, alpha = 1, squash = 1) {
+    const gradient = new Cairo.LinearGradient(0, centerY - 4.4 * scale * squash, 0, centerY + 2.4 * scale);
     gradient.addColorStopRGBA(0, topColor[0], topColor[1], topColor[2], alpha);
     gradient.addColorStopRGBA(1, bottomColor[0], bottomColor[1], bottomColor[2], alpha);
     cr.setSource(gradient);
-    circle(cr, centerX - 3.2 * scale, centerY - 0.3 * scale, 2.4 * scale);
-    circle(cr, centerX + 3.1 * scale, centerY - 0.1 * scale, 2.6 * scale);
-    circle(cr, centerX, centerY - 1.8 * scale, 3.2 * scale);
-    cr.rectangle(centerX - 5.6 * scale, centerY - 0.5 * scale, 11.2 * scale, 2.9 * scale);
+    cr.save();
+    cr.translate(centerX, centerY + 2.4 * scale);
+    cr.scale(scale, scale * squash);
+    cr.translate(0, -2.4);
+    cr.newPath();
+    cr.moveTo(-4.4, 2.4);
+    cr.lineTo(4.4, 2.4);
+    cr.curveTo(5.6, 2.4, 6.0, 1.2, 5.4, -0.5);
+    cr.curveTo(4.8, -2.4, 3.0, -3.9, 0.9, -4.25);
+    cr.curveTo(-1.2, -4.6, -3.4, -3.7, -4.6, -2.2);
+    cr.curveTo(-5.6, -1.0, -6.0, 0.6, -5.5, 1.5);
+    cr.curveTo(-5.2, 2.15, -4.9, 2.4, -4.4, 2.4);
+    cr.closePath();
+    cr.restore();
     cr.fill();
 }
 
@@ -342,64 +356,30 @@ function hailStones(cr, particles, time, count) {
     }
 }
 
+/* 2026 icon set sun: flat amber disc (vertical gradient, pale top to
+ * deep base) with eight equal round rays gapped off the rim. Rotation
+ * is the only motion — no glow, no ray-length pulse: the pulsing halo
+ * read as a fading circle behind the glyph and fought the sky. */
 function sunBody(cr, centerX, centerY, radius, time, rayLength) {
-    const outerGlowRadius = radius * 2.35;
-    const outerGlow = new Cairo.RadialGradient(centerX, centerY, radius * 0.4, centerX, centerY, outerGlowRadius);
-    const outerAlpha = _light ? 0.28 : 0.40;
-    outerGlow.addColorStopRGBA(0, 1.0, 0.76, 0.16, outerAlpha);
-    outerGlow.addColorStopRGBA(0.55, 1.0, 0.60, 0.08, outerAlpha * 0.45);
-    outerGlow.addColorStopRGBA(1, 1.0, 0.50, 0.0, 0);
-    cr.setSource(outerGlow);
-    cr.paintWithAlpha(0.70 + 0.30 * Math.sin(time * 1.3));
-
-    const innerGlowRadius = radius * 1.55;
-    const innerGlow = new Cairo.RadialGradient(centerX, centerY, radius * 0.5, centerX, centerY, innerGlowRadius);
-    const innerAlpha = _light ? 0.32 : 0.45;
-    innerGlow.addColorStopRGBA(0, 1.0, 0.92, 0.45, innerAlpha);
-    innerGlow.addColorStopRGBA(1, 1.0, 0.75, 0.15, 0);
-    cr.setSource(innerGlow);
-    cr.paintWithAlpha(0.75 + 0.25 * Math.sin(time * 2.1));
-
     cr.save();
     cr.translate(centerX, centerY);
     cr.rotate(time * 0.14);
     cr.setLineCap(Cairo.LineCap.ROUND);
-
+    cr.setSourceRGBA(0.96, 0.65, 0.14, 0.95);
+    cr.setLineWidth(1.5);
     for (let i = 0; i < 8; i++) {
-        const isCardinal = (i % 2 === 0);
         const angle = (i / 8) * TWO_PI;
         const cosAngle = Math.cos(angle), sinAngle = Math.sin(angle);
-
-        let dynamicLength, alpha, lineWidth;
-        if (isCardinal) {
-            const wave = Math.sin(time * 1.9 + i * 0.35);
-            dynamicLength = rayLength * (1.04 + 0.14 * wave);
-            alpha = 0.92 + 0.08 * wave;
-            lineWidth = 1.55;
-            cr.setSourceRGBA(1.0, 0.76, 0.12, alpha);
-        } else {
-            const wave = Math.sin(time * 1.9 + Math.PI * 0.6 + i * 0.35);
-            dynamicLength = rayLength * (0.76 + 0.12 * wave);
-            alpha = 0.78 + 0.12 * wave;
-            lineWidth = 1.35;
-            cr.setSourceRGBA(1.0, 0.68, 0.08, alpha);
-        }
-
-        cr.setLineWidth(lineWidth);
         cr.newSubPath();
         cr.moveTo(cosAngle * (radius + 1.1), sinAngle * (radius + 1.1));
-        cr.lineTo(cosAngle * (radius + 1.1 + dynamicLength), sinAngle * (radius + 1.1 + dynamicLength));
+        cr.lineTo(cosAngle * (radius + 1.1 + rayLength), sinAngle * (radius + 1.1 + rayLength));
         cr.stroke();
     }
     cr.restore();
 
-    const core = new Cairo.RadialGradient(
-        centerX - radius * 0.35, centerY - radius * 0.35, radius * 0.15,
-        centerX, centerY, radius
-    );
-    core.addColorStopRGB(0, 1.0, 0.97, 0.68);
-    core.addColorStopRGB(0.5, 1.0, 0.83, 0.18);
-    core.addColorStopRGB(1, 0.98, 0.58, 0.08);
+    const core = new Cairo.LinearGradient(0, centerY - radius, 0, centerY + radius);
+    core.addColorStopRGB(0, 1.0, 0.91, 0.66);
+    core.addColorStopRGB(1, 1.0, 0.71, 0.18);
     cr.setSource(core);
     circle(cr, centerX, centerY, radius);
     cr.fill();
@@ -453,7 +433,7 @@ function moonBody(cr, centerX, centerY, radius, time, particles, phase) {
     const starColor = INK_STAR();
     // stars orbiting the drawn disc would dot the moon itself (worst on
     // the dark side); those inside disc + star size stay hidden
-    const keepOut = radius + 1.4;
+    const keepOut = radius + 2.2;
     for (const star of particles.stars) {
         if (Math.hypot(star.x - centerX, star.y - centerY) < keepOut)
             continue;
@@ -500,7 +480,7 @@ function sceneCloud(cr, ctx) {
     // cloud vanished into overcast white), pale body over night skies --
     // same light/dark referee as the INK_* family
     const overcast = overcastBody();
-    cloud(cr, 9.5 - Math.sin(time * 0.5) * 0.8, 8.5, 0.62, overcast[0], overcast[1], 0.65);
+    cloud(cr, 9.5 - Math.sin(time * 0.5) * 0.8, 8.5, 0.62, overcast[0], overcast[1], 0.65, 0.72);
     cloud(cr, 13 + Math.sin(time * 0.6) * 0.7, 14, 0.95, overcast[0], overcast[1]);
     if (windy)
         windStreaks(cr, time, 0.4, 2);
