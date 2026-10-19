@@ -717,7 +717,8 @@ function sceneSnow(cr, ctx) {
     const { time, particles, intensity, windy, variant } = ctx;
     if (variant === 'showers') {
         const cloudCx = showersPeek(cr, ctx);
-        snowFlakes(cr, particles, time, intensity >= 3 ? 4 : 2,
+        snowFlakes(cr, particles, time,
+            intensity <= 1 ? 2 : intensity === 2 ? 3 : 4,
             [18.2, 19.6], [cloudCx - 5.3, cloudCx + 5.3]);
     } else if (variant === 'grains') {
         const cloudCx = precipSceneCloud(cr, time, precipCloud());
@@ -734,12 +735,13 @@ function sceneSnow(cr, ctx) {
 
 /** Sleet / freezing rain: half drops, half flakes, extra slant. */
 function sceneSleet(cr, ctx) {
-    const { time, particles, windKmh, windy, variant } = ctx;
+    const { time, particles, intensity, windKmh, windy, variant } = ctx;
     const cloudCx = precipSceneCloud(cr, time, precipCloud());
     const heavy = variant === 'freezingheavy';
     // one shared baseline row, as the mock composes freezing marks:
-    // drop(s) flank the flake, never on top of it
-    rainDrops(cr, particles, time, heavy ? 2 : 1,
+    // drop(s) flank the flake, never on top of it. Marks ascend with
+    // tier like every family: 2 at tier 3, 3 at tier 4 (57/67)
+    rainDrops(cr, particles, time, (heavy || intensity >= 4) ? 2 : 1,
         Math.min(1.1, windKmh / 36 + 0.25), 0.8, [19.0, 19.4], 1,
         heavy ? [cloudCx - 5.6, cloudCx + 5.6] : [cloudCx - 5.2, cloudCx - 1.8]);
     snowFlakes(cr, particles, time, 1, [18.2, 18.8],
