@@ -100,13 +100,16 @@ function seededSpots(count, seed, x0, x1, y0, y1, minDx, minDy) {
     return spots;
 }
 
-/** Smooth dome cloud (2026 icon set): one flattened silhouette over a
- *  flat base, one gradient fill. Same contract as the old three-bump
- *  puff — 11.2 wide, base at centerY + 2.4 — so every scene's layout,
- *  precip band and drift math is unchanged. squash < 1 flattens the
- *  dome vertically (the overcast back bank). */
+/** Mock-silhouette cloud (2026 icon set): the icon sheet's shared cloud
+ *  as its three elliptical arcs — right bump, wide flat top, left bump
+ *  wider than the base line — mapped from the sheet's 24-box path
+ *  (bbox x 3.9..21.4, y 7.0..19) into this contract: base at
+ *  centerY + 2.4, crown at centerY - 6.1, 12.4 wide. The arc joins are
+ *  the shoulders; smoothing them (first attempt) read as a semicircle.
+ *  squash < 1 flattens vertically about the base (overcast back bank). */
 function cloud(cr, centerX, centerY, scale, topColor, bottomColor, alpha = 1, squash = 1) {
-    const gradient = new Cairo.LinearGradient(0, centerY - 4.4 * scale * squash, 0, centerY + 2.4 * scale);
+    const gradient = new Cairo.LinearGradient(
+        0, centerY + (2.4 - 8.52 * squash) * scale, 0, centerY + 2.4 * scale);
     gradient.addColorStopRGBA(0, topColor[0], topColor[1], topColor[2], alpha);
     gradient.addColorStopRGBA(1, bottomColor[0], bottomColor[1], bottomColor[2], alpha);
     cr.setSource(gradient);
@@ -114,14 +117,19 @@ function cloud(cr, centerX, centerY, scale, topColor, bottomColor, alpha = 1, sq
     cr.translate(centerX, centerY + 2.4 * scale);
     cr.scale(scale, scale * squash);
     cr.translate(0, -2.4);
+    const earc = (cx, cy, rx, ry, a1, a2) => {
+        cr.save();
+        cr.translate(cx, cy);
+        cr.scale(1, ry / rx);
+        cr.arcNegative(0, 0, rx, a1, a2);
+        cr.restore();
+    };
     cr.newPath();
-    cr.moveTo(-4.4, 2.4);
-    cr.lineTo(4.4, 2.4);
-    cr.curveTo(5.6, 2.4, 6.0, 1.2, 5.4, -0.5);
-    cr.curveTo(4.8, -2.4, 3.0, -3.9, 0.9, -4.25);
-    cr.curveTo(-1.2, -4.6, -3.4, -3.7, -4.6, -2.2);
-    cr.curveTo(-5.6, -1.0, -6.0, 0.6, -5.5, 1.5);
-    cr.curveTo(-5.2, 2.15, -4.9, 2.4, -4.4, 2.4);
+    cr.moveTo(-4.01, 2.4);
+    cr.lineTo(3.24, 2.4);
+    earc(3.14, -0.20, 3.06, 2.60, 1.539, -1.351);
+    earc(-0.67, -2.28, 4.51, 3.83, -0.119, -3.261);
+    earc(-3.36, 0.05, 2.84, 2.42, -2.252, -4.481);
     cr.closePath();
     cr.restore();
     cr.fill();
