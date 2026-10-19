@@ -293,10 +293,13 @@ function rainDrops(cr, particles, time, count, slant, alpha, band = [19.1, 19.7]
                 ? Math.min(baseStep, (xBand[1] - xBand[0]) / (total - 1))
                 : 0;
             const midY = (band[0] + band[1]) / 2;
-            // jitter may never close the gap between neighbouring bulbs
+            // jitter may never close the gap between neighbouring bulbs,
+            // and is zero-sum so the row's centroid stays on the cloud
             const xAmp = Math.max(0, Math.min(0.35, (step - 2.6) / 2));
+            const jits = Array.from({ length: total }, () => jit());
+            const jMean = jits.reduce((a, b) => a + b, 0) / total;
             return Array.from({ length: total }, (_, i) => [
-                cx + (i - (total - 1) / 2) * step + jit() * 2 * xAmp,
+                cx + (i - (total - 1) / 2) * step + (jits[i] - jMean) * 2 * xAmp,
                 midY + (i % 2 ? 0.22 : -0.12) + jit() * 0.24,
             ]);
         })()
@@ -563,14 +566,15 @@ function sceneCloud(cr, ctx) {
     // question mark standing under it where precip would hang
     if (variant === 'unknown') {
         const body = overcastBody();
-        cloud(cr, 12 + Math.sin(time * 0.6) * 0.6, 12.2, 1.41, body[0], body[1]);
+        const cloudCx = 12 + Math.sin(time * 0.6) * 0.6;
+        cloud(cr, cloudCx, 12.2, 1.41, body[0], body[1]);
         const ink = INK_FOG();
         cr.save();
         cr.selectFontFace('Sans', Cairo.FontSlant.NORMAL, Cairo.FontWeight.BOLD);
         cr.setFontSize(8);
         cr.setSourceRGBA(ink[0], ink[1], ink[2], 0.95);
         const ext = cr.textExtents('?');
-        cr.moveTo(12 - ext.xAdvance / 2 - ext.xBearing, 19.5 - ext.yBearing - ext.height / 2);
+        cr.moveTo(cloudCx - ext.xAdvance / 2 - ext.xBearing, 19.5 - ext.yBearing - ext.height / 2);
         cr.showText('?');
         cr.restore();
         return;
@@ -607,7 +611,8 @@ function sceneFog(cr, ctx) {
     // centered tapering lines (not full-width dashes), breathing
     // sideways against each other
     const body = overcastBody();
-    cloud(cr, 12.3 + Math.sin(time * 0.5) * 0.5, 9.4, 1.30, body[0], body[1], 0.85);
+    const cloudCx = 12.3 + Math.sin(time * 0.5) * 0.5;
+    cloud(cr, cloudCx, 9.4, 1.30, body[0], body[1], 0.85);
     const fogColor = INK_FOG();
     const widths = [13, 10, 6.5];
     cr.save();
@@ -620,8 +625,8 @@ function sceneFog(cr, ctx) {
         cr.setSourceRGBA(fogColor[0], fogColor[1], fogColor[2],
             (groundLight() ? 0.85 : 0.75) - i * 0.15);
         cr.newPath();
-        cr.moveTo(12 - half + slide, y);
-        cr.lineTo(12 + half + slide, y);
+        cr.moveTo(cloudCx - half + slide, y);
+        cr.lineTo(cloudCx + half + slide, y);
         cr.stroke();
     }
     cr.restore();
@@ -639,7 +644,9 @@ function sceneFog(cr, ctx) {
 // its base at y15.1, marks in one tight row under it -- cloud() traces
 // the path at 0.711, so scale 1.40 lands the same silhouette
 function precipSceneCloud(cr, time, palette) {
-    cloud(cr, 12 + Math.sin(time * 0.6) * 0.6, 11.7, 1.40, palette[0], palette[1]);
+    const cx = 12 + Math.sin(time * 0.6) * 0.6;
+    cloud(cr, cx, 11.7, 1.40, palette[0], palette[1]);
+    return cx;
 }
 
 // showers (codes 80-82, 85-86): the mock keeps a complete sun/moon
@@ -651,15 +658,19 @@ function showersPeek(cr, ctx) {
     else
         sunBody(cr, 7, 7, 2.4, time, 1.2);
     const palette = precipCloud();
-    cloud(cr, 14.0 + Math.sin(time * 0.6) * 0.6, 13.0, 1.10, palette[0], palette[1]);
+    const cx = 14.0 + Math.sin(time * 0.6) * 0.6;
+    cloud(cr, cx, 13.0, 1.10, palette[0], palette[1]);
+    return cx;
 }
 
 function sceneRain(cr, ctx) {
     const { time, particles, intensity, windKmh, windy, variant } = ctx;
-    if (variant === 'showers')
-        showersPeek(cr, ctx);
-    else
-        precipSceneCloud(cr, time, precipCloud());
+    // marks hang centered on the CLOUD's centre (drift included),
+    // never on the glyph's -- the showers cloud sits right of centre
+    const cloudCx = variant === 'showers'
+        ? showersPeek(cr, ctx)
+        : precipSceneCloud(cr, time, precipCloud());
+    const xBand = [cloudCx - 6.2, cloudCx + 6.2];
     const slant = Math.min(0.9, windKmh / 45);
     if (variant === 'drizzle') {
         // ONE droplet size across every family (a mini at 0.62 read
@@ -667,10 +678,10 @@ function sceneRain(cr, ctx) {
         // counts alone carry intensity on a shared ladder -- drizzle
         // 1/2/3 sits one rung under rain's 2/3/4
         const dropCount = intensity <= 1 ? 1 : intensity === 2 ? 2 : 3;
-        rainDrops(cr, particles, time, dropCount, slant, 0.85);
+        rainDrops(cr, particles, time, dropCount, slant, 0.85, [19.1, 19.7], 1, xBand);
     } else {
         const dropCount = intensity <= 1 ? 2 : intensity === 2 ? 3 : 4;
-        rainDrops(cr, particles, time, dropCount, slant, 0.9);
+        rainDrops(cr, particles, time, dropCount, slant, 0.9, [19.1, 19.7], 1, xBand);
     }
     if (windy)
         windStreaks(cr, time, 0.35, 2);
@@ -678,12 +689,13 @@ function sceneRain(cr, ctx) {
 
 /** Snow grains (code 77): opaque white pellets, not flakes. Rides the
  *  flake particles for motion; only the mark changes. */
-function snowGrains(cr, particles, time, count) {
+function snowGrains(cr, particles, time, count, cloudCx = 12) {
     const lastTime = particles.lastTime ?? particles.lastT;
     const dt = lastTime === null ? 0 : Math.min(0.06, time - lastTime);
     const total = Math.min(count, particles.flakes.length);
     const spots = particles.static
-        ? seededSpots(total, (particles.seed ?? 7) + 37, 6.6, 17.2, 17.4, 19.6, 2.5, 1.2)
+        ? seededSpots(total, (particles.seed ?? 7) + 37,
+            cloudCx - 5.3, cloudCx + 5.3, 17.4, 19.6, 2.5, 1.2)
         : null;
     const grainColor = INK_FLAKE();
     cr.setSourceRGBA(grainColor[0], grainColor[1], grainColor[2], 0.95);
@@ -709,15 +721,17 @@ function snowGrains(cr, particles, time, count) {
 function sceneSnow(cr, ctx) {
     const { time, particles, intensity, windy, variant } = ctx;
     if (variant === 'showers') {
-        showersPeek(cr, ctx);
-        snowFlakes(cr, particles, time, intensity >= 3 ? 4 : 2);
+        const cloudCx = showersPeek(cr, ctx);
+        snowFlakes(cr, particles, time, intensity >= 3 ? 4 : 2,
+            [18.2, 19.6], [cloudCx - 5.3, cloudCx + 5.3]);
     } else if (variant === 'grains') {
-        precipSceneCloud(cr, time, precipCloud());
-        snowGrains(cr, particles, time, 5);
+        const cloudCx = precipSceneCloud(cr, time, precipCloud());
+        snowGrains(cr, particles, time, 5, cloudCx);
     } else {
-        precipSceneCloud(cr, time, precipCloud());
+        const cloudCx = precipSceneCloud(cr, time, precipCloud());
         const flakeCount = intensity <= 1 ? 2 : intensity === 2 ? 3 : 4;
-        snowFlakes(cr, particles, time, flakeCount);
+        snowFlakes(cr, particles, time, flakeCount,
+            [18.2, 19.6], [cloudCx - 5.3, cloudCx + 5.3]);
     }
     if (windy)
         windStreaks(cr, time, 0.35, 2);
@@ -726,15 +740,15 @@ function sceneSnow(cr, ctx) {
 /** Sleet / freezing rain: half drops, half flakes, extra slant. */
 function sceneSleet(cr, ctx) {
     const { time, particles, windKmh, windy, variant } = ctx;
-    precipSceneCloud(cr, time, precipCloud());
+    const cloudCx = precipSceneCloud(cr, time, precipCloud());
     const heavy = variant === 'freezingheavy';
     // one shared baseline row, as the mock composes freezing marks:
     // drop(s) flank the flake, never on top of it
     rainDrops(cr, particles, time, heavy ? 2 : 1,
         Math.min(1.1, windKmh / 36 + 0.25), 0.8, [19.0, 19.4], 1,
-        heavy ? [6.4, 17.6] : [6.8, 10.2]);
+        heavy ? [cloudCx - 5.6, cloudCx + 5.6] : [cloudCx - 5.2, cloudCx - 1.8]);
     snowFlakes(cr, particles, time, 1, [18.2, 18.8],
-        heavy ? [11.2, 13.2] : [13.2, 16.8]);
+        heavy ? [cloudCx - 0.8, cloudCx + 1.2] : [cloudCx + 1.2, cloudCx + 4.8]);
     if (heavy) {
         // freezing rain lands as ice: the mock's underline glaze
         const iceColor = INK_FLAKE();
@@ -743,8 +757,8 @@ function sceneSleet(cr, ctx) {
         cr.setLineWidth(1.3);
         cr.setSourceRGBA(iceColor[0], iceColor[1], iceColor[2], 0.9);
         cr.newPath();
-        cr.moveTo(6, 21.8);
-        cr.lineTo(18, 21.8);
+        cr.moveTo(cloudCx - 6, 21.8);
+        cr.lineTo(cloudCx + 6, 21.8);
         cr.stroke();
         cr.restore();
     }
@@ -757,7 +771,7 @@ function sceneSleet(cr, ctx) {
  *  stones, as the mock composes them. */
 function sceneHail(cr, ctx) {
     const { time, particles, windy, variant } = ctx;
-    precipSceneCloud(cr, time, stormCloud());
+    const cloudCx = precipSceneCloud(cr, time, stormCloud());
     if (variant === 'stormhail' || variant === 'stormhailheavy') {
         drawBolt(cr, time, particles, -2.8);
         const heavy = variant === 'stormhailheavy';
@@ -765,7 +779,8 @@ function sceneHail(cr, ctx) {
             Math.min(heavy ? 4 : 2, particles.hail.length),
             heavy ? [11, 19] : [13.5, 18.5]);
     } else {
-        hailStones(cr, particles, time, Math.min(3, particles.hail.length));
+        hailStones(cr, particles, time, Math.min(3, particles.hail.length),
+            [cloudCx - 5.3, cloudCx + 5.3]);
     }
     if (windy)
         windStreaks(cr, time, 0.35, 2);
@@ -816,8 +831,9 @@ function drawBolt(cr, time, particles, dx = 0) {
 
 function sceneStorm(cr, ctx) {
     const { time, particles, windKmh, windy } = ctx;
-    precipSceneCloud(cr, time, stormCloud());
-    rainDrops(cr, particles, time, 2, Math.min(0.9, windKmh / 45), 0.85);
+    const cloudCx = precipSceneCloud(cr, time, stormCloud());
+    rainDrops(cr, particles, time, 2, Math.min(0.9, windKmh / 45), 0.85,
+        [19.1, 19.7], 1, [cloudCx - 6.2, cloudCx + 6.2]);
     drawBolt(cr, time, particles);
     if (windy)
         windStreaks(cr, time, 0.3, 2);
