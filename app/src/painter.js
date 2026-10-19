@@ -556,9 +556,15 @@ function sceneCloud(cr, ctx) {
     }
     // overcast earns its silhouette: mid-gray over bright skies (the pale
     // cloud vanished into overcast white), pale body over night skies --
-    // same light/dark referee as the INK_* family
+    // same light/dark referee as the INK_* family. The back bank is a
+    // DARKER shade of the body (the mock's cloudStorm bank), not the
+    // same colour faded -- at 65% alpha it washed into the sky and
+    // the glyph read as one plain cloud. It also stands taller
+    // (squash .85: a proper cap, not a pancake) and further left, so
+    // a real second bank shows above and beside the front cloud
     const overcast = overcastBody();
-    cloud(cr, 8.2 - Math.sin(time * 0.5) * 0.8, 10.7, 1.04, overcast[0], overcast[1], 0.65, 0.70);
+    const bank = overcast.map(([r, g, b]) => [r * 0.70, g * 0.70, b * 0.75]);
+    cloud(cr, 7.2 - Math.sin(time * 0.5) * 0.8, 10.1, 1.04, bank[0], bank[1], 0.95, 0.85);
     cloud(cr, 13.1 + Math.sin(time * 0.6) * 0.7, 15.3, 1.24, overcast[0], overcast[1]);
     if (windy)
         windStreaks(cr, time, 0.4, 2);
