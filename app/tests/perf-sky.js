@@ -48,5 +48,5 @@ function benchSize(label, opts, W2, H2) {
     print(`${label.padEnd(22)} ${Math.min(...runs).toFixed(2)} ms/frame  builds=${sky.builds}`);
 }
 benchSize('clear night 1400x950', { scene: 'clear', night: true, phase: 0.62, solar: 0.2 }, 1400, 950);
-benchSize('night 2800x1900 (direct', { scene: 'clear', night: true, phase: 0.62, solar: 0.2 }, 2800, 1900);
-benchSize('noon 2800x1900 (DIRECT', { scene: 'clear', night: false, glow: 0, solar: 1 }, 2800, 1900);
+benchSize('night 2800x1900 (STRESS', { scene: 'clear', night: true, phase: 0.62, solar: 0.2 }, 2800, 1900);
+benchSize('noon 2800x1900 (STRESS', { scene: 'clear', night: false, glow: 0, solar: 1 }, 2800, 1900);
