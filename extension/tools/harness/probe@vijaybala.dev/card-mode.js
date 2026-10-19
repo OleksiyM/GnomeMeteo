@@ -22,7 +22,9 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 /* card-demo.mjs WMO map -- condition slug to code, one source of truth */
 const WMO = {clear: 0, partly: 2, cloud: 3, rain: 61, storm: 95,
-    snow: 71, sleet: 57, fog: 45, wind: 1, hail: 96};
+    snow: 71, sleet: 57, fog: 45, wind: 1, hail: 96,
+    drizzle: 53, showers: 81, freezing: 67, grains: 77,
+    snowshowers: 85, unknown: 42};
 
 /* card-demo.mjs PRESETS (minus the style-* quartet above, which carry
  * their own style/session); coverage rosters rotate through these */
@@ -45,7 +47,9 @@ const PRESETS = {
  * must stay in step with renderCoverage() in tools/card-demo.mjs --
  * the slugs it names are the blessed golden names. */
 const COV_CONDS = ['clear', 'partly', 'cloud', 'fog', 'rain',
-    'snow', 'sleet', 'storm', 'hail', 'wind'];
+    'snow', 'sleet', 'storm', 'hail', 'wind',
+    'drizzle', 'showers', 'freezing', 'grains', 'snowshowers',
+    'unknown'];
 const COV_SLOTS = ['day', 'night', 'golden'];
 const MOON_NAMES = ['new', 'waxing-crescent', 'first-quarter',
     'waxing-gibbous', 'full', 'waning-gibbous', 'last-quarter',
@@ -159,7 +163,8 @@ export const FIXTURES = {
 function buildData(weather, condition, lat, lon, ms) {
     const {sunGeometry} = weather;
     const baseTemp = {clear: 19, partly: 17, cloud: 14, rain: 11, storm: 16,
-        snow: -3, sleet: 0, fog: 9, wind: 12, hail: 14}[condition] ?? 15;
+        snow: -3, sleet: 0, fog: 9, wind: 12, hail: 14, drizzle: 12,
+        showers: 13, freezing: 1, grains: -2, snowshowers: -1}[condition] ?? 15;
     const code = WMO[condition] ?? 0;
     const hours = [], temps = [], precip = [], winds = [];
     for (let h = 0; h < 24; h++) {
@@ -168,8 +173,9 @@ function buildData(weather, condition, lat, lon, ms) {
         const diurnal = Math.max(-0.5, Math.min(1, Math.sin((alt + 5) / 95 * Math.PI / 2)));
         hours.push(when);
         temps.push(+(baseTemp + 5.5 * diurnal - 2.5 + Math.random() * 1.6 - 0.8).toFixed(1));
-        const wet = ['rain', 'storm', 'sleet', 'hail'].includes(condition);
-        const coldwet = condition === 'snow';
+        const wet = ['rain', 'storm', 'sleet', 'hail', 'drizzle',
+            'showers', 'freezing'].includes(condition);
+        const coldwet = ['snow', 'grains', 'snowshowers'].includes(condition);
         precip.push(wet ? 35 + Math.round(Math.random() * 50)
             : coldwet ? 30 + Math.round(Math.random() * 40)
             : Math.round(Math.random() * (condition === 'cloud' ? 20 : 8)));
@@ -181,8 +187,11 @@ function buildData(weather, condition, lat, lon, ms) {
     for (let d = 0; d < 8; d++) {
         const wig = Math.random() * 4 - 2;
         const codes = {clear: [0, 1, 2], partly: [2, 3, 1], cloud: [3, 45, 2],
-            rain: [61, 80, 3], storm: [95, 80, 61], snow: [71, 73, 85],
-            sleet: [57, 61, 3], fog: [45, 3, 2], wind: [1, 2, 3], hail: [96, 95, 80]}[condition] ?? [0];
+            rain: [61, 63, 65, 80], storm: [95, 80, 61], snow: [71, 73, 75, 85],
+            sleet: [57, 61, 3], fog: [45, 48, 3], wind: [1, 2, 3],
+            hail: [96, 99, 95], drizzle: [51, 55, 53], showers: [80, 81, 82],
+            freezing: [56, 66, 67], grains: [77, 75, 71],
+            snowshowers: [85, 86, 73], unknown: [42, 0, 3]}[condition] ?? [0];
         daily.push({ms: ms + d * 86400000, code: d === 0 ? code : codes[d % codes.length],
             tmax: +(baseTemp + 4 + wig).toFixed(1), tmin: +(baseTemp - 4 - wig).toFixed(1)});
     }
