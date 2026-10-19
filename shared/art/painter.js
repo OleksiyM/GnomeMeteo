@@ -662,11 +662,12 @@ function sceneRain(cr, ctx) {
         precipSceneCloud(cr, time, precipCloud());
     const slant = Math.min(0.9, windKmh / 45);
     if (variant === 'drizzle') {
-        // drizzle reads by SIZE as a family (minis at 0.62 of a rain
-        // drop), counts 3/4/5 by tier -- the old 7-mini dense row
-        // measured as a dotted line of specks at tile/strip sizes
-        const dropCount = intensity <= 1 ? 3 : intensity === 2 ? 4 : 5;
-        rainDrops(cr, particles, time, dropCount, slant, 0.85, [18.2, 18.9], 0.62);
+        // ONE droplet size across every family (a mini at 0.62 read
+        // as a speck beside a shower's full drop at tile size):
+        // counts alone carry intensity on a shared ladder -- drizzle
+        // 1/2/3 sits one rung under rain's 2/3/4
+        const dropCount = intensity <= 1 ? 1 : intensity === 2 ? 2 : 3;
+        rainDrops(cr, particles, time, dropCount, slant, 0.85);
     } else {
         const dropCount = intensity <= 1 ? 2 : intensity === 2 ? 3 : 4;
         rainDrops(cr, particles, time, dropCount, slant, 0.9);
