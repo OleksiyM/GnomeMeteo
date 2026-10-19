@@ -122,11 +122,8 @@
     <linearGradient id="sunGrad" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#ffe9a8"/><stop offset="1" stop-color="#ffb52e"/>
     </linearGradient>
-    <linearGradient id="moonGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#f6f9fc"/><stop offset="1" stop-color="#c3d3e4"/>
-    </linearGradient>
-    <!-- partly-night moon: neutral light gray over a gray base, so the crescent
-         never merges with the blue-gray cloud in front of it -->
+    <!-- every lit moon face (phases, clear night, moons behind night clouds):
+         neutral light gray over a gray base, distinct from blue-gray cloud/sky -->
     <linearGradient id="moonGreyGrad" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#f4f6f8"/><stop offset="1" stop-color="#8e99a6"/>
     </linearGradient>
@@ -177,7 +174,7 @@
     <symbol id="r-sun" viewBox="0 0 24 24"><use href="#sunFull"/></symbol>
     <!-- moon: crescent reads as night at 16px where the cratered disc read as a ball -->
     <symbol id="r-moon" viewBox="0 0 24 24">
-      <path d="M19.6 14.6A8.2 8.2 0 1 1 9.4 4.4a6.6 6.6 0 0 0 10.2 10.2Z" fill="url(#moonGrad)"/>
+      <path d="M19.6 14.6A8.2 8.2 0 1 1 9.4 4.4a6.6 6.6 0 0 0 10.2 10.2Z" fill="url(#moonGreyGrad)"/>
       <use href="#spark" transform="translate(18.8 4.3)" fill="#ffffff"/>
     </symbol>
     <symbol id="r-partly-day" viewBox="0 0 24 24">
@@ -297,7 +294,7 @@
       <use href="#cloudPath" transform="translate(4.2,0.8) scale(.78)" fill="url(#cloudStorm)"/><use href="#dropsHeavy" transform="translate(.8,.8) scale(.92)"/>
     </symbol>
     <symbol id="r-showers-night" viewBox="0 0 24 24">
-      <path d="M11.8 9.2A5 5 0 1 1 5.6 3a4 4 0 0 0 6.2 6.2Z" fill="url(#moonGrad)"/>
+      <path d="M11.8 9.2A5 5 0 1 1 5.6 3a4 4 0 0 0 6.2 6.2Z" fill="url(#moonGreyGrad)"/>
       <use href="#cloudPath" transform="translate(4.2,0.8) scale(.78)" fill="url(#cloudNight)"/>
       <use href="#dropsMidNight" transform="translate(1.1,0.2)"/>
     </symbol>
@@ -335,7 +332,7 @@
       <use href="#cloudPath" transform="translate(4.2,0.8) scale(.78)" fill="url(#cloudGrey)"/><use href="#flakesHeavy" transform="translate(.8,.8) scale(.92)"/>
     </symbol>
     <symbol id="r-snow-showers-night" viewBox="0 0 24 24">
-      <path d="M11.8 9.2A5 5 0 1 1 5.6 3a4 4 0 0 0 6.2 6.2Z" fill="url(#moonGrad)"/>
+      <path d="M11.8 9.2A5 5 0 1 1 5.6 3a4 4 0 0 0 6.2 6.2Z" fill="url(#moonGreyGrad)"/>
       <use href="#cloudPath" transform="translate(4.2,0.8) scale(.78)" fill="url(#cloudNight)"/><use href="#flakesLight" transform="translate(1.4,1)"/>
     </symbol>
     <symbol id="r-storm-hail" viewBox="0 0 24 24">
@@ -365,13 +362,13 @@
     <!-- moon phases: lit limb + elliptical terminator, rx = 7*cos(2π·phase),
          over an earthshine ghost disc (extension moon.js litPath/paintMoon) -->
     <symbol id="ph-new" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#2e4059" stroke="#93a9c4" stroke-width=".7"/></symbol>
-    <symbol id="ph-waxc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#2e4059"/><path d="M12 5A7 7 0 0 1 12 19A4.95 7 0 0 0 12 5Z" fill="url(#moonGrad)"/></symbol>
-    <symbol id="ph-first" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#2e4059"/><path d="M12 5A7 7 0 0 1 12 19Z" fill="url(#moonGrad)"/></symbol>
-    <symbol id="ph-waxg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#2e4059"/><path d="M12 5A7 7 0 0 1 12 19A4.95 7 0 0 1 12 5Z" fill="url(#moonGrad)"/></symbol>
-    <symbol id="ph-full" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="url(#moonGrad)"/><circle cx="10" cy="10.4" r="1.35" fill="#b9c9da"/><circle cx="13.8" cy="13.6" r="1.05" fill="#b9c9da"/><circle cx="14.6" cy="9.6" r=".75" fill="#b9c9da"/></symbol>
-    <symbol id="ph-wang" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#2e4059"/><path d="M12 5A7 7 0 0 0 12 19A4.95 7 0 0 0 12 5Z" fill="url(#moonGrad)"/></symbol>
-    <symbol id="ph-last" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#2e4059"/><path d="M12 5A7 7 0 0 0 12 19Z" fill="url(#moonGrad)"/></symbol>
-    <symbol id="ph-wanc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#2e4059"/><path d="M12 5A7 7 0 0 0 12 19A4.95 7 0 0 1 12 5Z" fill="url(#moonGrad)"/></symbol>
+    <symbol id="ph-waxc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#2e4059"/><path d="M12 5A7 7 0 0 1 12 19A4.95 7 0 0 0 12 5Z" fill="url(#moonGreyGrad)"/></symbol>
+    <symbol id="ph-first" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#2e4059"/><path d="M12 5A7 7 0 0 1 12 19Z" fill="url(#moonGreyGrad)"/></symbol>
+    <symbol id="ph-waxg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#2e4059"/><path d="M12 5A7 7 0 0 1 12 19A4.95 7 0 0 1 12 5Z" fill="url(#moonGreyGrad)"/></symbol>
+    <symbol id="ph-full" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="url(#moonGreyGrad)"/><circle cx="10" cy="10.4" r="1.35" fill="#a7b2bd"/><circle cx="13.8" cy="13.6" r="1.05" fill="#a7b2bd"/><circle cx="14.6" cy="9.6" r=".75" fill="#a7b2bd"/></symbol>
+    <symbol id="ph-wang" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#2e4059"/><path d="M12 5A7 7 0 0 0 12 19A4.95 7 0 0 0 12 5Z" fill="url(#moonGreyGrad)"/></symbol>
+    <symbol id="ph-last" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#2e4059"/><path d="M12 5A7 7 0 0 0 12 19Z" fill="url(#moonGreyGrad)"/></symbol>
+    <symbol id="ph-wanc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="#2e4059"/><path d="M12 5A7 7 0 0 0 12 19A4.95 7 0 0 1 12 5Z" fill="url(#moonGreyGrad)"/></symbol>
   </defs>
 </svg>
 
@@ -456,7 +453,7 @@
   <h2>3 · Moon phases</h2>
   <p class="sub">Like the extension (<code>moon.js paintMoon</code>), the clear-night icon should be the <i>actual</i> moon:
   a lit limb plus an elliptical terminator whose width follows <code>cos(2π·phase)</code>, over a faint earthshine disc so
-  even new moon never vanishes. Eight named phases; in the app the same two arcs render any date's exact phase,
+  even new moon never vanishes. All lit faces share the neutral light-gray gradient, gray at the base. Eight named phases; in the app the same two arcs render any date's exact phase,
   and partly-night swaps its crescent for tonight's shape behind the cloud.
   Stars twinkle around every phase at 44px (the 16px cells are the unanimated stills), placed well clear of the disc — past the painter's radius + 1.4 keep-out — as
   <code>painter.js moonBody</code> seeds them — so this set ports straight to the shell extension, whose painter
