@@ -277,9 +277,11 @@ function rainDrops(cr, particles, time, count, slant, alpha, band = [19.1, 19.7]
     cr.setSourceRGBA(waterColor[0], waterColor[1], waterColor[2], alpha);
     const total = Math.min(count, particles.drops.length);
     // mock spacing: drops hang in ONE even staggered row and never
-    // touch -- heavy counts shrink the drop (mock heavy scale
-    // .80/.86) instead of letting bulbs merge. The seed only jitters
-    // the row, so neighbouring glyphs differ without ever colliding
+    // touch. Counts run 2/3/4 full-size across rain tiers (the mock
+    // sheet's earlier 5-across heavy shrank drops below legibility at
+    // strip/tile sizes -- measured 1.7px wide in the strip). The seed
+    // only jitters the row, so neighbouring glyphs differ without
+    // ever colliding
     const spots = particles.static
         ? (() => {
             const golden = 0.6180339887;
@@ -304,7 +306,7 @@ function rainDrops(cr, particles, time, count, slant, alpha, band = [19.1, 19.7]
         let x, y, s;
         if (particles.static) {
             [x, y] = spots[i];
-            s = (total >= 5 ? (i % 2 ? 0.80 : 0.86) : (i % 2 ? 0.88 : 0.98)) * dropScale;
+            s = (i % 2 ? 0.88 : 0.98) * dropScale;
         } else {
             const drop = particles.drops[i];
             drop.y += (drop.speed ?? drop.sp) * dt;
@@ -664,7 +666,7 @@ function sceneRain(cr, ctx) {
         const dropCount = intensity <= 1 ? 3 : intensity === 2 ? 5 : 7;
         rainDrops(cr, particles, time, dropCount, slant, 0.85, [18.2, 18.9], 0.55);
     } else {
-        const dropCount = intensity <= 1 ? 2 : intensity === 2 ? 3 : 5;
+        const dropCount = intensity <= 1 ? 2 : intensity === 2 ? 3 : 4;
         rainDrops(cr, particles, time, dropCount, slant, 0.9);
     }
     if (windy)
