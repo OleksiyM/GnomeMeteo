@@ -68,46 +68,43 @@ function teardrop(cr, x, y, s) {
     cr.closePath();
 }
 
-/** Organic-but-safe scatter under the cloud for static poses. Golden-
- *  ratio steps land every drop at a fresh, never-repeating spot --
- *  naturally uneven, yet spread with no clumps and no ruler-straight
- *  columns -- and a hard distance check keeps neighbours from ever
- *  touching. Seeded per glyph, so each icon paints identically across
- *  repaints (no shimmer) while neighbouring icons differ. */
-function seededSpots(count, seed, x0, x1, y0, y1, minDx, minDy) {
+/** Staggered zigzag for static precip poses: marks alternate between
+ *  the band's two edges along an evenly spaced chain, so they step
+ *  past each other like falling precip instead of standing in one
+ *  ruler row -- while a hard minimum centre distance (minDist, the
+ *  marks' diameter) guarantees no two ever overlap: the chain step
+ *  is derived from it. Seeded jitter (zero-sum in x) keeps the
+ *  constellation's centroid exactly on cx, the cloud's centre, and
+ *  paints identically across repaints while neighbouring icons
+ *  differ. Two-mark poses stagger only gently (a diagonal pair of
+ *  drops would read as a slope, not weather). */
+function staggeredSpots(count, seed, cx, halfSpan, y0, y1, minDist) {
+    if (count <= 0)
+        return [];
     const golden = 0.6180339887;
     let u = (seed % 977) * golden;
-    const spots = [];
-    for (let i = 0; i < count; i++) {
-        let x = x0, y = y0, ok = false;
-        let bestX = x0, bestY = y0, bestScore = -1;
-        for (let k = 0; k < 24 && !ok; k++) {
-            u += golden;
-            x = x0 + (u % 1) * (x1 - x0);
-            u += golden;
-            y = y0 + (u % 1) * (y1 - y0);
-            ok = spots.every(([ox, oy]) =>
-                Math.abs(ox - x) >= minDx || Math.abs(oy - y) >= minDy);
-            // tight bands make the constraint unsatisfiable some seeds;
-            // remember the best-spaced miss instead of grid-placing an
-            // overlapping spot (merged drops read as one fat drop)
-            const score = spots.length
-                ? Math.min(...spots.map(([ox, oy]) =>
-                    Math.abs(ox - x) / minDx + Math.abs(oy - y) / minDy))
-                : 1;
-            if (score > bestScore) {
-                bestScore = score;
-                bestX = x;
-                bestY = y;
-            }
-        }
-        if (!ok) {
-            x = bestX;
-            y = bestY;
-        }
-        spots.push([x, y]);
-    }
-    return spots;
+    const jit = () => { u += golden; return (u % 1) - 0.5; };
+    if (count === 1)
+        return [[cx, (y0 + y1) / 2]];
+    const gapScale = count <= 2 ? 0.35 : count === 3 ? 0.7 : 1.0;
+    const rowGap = (y1 - y0) * gapScale;
+    const midY = (y0 + y1) / 2;
+    const stepPref = count <= 2 ? 5.4 : count === 3 ? 4.4 : count === 4 ? 3.6 : 3.0;
+    const stepNeed = Math.sqrt(Math.max(0, minDist * minDist - rowGap * rowGap)) + 0.25;
+    const step = Math.min(Math.max(stepPref, stepNeed),
+        (2 * halfSpan) / (count - 1));
+    // x jitter capped so neighbours keep minDist even at extremes
+    const slack = Math.sqrt(step * step + rowGap * rowGap) - minDist;
+    const xAmp = Math.max(0, Math.min(0.25, slack / 2));
+    const jits = Array.from({ length: count }, () => jit());
+    const jMean = jits.reduce((s, j) => s + j, 0) / count;
+    return Array.from({ length: count }, (_, i) => {
+        const yBase = midY + (i % 2 ? rowGap / 2 : -rowGap / 2);
+        return [
+            cx + (i - (count - 1) / 2) * step + (jits[i] - jMean) * 2 * xAmp,
+            Math.min(y1, Math.max(y0, yBase + jit() * 0.36)),
+        ];
+    });
 }
 
 /** Mock-silhouette cloud (2026 icon set): the icon sheet's shared cloud
@@ -262,42 +259,22 @@ function windStreaks(cr, time, alphaScale, count = 3) {
 }
 
 /** Raindrops. Animated falls ride the shared particle clock; static poses
- *  (strip glyphs, day tiles) sit in an even staggered grid. Either way the
- *  shape is a teardrop, and intensity decides the COUNT -- heavier rain,
- *  more drops. */
-function rainDrops(cr, particles, time, count, slant, alpha, band = [19.1, 19.7], dropScale = 1, xBand = [5.8, 18.2]) {
+ *  (strip glyphs, day tiles) stagger in a two-row-deep constellation
+ *  centred on the cloud. Either way the shape is a teardrop, and
+ *  intensity decides the COUNT -- heavier rain, more drops. */
+function rainDrops(cr, particles, time, count, slant, alpha, band = [18.4, 20.0], dropScale = 1, xBand = [5.8, 18.2]) {
     const lastTime = particles.lastTime ?? particles.lastT;
     const dt = lastTime === null ? 0 : Math.min(0.06, time - lastTime);
     const waterColor = INK_WATER();
     cr.setSourceRGBA(waterColor[0], waterColor[1], waterColor[2], alpha);
     const total = Math.min(count, particles.drops.length);
-    // mock spacing: drops hang in ONE even staggered row and never
-    // touch. Counts run 2/3/4 full-size across rain tiers (the mock
-    // sheet's earlier 5-across heavy shrank drops below legibility at
-    // strip/tile sizes -- measured 1.7px wide in the strip). The seed
-    // only jitters the row, so neighbouring glyphs differ without
-    // ever colliding
+    // bulb diameter 2.9 at full scale: the zigzag keeps every pair
+    // of bulbs at least 2.75 apart (they step past each other
+    // diagonally like falling rain, never into each other)
     const spots = particles.static
-        ? (() => {
-            const golden = 0.6180339887;
-            let u = ((particles.seed ?? 7) % 977) * golden;
-            const jit = () => { u += golden; return (u % 1) - 0.5; };
-            const cx = (xBand[0] + xBand[1]) / 2;
-            const baseStep = total <= 2 ? 5.4 : total === 3 ? 4.4 : total === 4 ? 3.6 : 3.0;
-            const step = total > 1
-                ? Math.min(baseStep, (xBand[1] - xBand[0]) / (total - 1))
-                : 0;
-            const midY = (band[0] + band[1]) / 2;
-            // jitter may never close the gap between neighbouring bulbs,
-            // and is zero-sum so the row's centroid stays on the cloud
-            const xAmp = Math.max(0, Math.min(0.35, (step - 2.6) / 2));
-            const jits = Array.from({ length: total }, () => jit());
-            const jMean = jits.reduce((a, b) => a + b, 0) / total;
-            return Array.from({ length: total }, (_, i) => [
-                cx + (i - (total - 1) / 2) * step + (jits[i] - jMean) * 2 * xAmp,
-                midY + (i % 2 ? 0.22 : -0.12) + jit() * 0.24,
-            ]);
-        })()
+        ? staggeredSpots(total, particles.seed ?? 7,
+            (xBand[0] + xBand[1]) / 2, (xBand[1] - xBand[0]) / 2 - 0.4,
+            band[0], band[1], 2.75 * dropScale)
         : null;
     const marks = [];
     for (let i = 0; i < total; i++) {
@@ -329,15 +306,16 @@ function rainDrops(cr, particles, time, count, slant, alpha, band = [19.1, 19.7]
 }
 
 /** Snowflakes (six spokes), drifting side to side. */
-function snowFlakes(cr, particles, time, count, flakeBand = [18.2, 19.6], xBand = [6.6, 17.2]) {
+function snowFlakes(cr, particles, time, count, flakeBand = [17.8, 20.2], xBand = [6.6, 17.2]) {
     const lastTime = particles.lastTime ?? particles.lastT;
     const dt = lastTime === null ? 0 : Math.min(0.06, time - lastTime);
     cr.setLineCap(Cairo.LineCap.ROUND);
     cr.setLineWidth(0.75);
     const total = Math.min(count, particles.flakes.length);
     const flakeSpots = particles.static
-        ? seededSpots(total, (particles.seed ?? 7) + 37, xBand[0], xBand[1],
-            flakeBand[0], flakeBand[1], 2.5, 1.2)
+        ? staggeredSpots(total, (particles.seed ?? 7) + 37,
+            (xBand[0] + xBand[1]) / 2, (xBand[1] - xBand[0]) / 2 - 0.4,
+            flakeBand[0], flakeBand[1], 3.5)
         : null;
     for (let i = 0; i < total; i++) {
         let x, y, rot, radius;
@@ -379,7 +357,9 @@ function hailStones(cr, particles, time, count, xBand = [6.6, 17.2]) {
     // static poses get the mock's pellet row (seeded, highlights and
     // all) instead of wherever the bounce physics froze mid-flight
     const spots = particles.static
-        ? seededSpots(count, (particles.seed ?? 7) + 71, xBand[0], xBand[1], 17.2, 19.6, 3.4, 1.6)
+        ? staggeredSpots(count, (particles.seed ?? 7) + 71,
+            (xBand[0] + xBand[1]) / 2, (xBand[1] - xBand[0]) / 2 - 0.4,
+            17.4, 19.8, 3.3)
         : null;
     for (let i = 0; i < count; i++) {
         const stone = particles.hail[i];
@@ -673,10 +653,10 @@ function sceneRain(cr, ctx) {
         // counts alone carry intensity on a shared ladder -- drizzle
         // 1/2/3 sits one rung under rain's 2/3/4
         const dropCount = intensity <= 1 ? 1 : intensity === 2 ? 2 : 3;
-        rainDrops(cr, particles, time, dropCount, slant, 0.85, [19.1, 19.7], 1, xBand);
+        rainDrops(cr, particles, time, dropCount, slant, 0.85, [18.4, 20.0], 1, xBand);
     } else {
         const dropCount = intensity <= 1 ? 2 : intensity === 2 ? 3 : 4;
-        rainDrops(cr, particles, time, dropCount, slant, 0.9, [19.1, 19.7], 1, xBand);
+        rainDrops(cr, particles, time, dropCount, slant, 0.9, [18.4, 20.0], 1, xBand);
     }
     if (windy)
         windStreaks(cr, time, 0.35, 2);
@@ -689,8 +669,8 @@ function snowGrains(cr, particles, time, count, cloudCx = 12) {
     const dt = lastTime === null ? 0 : Math.min(0.06, time - lastTime);
     const total = Math.min(count, particles.flakes.length);
     const spots = particles.static
-        ? seededSpots(total, (particles.seed ?? 7) + 37,
-            cloudCx - 5.3, cloudCx + 5.3, 17.4, 19.6, 2.5, 1.2)
+        ? staggeredSpots(total, (particles.seed ?? 7) + 37, cloudCx, 4.9,
+            17.6, 20.0, 1.75)
         : null;
     const grainColor = INK_FLAKE();
     cr.setSourceRGBA(grainColor[0], grainColor[1], grainColor[2], 0.95);
@@ -719,7 +699,7 @@ function sceneSnow(cr, ctx) {
         const cloudCx = showersPeek(cr, ctx);
         snowFlakes(cr, particles, time,
             intensity <= 1 ? 2 : intensity === 2 ? 3 : 4,
-            [18.2, 19.6], [cloudCx - 5.3, cloudCx + 5.3]);
+            [17.8, 20.2], [cloudCx - 5.3, cloudCx + 5.3]);
     } else if (variant === 'grains') {
         const cloudCx = precipSceneCloud(cr, time, precipCloud());
         snowGrains(cr, particles, time, 5, cloudCx);
@@ -727,7 +707,7 @@ function sceneSnow(cr, ctx) {
         const cloudCx = precipSceneCloud(cr, time, precipCloud());
         const flakeCount = intensity <= 1 ? 2 : intensity === 2 ? 3 : 4;
         snowFlakes(cr, particles, time, flakeCount,
-            [18.2, 19.6], [cloudCx - 5.3, cloudCx + 5.3]);
+            [17.8, 20.2], [cloudCx - 5.3, cloudCx + 5.3]);
     }
     if (windy)
         windStreaks(cr, time, 0.35, 2);
@@ -742,9 +722,9 @@ function sceneSleet(cr, ctx) {
     // drop(s) flank the flake, never on top of it. Marks ascend with
     // tier like every family: 2 at tier 3, 3 at tier 4 (57/67)
     rainDrops(cr, particles, time, (heavy || intensity >= 4) ? 2 : 1,
-        Math.min(1.1, windKmh / 36 + 0.25), 0.8, [19.0, 19.4], 1,
+        Math.min(1.1, windKmh / 36 + 0.25), 0.8, [18.6, 19.9], 1,
         heavy ? [cloudCx - 5.6, cloudCx + 5.6] : [cloudCx - 5.2, cloudCx - 1.8]);
-    snowFlakes(cr, particles, time, 1, [18.2, 18.8],
+    snowFlakes(cr, particles, time, 1, [18.0, 19.7],
         heavy ? [cloudCx - 0.8, cloudCx + 1.2] : [cloudCx + 1.2, cloudCx + 4.8]);
     if (heavy) {
         // freezing rain lands as ice: the mock's underline glaze
@@ -830,7 +810,7 @@ function sceneStorm(cr, ctx) {
     const { time, particles, windKmh, windy } = ctx;
     const cloudCx = precipSceneCloud(cr, time, stormCloud());
     rainDrops(cr, particles, time, 2, Math.min(0.9, windKmh / 45), 0.85,
-        [19.1, 19.7], 1, [cloudCx - 6.2, cloudCx + 6.2]);
+        [18.4, 20.0], 1, [cloudCx - 6.2, cloudCx + 6.2]);
     drawBolt(cr, time, particles);
     if (windy)
         windStreaks(cr, time, 0.3, 2);
