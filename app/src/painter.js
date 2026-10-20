@@ -367,7 +367,7 @@ function snowFlakes(cr, particles, time, count, flakeBand = [17.8, 20.2], xBand 
 }
 
 /** Hailstones: fall under gravity, bounce & scatter on the floor, respawn. */
-function hailStones(cr, particles, time, count, xBand = [6.6, 17.2]) {
+function hailStones(cr, particles, time, count, xBand = [6.6, 17.2], yBand = [17.4, 19.8], stoneScale = 1) {
     const lastTime = particles.lastTime ?? particles.lastT;
     const dt = lastTime === null ? 0 : Math.min(0.06, time - lastTime);
     // static poses get the mock's pellet row (seeded, highlights and
@@ -375,12 +375,12 @@ function hailStones(cr, particles, time, count, xBand = [6.6, 17.2]) {
     const spots = particles.static
         ? staggeredSpots(count, (particles.seed ?? 7) + 71,
             (xBand[0] + xBand[1]) / 2, (xBand[1] - xBand[0]) / 2 - 0.4,
-            17.4, 19.8, 3.3)
+            yBand[0], yBand[1], 3.3)
         : null;
     for (let i = 0; i < count; i++) {
         const stone = particles.hail[i];
         if (particles.static) {
-            const radius = i % 2 ? 1.35 : 1.6;
+            const radius = (i % 2 ? 1.35 : 1.6) * stoneScale;
             const [sx, sy] = spots[i];
             const stoneColor = INK_STONE();
             cr.setSourceRGBA(stoneColor[0], stoneColor[1], stoneColor[2], 0.95);
@@ -770,11 +770,16 @@ function sceneHail(cr, ctx) {
     const { time, particles, windy, variant } = ctx;
     const cloudCx = precipSceneCloud(cr, time, stormCloud());
     if (variant === 'stormhail' || variant === 'stormhailheavy') {
-        drawBolt(cr, time, particles, -2.8);
         const heavy = variant === 'stormhailheavy';
+        // the mock stills shrink the bolt left to make room for the
+        // stones: translate(-2.6,.4) scale(.88), heavy (-3,.2) scale(.9)
+        drawBolt(cr, time, particles, ...(heavy ? [-3, 0.2, 0.9] : [-2.6, 0.4, 0.88]));
+        // heavy pellets ride higher beside the bolt's notch, scaled
+        // .86, exactly the mock's pelletsHeavy use transform
         hailStones(cr, particles, time,
-            Math.min(heavy ? 4 : 2, particles.hail.length),
-            heavy ? [11, 19] : [13.5, 18.5]);
+            Math.min(heavy ? 5 : 2, particles.hail.length),
+            heavy ? [8.6, 19.2] : [13.5, 18.5],
+            ...(heavy ? [[15.4, 17.6], 0.86] : []));
     } else {
         hailStones(cr, particles, time, Math.min(3, particles.hail.length),
             [cloudCx - 5.3, cloudCx + 5.3]);
@@ -783,54 +788,62 @@ function sceneHail(cr, ctx) {
         windStreaks(cr, time, 0.35, 2);
 }
 
-const BOLTS = [
-    [[13, 13.0], [10.8, 16.9], [12.7, 16.9], [10.2, 21.9]],
-    [[10.6, 12.6], [13.2, 16.3], [11.4, 16.5], [13.8, 22.1]],
+/* the mock's bolt (#boltPath): a filled polygon, gold gradient
+ * #ffd964 -> #f5a524 with a #e89b1c rim, 0.6 wide, round joins.
+ * wg-flash keeps it always present at 22% with one double burst per
+ * 3.6s cycle (52% .22 -> 58% 1 -> 63% .45 -> 68% 1 -> 100% .22);
+ * static poses burn at full opacity like the mock still, since
+ * tiles and strip glyphs can't wait for the burst */
+const BOLT_PTS = [
+    [13.2, 13.4], [9.7, 19], [12.1, 19], [10.9, 22.4],
+    [15.7, 16.6], [13.0, 16.6], [14.7, 13.4],
 ];
 
-// double-flick lightning every ~2.8 s, alternating bolt shape;
-// static poses (tiles, strip glyphs) can't wait for the flicker
-// window -- the bolt IS the scene, so it burns at full brightness
-function drawBolt(cr, time, particles, dx = 0) {
-    const cycle = Math.floor(time / 2.8);
-    const cycleFraction = time % 2.8;
-    let flash = 0;
-    if (particles.static) flash = 1;
-    else if (cycleFraction < 0.07) flash = cycleFraction / 0.07;
-    else if (cycleFraction < 0.14) flash = 1 - (cycleFraction - 0.07) / 0.07;
-    else if (cycleFraction < 0.20) flash = 0.6 * (cycleFraction - 0.14) / 0.06;
-    else if (cycleFraction < 0.28) flash = 0.6 * (1 - (cycleFraction - 0.20) / 0.08);
-    if (flash <= 0)
-        return;
-    // soft sky glow behind the bolt
-    const glow = new Cairo.RadialGradient(12 + dx, 12, 2, 12 + dx, 12, 15);
-    glow.addColorStopRGBA(0, 1, 1, 0.94, 0.22 * flash);
-    glow.addColorStopRGBA(1, 1, 1, 0.94, 0);
-    cr.setSource(glow);
-    cr.paint();
+function flashLevel(time, particles) {
+    if (particles.static)
+        return 1;
+    const p = (time % 3.6) / 3.6;
+    if (p < 0.52) return 0.22;
+    if (p < 0.58) return 0.22 + (p - 0.52) / 0.06 * 0.78;
+    if (p < 0.63) return 1 - (p - 0.58) / 0.05 * 0.55;
+    if (p < 0.68) return 0.45 + (p - 0.63) / 0.05 * 0.55;
+    return 1 - (p - 0.68) / 0.32 * 0.78;
+}
 
+function drawBolt(cr, time, particles, tx = 0, ty = 0, scale = 1) {
+    const flash = flashLevel(time, particles);
     cr.save();
-    cr.translate(dx, 0);
+    cr.translate(tx, ty);
+    cr.scale(scale, scale);
     cr.setLineJoin(Cairo.LineJoin.ROUND);
-    cr.setLineCap(Cairo.LineCap.ROUND);
-    const bolt = BOLTS[particles.static ? 0 : cycle % BOLTS.length];
-    cr.setSourceRGBA(1, 0.92, 0.23, flash);
-    cr.setLineWidth(2.4);
-    cr.moveTo(bolt[0][0], bolt[0][1]);
-    for (let i = 1; i < bolt.length; i++)
-        cr.lineTo(bolt[i][0], bolt[i][1]);
-    cr.stroke();
-    cr.setSourceRGBA(1, 1, 1, flash);
-    cr.setLineWidth(0.9);
+    cr.moveTo(BOLT_PTS[0][0], BOLT_PTS[0][1]);
+    for (let i = 1; i < BOLT_PTS.length; i++)
+        cr.lineTo(BOLT_PTS[i][0], BOLT_PTS[i][1]);
+    cr.closePath();
+    const grad = new Cairo.LinearGradient(0, 13.4, 0, 22.4);
+    grad.addColorStopRGBA(0, 1, 0.851, 0.392, flash);
+    grad.addColorStopRGBA(1, 0.961, 0.647, 0.141, flash);
+    cr.setSource(grad);
+    cr.fillPreserve();
+    cr.setSourceRGBA(0.910, 0.608, 0.110, flash);
+    cr.setLineWidth(0.6);
     cr.stroke();
     cr.restore();
 }
 
 function sceneStorm(cr, ctx) {
     const { time, particles, windKmh, windy } = ctx;
-    const cloudCx = precipSceneCloud(cr, time, stormCloud());
-    rainDrops(cr, particles, time, 2, Math.min(0.9, windKmh / 45), 0.85,
-        [18.4, 20.0], 1, [cloudCx - 6.2, cloudCx + 6.2]);
+    precipSceneCloud(cr, time, stormCloud());
+    if (!particles.static) {
+        /* the mock's animated storm: two drops flanking the bolt at
+         * x 6.8 / 17.4 (scale .85, delays -.5/-.95); its still (#r-storm)
+         * carries the bolt alone, so static poses draw no drops */
+        const slant = Math.min(0.9, windKmh / 45);
+        rainDrops(cr, particles, time, 1, slant, 0.85,
+            [18.4, 20.0], 0.85, [6.4, 7.2]);
+        rainDrops(cr, particles, time + 0.45, 1, slant, 0.85,
+            [18.4, 20.0], 0.85, [17.0, 17.8]);
+    }
     drawBolt(cr, time, particles);
     if (windy)
         windStreaks(cr, time, 0.3, 2);
