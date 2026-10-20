@@ -10,7 +10,7 @@
 }
 
 /* -- dropdown card --------------------------------------------------------
- * Mirrors the mockup (mockups/weather-menu.html) at its narrow breakpoint:
+ * The narrow card layout:
  * flat text tabs over a hairline, huge thin temperature, plain degF | degC text
  * toggle, transparent day tiles that only glass up when selected, and a
  * chart that bleeds to the card edges. The sky itself is painted by sky.js
@@ -30,10 +30,10 @@
     width: 330px;
     min-height: 430px;
     /* no horizontal padding: the chart spans the full card and bleeds its
-     * fill to the edges (mockup behaviour); rows pad themselves instead */
+     * fill to the edges; rows pad themselves instead */
     padding: 12px 0 8px 0;
     border-radius: 18px;
-    /* firmer than the mock's .35: card ink must clear sun-bright skies */
+    /* firmer than a .35 scrim: card ink must clear sun-bright skies */
     text-shadow: 0 1px 4px rgba(0, 0, 10, 0.65);
 }
 
@@ -55,7 +55,7 @@
 }
 
 .aw-current-temp {
-    font-size: 3em;               /* the mock's oversized thin numeral */
+    font-size: 3em;               /* oversized thin numeral */
     font-weight: 200;
 }
 
@@ -126,7 +126,7 @@
     color: #0b1220;
 }
 
-/* -- day tiles: mock narrow grid = two rows of four ----------------------- */
+/* -- day tiles: narrow grid = two rows of four --------------------------- */
 
 .aw-days-grid {
     spacing: 4px;
@@ -211,7 +211,7 @@
     color: rgba(255, 255, 255, 0.62);
 }
 
-/* the mock dims lows only to .85 + weight -- .62 was unreadable */
+/* lows dim only to .85 + weight -- .62 was unreadable */
 .aw-dark .aw-day-lo {
     color: rgba(255, 255, 255, 0.85);
 }
@@ -241,7 +241,7 @@
 }
 
 /* tiles are transparent until hovered/selected; the glass is DARK-tinted
- * (the mock's rgba(16,20,28,-)) -- white ink on white-tinted glass vanishes
+ * (rgba(16,20,28,-)) -- white ink on white-tinted glass vanishes
  * over bright skies, dark glass is what makes it pop */
 .aw-dark .aw-day {
     background-color: transparent;

@@ -93,7 +93,7 @@ export function lineInk(baseColor, bgColors) {
 
 // Five samples per label box: centre, left/right flanks, above and below —
 // a disc grazing ANY of them counts against the text.
-export const SAMPLE_GRID = [[0.5, 0.5], [0.15, 0.5], [0.85, 0.5],
+const SAMPLE_GRID = [[0.5, 0.5], [0.15, 0.5], [0.85, 0.5],
     [0.5, 0.25], [0.5, 0.75]];
 
 /** On-screen box [x, y, w, h] -> sample fractions over a card of

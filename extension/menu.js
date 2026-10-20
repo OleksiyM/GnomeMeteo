@@ -191,11 +191,11 @@ const ChartArea = GObject.registerClass(
                 return;
             const panel = this._panel, metricConfig = METRICS[panel._metric];
             // 'accent' style unifies the data in the OS accent colour; sky
-            // modes keep the mock's per-metric palette
+            // modes keep the per-metric palette
             const accent = panel._style === 'accent' ? panel._accent : metricConfig.accent;
             // full card width: .aw-content has no horizontal padding (rows pad
-            // themselves), so the fill bleeds to the edges like the mockup; the
-            // mock's narrow chart labels every 3rd hour, ink-dim, 8pt
+            // themselves), so the fill bleeds to the card edges; the narrow
+            // chart labels every 3rd hour, ink-dim, 8pt
             const cr = this.get_context();
             const strip = panel._conditions !== 'off' ? panel._strip : null;
             paintChart(cr, {
@@ -407,7 +407,7 @@ export class ForecastPanel {
         this._chart = new ChartArea(this);
         main.add_child(this._chart);
 
-        // day tiles: mock's narrow grid = 2 rows x 4 (rebuilt on render)
+        // day tiles: narrow grid = 2 rows x 4 (rebuilt on render)
         this._daysGrid = column('aw-days-grid');
         main.add_child(this._daysGrid);
         this._dayButtons = [];
@@ -612,7 +612,7 @@ export class ForecastPanel {
             });
         }
 
-        // the mock has no "updated" row -- keep it as the refresh button's
+        // no visible "updated" row -- keep it as the refresh button's
         // accessible name instead of visible clutter
         if (state.updated)
             this._refreshButton.set_accessible_name(
@@ -804,6 +804,10 @@ export class ForecastPanel {
             return;
         }
         const [from, to] = pair;
+        // start on the resampled grid RIGHT NOW: a repaint landing
+        // before the first morph tick would otherwise draw the old
+        // series' length against the new strip (26-pt Today vs 24)
+        this._shown = from.slice();
         const startTime = GLib.get_monotonic_time();
         this._morphId = GLib.timeout_add(GLib.PRIORITY_LOW, CHART_MORPH_TICK_MS, () => {
             const progress = Math.min(1, (GLib.get_monotonic_time() - startTime) / (CHART_MORPH_DURATION_MS * 1000));

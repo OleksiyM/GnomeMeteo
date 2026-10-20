@@ -14,7 +14,7 @@ import { judgeInk } from './chart.js';
 
 /* five samples per label box: the centre, its four flanks, and one
  * above and below -- a disc grazing any of them counts against the text */
-export const SAMPLE_GRID = [[0.5, 0.5], [0.15, 0.5], [0.85, 0.5],
+const SAMPLE_GRID = [[0.5, 0.5], [0.15, 0.5], [0.85, 0.5],
     [0.5, 0.25], [0.5, 0.75]];
 
 /** px box [x, y, w, h] in card space -> sample fractions [fx, fy].

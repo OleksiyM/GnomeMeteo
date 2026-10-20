@@ -32,7 +32,7 @@
 # in ONE boot, renders each fixture SLUG as the REAL ForecastPanel (real
 # St widgets, real stylesheet.css, real painter/chart/sky code), capturing
 # each card rect through the in-process GI chain. Location + weather are
-# mocked by construction: the panel gets a fixture state object; the
+# fixtured by construction: the panel gets a fixture state object; the
 # provider never exists. Determinism is pinned PER CARD, so bless order
 # can never matter.
 #

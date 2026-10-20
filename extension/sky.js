@@ -6,7 +6,7 @@ import { paintMoon, moonPhase, illumOf } from './moon.js';
 const TWO_PI = Math.PI * 2;
 const rand = (min, max) => min + Math.random() * (max - min);
 
-/* [top, bottom] sky gradients per scene/day-night (mockup PAL) */
+/* [top, bottom] sky gradients per scene/day-night */
 const SKY_PALETTES = {
     clear: { d: [[0.18, 0.43, 0.70], [0.75, 0.88, 0.97]], n: [[0.04, 0.06, 0.15], [0.15, 0.20, 0.36]] },
     partly: { d: [[0.23, 0.43, 0.66], [0.66, 0.79, 0.89]], n: [[0.05, 0.07, 0.19], [0.16, 0.21, 0.38]] },

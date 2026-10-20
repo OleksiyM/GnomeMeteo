@@ -7,6 +7,10 @@
       around each strip glyph, and the pale/ink expectation is re-derived
       from the WCAG contrast formula -- pickInk's verdict must be visible
       in pixels, not just in code.
+  certify-pixels.py --motion [dir]  motion mode: timed frames from
+      tests/motion-frames.mjs; asserts rain lanes stay occupied (no
+      marching waves) and the storm bolt never leaves the icon
+      (22% baseline between bursts).
 
 
 For every cell in manifest.json it measures what the cairo painter
@@ -26,8 +30,10 @@ from pathlib import Path
 from PIL import Image
 
 GRID = '--grid' in sys.argv
-_args = [a for a in sys.argv[1:] if a != '--grid']
-OUT = Path(_args[0]) if _args else Path('tools/out/grid' if GRID else 'tools/out/certify')
+MOTION = '--motion' in sys.argv
+_args = [a for a in sys.argv[1:] if a not in ('--grid', '--motion')]
+OUT = Path(_args[0]) if _args else Path(
+    'tools/out/motion' if MOTION else 'tools/out/grid' if GRID else 'tools/out/certify')
 MIN_SEP = 0.10          # required separation (plain-lume units + chroma)
 DARK_CORE = 0.045      # plain-lume delta that counts as a true ink/glow core
                         # (real tiers overshoot: CLOUD_RAIN mid -0.055,
@@ -227,10 +233,79 @@ def grade_grid(img, cell):
     return grade_against_ground(region, cell, ground_rgb)
 
 
+def components(region, is_mark, min_px):
+    """Count 4-connected blobs of mark pixels at least min_px large."""
+    w, h = region.size
+    px = region.load()
+    seen = [[False] * w for _ in range(h)]
+    found = 0
+    for y in range(h):
+        for x in range(w):
+            if seen[y][x] or not is_mark(px[x, y]):
+                seen[y][x] = True
+                continue
+            size, stack = 0, [(x, y)]
+            seen[y][x] = True
+            while stack:
+                cx, cy = stack.pop()
+                size += 1
+                for nx, ny in ((cx + 1, cy), (cx - 1, cy), (cx, cy + 1), (cx, cy - 1)):
+                    if 0 <= nx < w and 0 <= ny < h and not seen[ny][nx]:
+                        seen[ny][nx] = True
+                        if is_mark(px[nx, ny]):
+                            stack.append((nx, ny))
+            if size > min_px:
+                found += 1
+    return found
+
+
+def grade_motion(manifest, images):
+    """Timed-frame choreography locks. Rain: the heavy tier paints 4
+    lanes; fixed lanes keep >=4 separate drops in nearly every frame
+    and never drop under 3 (the marching-wave build bunched falls
+    into 2-blob waves). Storm: the bolt owns gold pixels even at the
+    22% flash baseline (the old bolt scored exactly 0), and bursts
+    several times brighter. Bar values measured from good renders
+    with ~2x headroom."""
+    fails = []
+    by_kind = {}
+    for cell in manifest['cells']:
+        x, y, s = cell['x'], cell['y'], cell['size']
+        region = images[cell['png']].crop((x, y, x + s, y + s)).convert('RGB')
+        if cell['kind'] == 'rain':
+            n = components(region, lambda c: c[2] - c[0] > 35 and c[2] > 80, 6)
+            by_kind.setdefault('rain', []).append(n)
+        else:
+            # gold chroma mass: the bolt's area barely grows between
+            # baseline and burst, its r-b saturation does (~8x)
+            px = list(region.getdata())
+            gold = sum(c[0] - c[2] for c in px
+                       if c[0] - c[2] > 8 and c[0] >= c[1] - 4 and c[0] > 100)
+            by_kind.setdefault(cell['kind'], []).append(gold)
+    rain = by_kind.get('rain', [])
+    full = sum(1 for n in rain if n >= 4)
+    if not rain or min(rain) < 3 or full < 7:
+        fails.append(f"rain lanes not occupied: per-frame drop counts {rain} "
+                     f"(want >=3 always, >=4 in 7+ frames)")
+    base = by_kind.get('storm-base', [])
+    burst = by_kind.get('storm-burst', [])
+    if not base or min(base) < 1500:
+        fails.append(f"bolt missing at flash baseline: gold mass {base} (want >=1500 each)")
+    if not burst or min(burst) < 20000 or (base and min(burst) < 5 * sorted(base)[len(base) // 2]):
+        fails.append(f"bolt burst too weak: gold mass {burst} vs baseline {base}")
+    for f in fails:
+        print(f"  FAIL motion: {f}")
+    print(f"motion-certify: {3 - len(fails)}/3 choreography checks pass "
+          f"(rain drops {rain}, bolt gold mass base {base} burst {burst})")
+    return 1 if fails else 0
+
+
 def main():
     manifest = json.loads((OUT / 'manifest.json').read_text())
     images = {name: Image.open(OUT / name) for name in
               {c['png'] for c in manifest['cells']}}
+    if MOTION:
+        return grade_motion(manifest, images)
     failed = 0
     if GRID:
         for cell in manifest['cells']:

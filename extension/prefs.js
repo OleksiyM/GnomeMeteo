@@ -94,7 +94,7 @@ const ResultRow = GObject.registerClass(class ResultRow extends Adw.ActionRow {
     }
 });
 
-function drawMockWallpaper(cr, width, height, topBarHeight) {
+function drawBarWallpaper(cr, width, height, topBarHeight) {
     const wallpaperGradient = new Cairo.LinearGradient(0, topBarHeight - 4, 0, height + 6);
     wallpaperGradient.addColorStopRGB(0, 0.40, 0.62, 0.86);
     wallpaperGradient.addColorStopRGB(1, 0.82, 0.89, 0.95);
@@ -113,7 +113,7 @@ function drawMockWallpaper(cr, width, height, topBarHeight) {
     }
 }
 
-function drawMockWifi(cr, x, centerY, textColor) {
+function drawBarWifi(cr, x, centerY, textColor) {
     cr.setSourceRGBA(...textColor);
     cr.newPath();
     cr.setLineWidth(1.4);
@@ -126,7 +126,7 @@ function drawMockWifi(cr, x, centerY, textColor) {
     cr.fill();
 }
 
-function drawMockSpeaker(cr, x, centerY, textColor) {
+function drawBarSpeaker(cr, x, centerY, textColor) {
     cr.setSourceRGBA(...textColor);
     cr.moveTo(x + 2.5, centerY - 2.2);
     cr.lineTo(x + 5.2, centerY - 2.2);
@@ -141,7 +141,7 @@ function drawMockSpeaker(cr, x, centerY, textColor) {
     cr.stroke();
 }
 
-function drawMockBattery(cr, x, centerY, textColor) {
+function drawBarBattery(cr, x, centerY, textColor) {
     cr.setSourceRGBA(...textColor);
     cr.setLineWidth(1.2);
     const batteryWidth = 19, batteryHeight = 10, batteryX = x, batteryY = centerY - batteryHeight / 2;
@@ -622,12 +622,12 @@ export default class AnimatedWeatherPrefs extends ExtensionPreferences {
 
         const { sceneGroup, glyphArea: previewGlyphArea } = this._buildPreviewSceneGroup(previewController, styleManager);
         glyphArea = previewGlyphArea;
-        barArea = this._buildMockBar(settings, previewController, styleManager);
+        barArea = this._buildBarPreview(settings, previewController, styleManager);
         skyArea = this._buildLiveSky(previewController, styleManager);
 
         const panelGroup = new Adw.PreferencesGroup({
             title: _('Panel preview'),
-            description: _('How the panel button looks for this scene — mock temperature, real icon animation'),
+            description: _('How the panel button looks for this scene — sample temperature, real icon animation'),
         });
         panelGroup.add(barArea);
 
@@ -698,13 +698,13 @@ export default class AnimatedWeatherPrefs extends ExtensionPreferences {
         return { sceneGroup, glyphArea };
     }
 
-    _buildMockBar(settings, previewController, styleManager) {
+    _buildBarPreview(settings, previewController, styleManager) {
         const barArea = new Gtk.DrawingArea();
         barArea.set_size_request(-1, 58);
         barArea.set_draw_func((widget, cr, width, height) => {
             const dark = styleManager.dark;
             const BAR_HEIGHT = 34;
-            drawMockWallpaper(cr, width, height, BAR_HEIGHT);
+            drawBarWallpaper(cr, width, height, BAR_HEIGHT);
 
             const textColor = dark ? [1, 1, 1, 1] : [0.13, 0.13, 0.16, 1];
             cr.setSourceRGBA(...(dark ? [0.05, 0.06, 0.08, 0.62] : [1, 1, 1, 0.55]));
@@ -757,9 +757,9 @@ export default class AnimatedWeatherPrefs extends ExtensionPreferences {
                     draw: x => drawText(cr, tempTxt, x + 17, centerY, { size: 11, rgba: textColor, vcenter: centerY }),
                 });
             }
-            items.push({ width: 18, gapBefore: true, draw: x => drawMockWifi(cr, x, centerY, textColor) });
-            items.push({ width: 18, draw: x => drawMockSpeaker(cr, x, centerY, textColor) });
-            items.push({ width: 52, draw: x => drawMockBattery(cr, x, centerY, textColor) });
+            items.push({ width: 18, gapBefore: true, draw: x => drawBarWifi(cr, x, centerY, textColor) });
+            items.push({ width: 18, draw: x => drawBarSpeaker(cr, x, centerY, textColor) });
+            items.push({ width: 52, draw: x => drawBarBattery(cr, x, centerY, textColor) });
 
             const GAP = 8, BIGGAP = 16;
             const total = items.reduce((sum, item, idx) =>

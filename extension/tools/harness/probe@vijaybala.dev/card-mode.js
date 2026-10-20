@@ -2,7 +2,7 @@
  * inside the nested shell from a golden fixture, then capture its rect.
  * DEV ONLY, never packaged.
  *
- * Location and weather are mocked by construction: ForecastPanel has no
+ * Location and weather are fixtures by construction: ForecastPanel has no
  * provider, no network, no geolocation -- it is a pure function of the
  * `state` object render() receives. We hand it the exact shape weather.js
  * produces (and card-demo.mjs fabricates), so one slug selects city,

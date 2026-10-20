@@ -53,9 +53,9 @@ export const WMO = {
 };
 
 /* Per-code glyph variants: family art WITHIN a scene, mirroring the
- * mock coverage matrix (docs/design/icon-mocks.html). The scene says
- * what falls; the variant says in what pattern -- drizzle's mini
- * drops, showers' peeking sun/moon, grains instead of flakes, the
+ * per-code coverage matrix. The scene says
+ * what falls; the variant says in what pattern -- drizzle's sparser
+ * count, showers' peeking sun/moon, grains instead of flakes, the
  * bolt beside hailstones. Callers that know the code pass it through
  * to the painter; code-less poses (prefs demos) paint the plain scene. */
 const CODE_VARIANT = {
