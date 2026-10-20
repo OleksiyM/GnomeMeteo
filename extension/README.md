@@ -178,7 +178,7 @@ accent:
 <tr>
 <td><img src="https://github.com/vijaybala-lang/weatherglass/raw/master/screenshots/05-preferences.png" width="380" alt="Preferences window"></td>
 <td valign="middle">
-<img src="https://github.com/vijaybala-lang/weatherglass/raw/master/assets/weatherglass-demo.gif" width="300" alt="Animated demo: opening the card, switching between temperature and precipitation tabs">
+<img src="https://github.com/vijaybala-lang/weatherglass/raw/master/assets/weatherglass-demo.gif" width="300" alt="Animated demo: Berlin forecast card transitioning from sunny afternoon to rain, golden hour, and a clear full-moon night">
 </td>
 </tr>
 </table>
