@@ -95,8 +95,8 @@ runs it -- master must always build the zip under review.
 ### 2. Certify the release commit itself
 
 ```sh
-bash tools/certify.sh        # must end: CERTIFIED: all stages green
-git checkout -- po/ locale/  # packaging stamps build artifacts; keep the tree clean
+bash tools/certify-all-shells.sh  # must end: CERTIFIED (all declared shells)
+git checkout -- po/ locale/       # packaging stamps build artifacts; keep the tree clean
 sha256sum dist/weatherglass@vijaybala.dev.zip
 ```
 
@@ -109,6 +109,26 @@ host-gated SKIP if the engine binary is absent, which is NOT a pass
 for step 8 purposes -- install it before uploading and run it green).
 The sha goes into the release
 body at step 3. Any rebuild re-runs both.
+
+**The older-shell certs.** Host certify attests exactly one shell: the
+dev box's. `tools/certify-all-shells.sh` reads every major declared in
+`shell-version`, runs the host gate first, then gives each other major
+its own green guest cert through `tools/qa/run-old-shell.sh
+<fedora-release>` (Fedora N ships GNOME N+6). The guest ladder runs the
+property stages on the foreign GJS, renders the full card registry as
+the real ForecastPanel and grades it structurally, installs the SAME
+dist zip through `gnome-extensions install` for the popup-toggle crash
+gate, and scans for JS errors attributable to shipped modules. Rendered
+goldens cannot cross shells (different font/render stacks), so foreign
+shells grade structurally and only report pixel drift against the
+blessed canon; native renders and summaries land under
+`tools/out/qa-gnome-<SHELL>/`. A version wins its `shell-version` slot
+by certing, and loses it the moment keeping it alive would cost
+version-branched code -- drop-over-branch, per BEST-PRACTICES.md.
+Companion test extensions in `tools/` must stay unlocked to every
+certified shell too: a stale single-major pin makes older shells
+silently decline to load them, turning green pipelines into empty
+no-heartbeat husks.
 
 **The golden lock and the bless ceremony.** The goldens
 (`tools/golden/shell/`) are blessed rendered truth: every
