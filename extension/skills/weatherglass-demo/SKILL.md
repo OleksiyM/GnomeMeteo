@@ -53,11 +53,14 @@ the golden registry. They keep one city and one calendar day:
 
 The default timeline is 12 fps: 0.4 s fade in, 2.5 s per segment,
 0.8 s crossfades, 0.5 s fade out. Captures keep one rectangle; the
-upload encode then scales to 300 px wide and uses an ffmpeg-derived
-shared 224-entry palette with transparent frame deltas
-(per-channel threshold 16). That keeps the Berlin arc near 1 MB
-instead of the roughly 8 MB full-rate/full-size encode, with the
-reconstruction error bounded per frame.
+upload encode then scales to 300 px wide and uses ffmpeg-derived
+scene-local 256-entry palettes with transparent frame deltas
+(per-channel threshold 8). Local palettes keep daylight, rain, dusk,
+and night gradients from competing for one table. That keeps the
+Berlin arc near 1.6 MB instead of the roughly 8 MB
+full-rate/full-size encode, with the reconstruction error bounded per
+frame. Use `--palette-mode global` only when a smaller, lower-quality
+single-palette encode is explicitly wanted.
 
 ## Outputs
 

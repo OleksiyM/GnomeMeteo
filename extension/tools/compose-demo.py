@@ -5,7 +5,7 @@ Film mode captures one fixture per run. This composer turns several of
 those real, nested-shell captures into one uploadable sequence: it
 samples every segment on a shared timeline, crossfades adjacent
 segments while both keep playing, encodes a compact palette GIF
-(shared palette + transparent per-frame deltas by default), and
+(scene-local palettes + transparent per-frame deltas by default), and
 writes a contact sheet plus a JSON manifest for QA/provenance.
 
 The default sequence is the one-day Berlin arc registered by
@@ -23,6 +23,7 @@ import argparse
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -116,11 +117,14 @@ def parse_args(argv=None):
     p.add_argument('--timezone', default='Europe/Berlin',
                    help='TZ for film shoots, so card clocks read fixture-local')
     p.add_argument('--encoder', choices=('delta', 'ffmpeg'), default='delta',
-                   help='delta: shared palette + transparent frame deltas; '
+                   help='delta: palette + transparent frame deltas; '
                         'ffmpeg: palettegen/paletteuse archival encode')
-    p.add_argument('--max-colors', type=int, default=224,
+    p.add_argument('--palette-mode', choices=('scene', 'global'), default='scene',
+                   help='delta encoder palette scope: one local palette per '
+                        'scene/transition range, or one global palette')
+    p.add_argument('--max-colors', type=int, default=256,
                    help='total GIF palette entries (delta reserves one for transparency)')
-    p.add_argument('--delta-threshold', type=int, default=16,
+    p.add_argument('--delta-threshold', type=int, default=8,
                    help='delta encoder: max per-channel error treated as unchanged')
     mode = p.add_mutually_exclusive_group()
     mode.add_argument('--compose-only', action='store_true',
@@ -249,12 +253,19 @@ def frame_count(seconds, fps):
 
 
 def build_timeline(args, segment_count):
-    """Return (samples, labeled contact-sheet picks). Cursors are ms."""
+    """Return (samples, labeled picks, palette ranges). Cursors are ms.
+
+    Palette ranges start at the first frame, at each crossfade, and at
+    each segment that follows a crossfade. The delta encoder can give
+    those ranges local GIF palettes so daylight, rain, dusk, and night
+    gradients do not all compete for one 256-entry table.
+    """
     step = 1000.0 / args.fps
     start = args.start_seconds * 1000
     cursors = [start] * segment_count
     samples = []
     picks = []
+    palette_starts = [0]
 
     intro = frame_count(args.intro_seconds, args.fps)
     if intro:
@@ -271,6 +282,7 @@ def build_timeline(args, segment_count):
             samples.append(Sample(seg, cursors[seg], seg, cursors[seg], 1.0))
             cursors[seg] += step
         if seg + 1 < segment_count:
+            palette_starts.append(len(samples))
             picks.append((f'{seg}-to-{seg + 1}', len(samples) + transition // 2))
             for i in range(transition):
                 alpha = smooth((i + 1) / (transition + 1))
@@ -278,6 +290,7 @@ def build_timeline(args, segment_count):
                                       cursors[seg + 1], alpha))
                 cursors[seg] += step
                 cursors[seg + 1] += step
+            palette_starts.append(len(samples))
 
     outro = frame_count(args.outro_seconds, args.fps)
     if outro:
@@ -288,7 +301,13 @@ def build_timeline(args, segment_count):
                               smooth(i / outro) if outro else 1.0))
         cursors[last] += step
     samples.append(Sample(-1, 0, -1, 0, 1.0))
-    return samples, picks
+    starts = sorted(set(palette_starts))
+    palette_ranges = []
+    for idx, range_start in enumerate(starts):
+        range_end = starts[idx + 1] if idx + 1 < len(starts) else len(samples)
+        if range_start < range_end:
+            palette_ranges.append((range_start, range_end))
+    return samples, picks, palette_ranges
 
 
 class FrameSource:
@@ -399,20 +418,28 @@ def encode_gif_ffmpeg(frame_dir, output, args):
     return probe_gif(output)
 
 
-def delta_palette(frame_dir, args):
-    """One ffmpeg-derived palette for the whole timeline.
+def delta_palette(frame_paths, name, args):
+    """One ffmpeg-derived palette for a frame range.
 
-    palettegen's full-sequence quantization allocates the scarce
-    entries to sky gradients far better than a median-cut contact
-    sheet. Index 255 is reserved transparent; unused slots duplicate
+    palettegen's sequence quantization allocates the scarce entries
+    to sky gradients far better than a median-cut contact sheet.
+    Index 255 is reserved transparent; unused slots duplicate
     palette entry 0 during mapping, so any pixel the quantizer lands
     on 255 can be remapped to 0 losslessly before 255 is given its
     transparent meaning in the output.
     """
-    palette_path = args.workdir / 'delta-palette.png'
+    if not frame_paths:
+        raise SystemExit(f'palette range {name} has no frames')
+    input_dir = args.workdir / 'palette-input' / name
+    if input_dir.exists():
+        shutil.rmtree(input_dir)
+    input_dir.mkdir(parents=True)
+    for idx, frame_path in enumerate(frame_paths):
+        (input_dir / f'frame_{idx:04d}.png').symlink_to(frame_path.resolve())
+    palette_path = args.workdir / f'delta-palette-{name}.png'
     run_checked([
         'ffmpeg', '-y', '-v', 'error', '-framerate', str(args.fps),
-        '-i', str(frame_dir / 'frame_%04d.png'),
+        '-i', str(input_dir / 'frame_%04d.png'),
         '-vf', (f'palettegen=max_colors={args.max_colors - 1}:'
                 'reserve_transparent=0:stats_mode=diff'),
         '-frames:v', '1', str(palette_path),
@@ -450,40 +477,49 @@ def frame_durations(count, fps):
     return durations
 
 
-def encode_gif_delta(frames, frame_dir, output, args):
-    """Shared-palette GIF whose later frames store only changed pixels.
+def encode_gif_delta(frames, frame_paths, palette_ranges, output, args):
+    """Palette GIF whose later frames store only changed pixels.
 
-    A pixel whose quantized color is within --delta-threshold of the
-    displayed color (max channel error) is left transparent, so the
-    reconstruction error stays bounded per frame while static UI and
-    slow gradients stop costing bytes every frame.
+    In scene mode each scene/crossfade range gets a local palette and
+    begins with a full frame; in global mode the whole timeline shares
+    one palette. A pixel whose quantized color is within
+    --delta-threshold of the displayed color (max channel error) is
+    left transparent, so reconstruction error stays bounded per frame
+    while static UI and slow gradients stop costing bytes every frame.
     """
     output.parent.mkdir(parents=True, exist_ok=True)
-    holder, palette = delta_palette(frame_dir, args)
-    transparent = Image.new('P', frames[0].size, 255)
-    transparent.putpalette(palette)
+    if args.palette_mode == 'global':
+        ranges = [(0, len(frames))]
+    else:
+        ranges = palette_ranges or [(0, len(frames))]
     remap_255 = [0 if idx == 255 else idx for idx in range(256)]
     change_lut = ([0] * (args.delta_threshold + 1) +
                   [255] * (255 - args.delta_threshold))
     encoded = []
-    displayed = None
-    for frame in frames:
-        quantized = frame.quantize(palette=holder, dither=Image.Dither.NONE)
-        if quantized.getextrema()[1] == 255:
-            quantized = quantized.point(remap_255)
-            quantized.putpalette(palette)
-        desired = quantized.convert('RGB')
-        if displayed is None:
-            encoded.append(quantized)
-            displayed = desired
-            continue
-        red, green, blue = ImageChops.difference(desired, displayed).split()
-        max_diff = ImageChops.lighter(ImageChops.lighter(red, green), blue)
-        changed = max_diff.point(change_lut)
-        delta = Image.composite(quantized, transparent, changed)
-        delta.putpalette(palette)
-        encoded.append(delta)
-        displayed = Image.composite(desired, displayed, changed)
+    for range_idx, (range_start, range_end) in enumerate(ranges):
+        name = 'global' if args.palette_mode == 'global' else f'scene-{range_idx:02d}'
+        holder, palette = delta_palette(
+            frame_paths[range_start:range_end], name, args)
+        transparent = Image.new('P', frames[0].size, 255)
+        transparent.putpalette(palette)
+        displayed = None
+        for frame in frames[range_start:range_end]:
+            quantized = frame.quantize(palette=holder, dither=Image.Dither.NONE)
+            if quantized.getextrema()[1] == 255:
+                quantized = quantized.point(remap_255)
+                quantized.putpalette(palette)
+            desired = quantized.convert('RGB')
+            if displayed is None:
+                encoded.append(quantized)
+                displayed = desired
+                continue
+            red, green, blue = ImageChops.difference(desired, displayed).split()
+            max_diff = ImageChops.lighter(ImageChops.lighter(red, green), blue)
+            changed = max_diff.point(change_lut)
+            delta = Image.composite(quantized, transparent, changed)
+            delta.putpalette(palette)
+            encoded.append(delta)
+            displayed = Image.composite(desired, displayed, changed)
     encoded[0].save(
         output, save_all=True, append_images=encoded[1:],
         duration=frame_durations(len(encoded), args.fps), loop=0,
@@ -510,7 +546,7 @@ def main(argv=None):
     args = parse_args(argv)
     args.workdir.mkdir(parents=True, exist_ok=True)
     segments = ensure_segments(args)
-    samples, picks = build_timeline(args, len(segments))
+    samples, picks, palette_ranges = build_timeline(args, len(segments))
 
     source = FrameSource(segments)
     frames = [source.render(sample) for sample in samples]
@@ -527,14 +563,18 @@ def main(argv=None):
     frame_dir.mkdir(parents=True, exist_ok=True)
     for stale in frame_dir.glob('frame_*.png'):
         stale.unlink()
+    frame_paths = []
     for idx, frame in enumerate(frames):
-        frame.save(frame_dir / f'frame_{idx:04d}.png')
+        frame_path = frame_dir / f'frame_{idx:04d}.png'
+        frame.save(frame_path)
+        frame_paths.append(frame_path)
 
     contact = args.output.with_name(f'{args.output.stem}-contact.png')
     labels = write_contact_sheet(contact, frames, picks,
                                  [seg.name for seg in segments])
     if args.encoder == 'delta':
-        probe = encode_gif_delta(frames, frame_dir, args.output, args)
+        probe = encode_gif_delta(
+            frames, frame_paths, palette_ranges, args.output, args)
     else:
         probe = encode_gif_ffmpeg(frame_dir, args.output, args)
     if int(probe['width']) != output_size[0] or int(probe['height']) != output_size[1]:
@@ -556,6 +596,10 @@ def main(argv=None):
         'capture_size': list(capture_size),
         'encoding': {
             'encoder': args.encoder,
+            'palette_mode': args.palette_mode if args.encoder == 'delta' else None,
+            'palette_ranges': ((palette_ranges if args.palette_mode == 'scene'
+                                else [(0, len(frames))])
+                               if args.encoder == 'delta' else None),
             'max_colors': args.max_colors,
             'delta_threshold': args.delta_threshold if args.encoder == 'delta' else None,
         },
