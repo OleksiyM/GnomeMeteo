@@ -247,6 +247,32 @@ test('release ritual: one proven artifact to upload, goldens need operator appro
         'operator approval inside the skill');
 });
 
+// EGO serves one build per declared Shell major. A metadata slot is a
+// promise that the exact shipped bytes were certified on that shell, and
+// the harness companions must be loadable everywhere the product is.
+test('release ritual: every declared shell owes a certification', () => {
+    const expected = ['45', '46', '47', '48', '49', '50'];
+    const meta = JSON.parse(read(`${ROOT}/metadata.json`));
+    eq(JSON.stringify(meta['shell-version']), JSON.stringify(expected),
+        'metadata must declare the certified GNOME Shell majors');
+    for (const path of ['tools/harness/probe@vijaybala.dev/metadata.json',
+                        'tools/menutest@vijaybala.dev/metadata.json']) {
+        const harnessMeta = JSON.parse(read(`${ROOT}/${path}`));
+        eq(JSON.stringify(harnessMeta['shell-version']), JSON.stringify(expected),
+            `${path} must load on every certified shell`);
+    }
+    const allShells = read(`${ROOT}/tools/certify-all-shells.sh`);
+    ok(/shell-version/.test(allShells) && /tools\/certify\.sh/.test(allShells) &&
+        /tools\/qa\/run-old-shell\.sh/.test(allShells),
+        'the all-shell gate must derive guest certs from metadata around host certify');
+    const skill = read(`${ROOT}/skills/weatherglass-release/SKILL.md`);
+    ok(/tools\/certify-all-shells\.sh/.test(skill),
+        'the release ritual must run the all-shell certification gate');
+    const practices = read(`${ROOT}/BEST-PRACTICES.md`);
+    ok(/Support widens through metadata only/.test(practices),
+        'the support policy must forbid version-branched product code');
+});
+
 /* -- shexli findings from the v8 review (resubmit: same version) -------- */
 
 // EGO-X-004: a synchronous read stalls the UI thread -- one user action

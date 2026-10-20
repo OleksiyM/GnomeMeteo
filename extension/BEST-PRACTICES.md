@@ -89,6 +89,22 @@ Mechanics:
   stable releases (plus at most one development release); `url` points
   at the public repo; `uuid` is `id@namespace` of letters, digits,
   `.`, `_`, `-`.
+- Support widens through metadata only, never through version-branched
+  code. Widen `shell-version` downwards on user demand or a passing
+  test on that shell (floor for this codebase: GNOME 45, due to
+  `Adw.EntryRow`). If a bug on an older shell would require an
+  `if (ShellVersion …)` guard or a second API path, remove that
+  version from `shell-version` instead of keeping it alive with a
+  shim — one code path is the invariant.
+- Older-shell proofs are environmental, so document the era's dialect
+  wherever a cert is quoted. Ages 45-47 gate extension loading on a
+  literal `shell-version` match (no wildcard, no developer flag), and
+  their nested-shell boot proof needs a keyfile-profile recipe — a
+  disposable-HOME dconf profile parks activations forever, and an
+  empty input-sources list segfaults the Fedora gnome-desktop3 of the
+  day. None of that touches shipped code; the rig (`tools/qa/run.sh`
+  era block) carries all of it, and its stamps note every guest-copy
+  mutation so rehearsal paper can never pass for the deed.
 
 ## ZIP contents
 

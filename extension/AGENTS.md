@@ -1,6 +1,6 @@
 # AGENTS.md — Weatherglass
 
-GNOME Shell 50 weather extension (uuid `weatherglass@vijaybala.dev`,
+GNOME Shell 45-50 weather extension (uuid `weatherglass@vijaybala.dev`,
 GPL-2.0-or-later). JavaScript/GJS, Cairo painting, no build step.
 
 ## Workflow rules
@@ -55,10 +55,12 @@ gnome-shell, byte-diffed against blessed rendered truth
 (`tools/shell-golden.sh`, host-gated: SKIPs without gnome-shell);
 finally `package.sh` → `zipcheck.sh` (nested-shell boot proof of the
 real dist zip) and `shexli-check.sh` (the review engine EGO itself
-runs -- host-gated; its exit code is a lie, the gate reads its JSON). Only `CERTIFIED` on its output counts as done — and
+runs -- host-gated; its exit code is a lie, the gate reads its JSON). Only `CERTIFIED` on its output counts as done for the host shell — and
 when the host-gated golden lock does run, it must have real fixtures:
 a fatal probe report or zero expanded slugs is a FAIL by design,
-never a silent PASS over emptiness.
+never a silent PASS over emptiness. A release ZIP additionally owes
+the all-declared-shells certification owned by the release skill:
+host green alone never proves the older majors in `shell-version`.
 
 - Every bug fixed gets a **named regression lock** in `tests/` —
   e.g. "the Kilimanjaro plateau keeps every hour column". Pure logic
@@ -137,6 +139,12 @@ the commands are skill step 0):
    the measured-ground referee) with a comment for the reviewer.
 4. **Verify & bump.** The version bump rules, the certify gate on the
    release commit, the zip + sha record -- commands in the skill.
+   Certification is per shell, not per machine: every major listed in
+   `shell-version` must have presented a green guest cert on the same
+   zip bytes, refreshed whenever shipped code changed since that cert
+   was struck. A shell version without a current cert does not ride in
+   the metadata -- and a version that would need branched code to keep
+   is dropped, per BEST-PRACTICES.md.
 5. **Live verification.** Headless gates prove the zip boots; only a
    live session proves the card. The install/login/surface-walk
    sequence and the byte-identity rule ("the verified zip IS the
