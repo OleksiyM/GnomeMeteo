@@ -30,7 +30,8 @@ Missing segment captures are shot automatically through
 ```sh
 python3 tools/compose-demo.py --compose-only   # reuse captures; fail if absent
 python3 tools/compose-demo.py --force-shoot    # recapture every segment
-python3 tools/compose-demo.py --fps 15 --segment-seconds 2  # smaller file
+python3 tools/compose-demo.py --fps 10 --segment-seconds 2  # smaller file
+python3 tools/compose-demo.py --encoder ffmpeg --width 0 --fps 20 --max-colors 256  # archival/full-size
 ```
 
 A different arc is a sequence of repeated `--segment NAME=FIXTURE`
@@ -50,9 +51,13 @@ the golden registry. They keep one city and one calendar day:
 | golden | `demo-berlin-golden` | actual sunset −12 min | clear |
 | fullmoon | `demo-berlin-fullmoon` | 2026-06-29 23:30 | clear, 99.98% lit |
 
-The default timeline is 20 fps: 0.4 s fade in, 2.5 s per segment,
-0.8 s crossfades, 0.5 s fade out. It uses the captured card rectangle
-without resizing mixed captures.
+The default timeline is 12 fps: 0.4 s fade in, 2.5 s per segment,
+0.8 s crossfades, 0.5 s fade out. Captures keep one rectangle; the
+upload encode then scales to 300 px wide and uses an ffmpeg-derived
+shared 224-entry palette with transparent frame deltas
+(per-channel threshold 16). That keeps the Berlin arc near 1 MB
+instead of the roughly 8 MB full-rate/full-size encode, with the
+reconstruction error bounded per frame.
 
 ## Outputs
 
@@ -62,7 +67,8 @@ The default work directory is `tools/out/demo-transitions/`:
 - `weatherglass-demo-transitions-contact.png` — labelled timeline picks
 - `weatherglass-demo-transitions.gif.manifest.json` — fixtures,
   timeline, ffprobe result, bytes, dimensions, duration, and SHA-256
-- `segments/`, `reports/`, `src/`, `frames/` — reusable capture cache
+- `segments/`, `reports/`, `src/`, `frames/` — reusable capture and
+  composed-frame cache
 
 ## QA before handoff
 
@@ -74,8 +80,8 @@ The default work directory is `tools/out/demo-transitions/`:
    forward, and the night segment clearly shows a full moon.
 4. Confirm there are no black interior frames. Text ghosting is
    acceptable only inside crossfades; segment midpoints must be clean.
-5. If the upload target needs a smaller file, regenerate with lower
-   `--fps` or shorter segments. Do not hand off an independently
+5. If the upload target needs a still smaller file, regenerate with
+   lower `--fps`, `--width`, or shorter segments. Do not hand off an independently
    re-encoded copy whose manifest no longer describes it.
 
 Film mode's standalone 120-frame smoke floor is calibrated for the

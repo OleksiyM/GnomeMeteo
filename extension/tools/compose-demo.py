@@ -4,8 +4,9 @@
 Film mode captures one fixture per run. This composer turns several of
 those real, nested-shell captures into one uploadable sequence: it
 samples every segment on a shared timeline, crossfades adjacent
-segments while both keep playing, encodes a palette-optimized GIF,
-and writes a contact sheet plus a JSON manifest for QA/provenance.
+segments while both keep playing, encodes a compact palette GIF
+(shared palette + transparent per-frame deltas by default), and
+writes a contact sheet plus a JSON manifest for QA/provenance.
 
 The default sequence is the one-day Berlin arc registered by
 film-mode: sunny afternoon -> rain -> golden hour -> full-moon night.
@@ -27,7 +28,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from PIL import Image, ImageStat
+from PIL import Image, ImageChops, ImageStat
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_WORKDIR = ROOT / 'tools' / 'out' / 'demo-transitions'
@@ -97,7 +98,9 @@ def parse_args(argv=None):
                    help='GIF path (default: <workdir>/weatherglass-demo-transitions.gif)')
     p.add_argument('--segment', action='append', metavar='NAME=FIXTURE',
                    help='segment in sequence order; repeat to replace the default arc')
-    p.add_argument('--fps', type=int, default=20, help='GIF frames per second')
+    p.add_argument('--fps', type=int, default=12, help='GIF frames per second')
+    p.add_argument('--width', type=int, default=300,
+                   help='output width in pixels (0 keeps the capture width)')
     p.add_argument('--segment-seconds', type=float, default=2.5,
                    help='full-strength playback seconds per segment')
     p.add_argument('--transition-seconds', type=float, default=0.8,
@@ -112,8 +115,13 @@ def parse_args(argv=None):
                    help='close beat for newly shot segments (default: computed)')
     p.add_argument('--timezone', default='Europe/Berlin',
                    help='TZ for film shoots, so card clocks read fixture-local')
-    p.add_argument('--max-colors', type=int, default=256,
-                   help='GIF palette size passed to ffmpeg palettegen')
+    p.add_argument('--encoder', choices=('delta', 'ffmpeg'), default='delta',
+                   help='delta: shared palette + transparent frame deltas; '
+                        'ffmpeg: palettegen/paletteuse archival encode')
+    p.add_argument('--max-colors', type=int, default=224,
+                   help='total GIF palette entries (delta reserves one for transparency)')
+    p.add_argument('--delta-threshold', type=int, default=16,
+                   help='delta encoder: max per-channel error treated as unchanged')
     mode = p.add_mutually_exclusive_group()
     mode.add_argument('--compose-only', action='store_true',
                       help='fail instead of shooting missing segment captures')
@@ -123,6 +131,10 @@ def parse_args(argv=None):
     args.segments = parse_segments(args.segment)
     if not 5 <= args.fps <= 30:
         p.error('--fps must be between 5 and 30')
+    if args.width != 0 and args.width < 120:
+        p.error('--width must be 0 (native) or at least 120')
+    if not 0 <= args.delta_threshold <= 254:
+        p.error('--delta-threshold must be between 0 and 254')
     for name in ('segment_seconds', 'transition_seconds'):
         if getattr(args, name) <= 0:
             p.error(f'--{name.replace("_", "-")} must be positive')
@@ -366,22 +378,117 @@ def run_checked(command, **kwargs):
     return result
 
 
-def encode_gif(frame_dir, output, args):
-    output.parent.mkdir(parents=True, exist_ok=True)
-    vf = (f'split[s0][s1];[s0]palettegen=max_colors={args.max_colors}:'
-          'stats_mode=diff[p];[s1][p]paletteuse=dither=sierra2_4a')
-    run_checked([
-        'ffmpeg', '-y', '-v', 'error', '-framerate', str(args.fps),
-        '-i', str(frame_dir / 'frame_%04d.png'), '-vf', vf,
-        '-loop', '0', str(output),
-    ])
+def probe_gif(output):
     probe = run_checked([
         'ffprobe', '-v', 'error', '-select_streams', 'v:0',
         '-show_entries', 'stream=width,height,avg_frame_rate,nb_frames,duration',
         '-of', 'json', str(output),
     ])
-    info = json.loads(probe.stdout)['streams'][0]
-    return info
+    return json.loads(probe.stdout)['streams'][0]
+
+
+def encode_gif_ffmpeg(frame_dir, output, args):
+    output.parent.mkdir(parents=True, exist_ok=True)
+    vf = (f'split[s0][s1];[s0]palettegen=max_colors={args.max_colors}:'
+          'stats_mode=diff[p];[s1][p]paletteuse=dither=sierra2_4a:diff_mode=rectangle')
+    run_checked([
+        'ffmpeg', '-y', '-v', 'error', '-framerate', str(args.fps),
+        '-i', str(frame_dir / 'frame_%04d.png'), '-vf', vf,
+        '-loop', '0', str(output),
+    ])
+    return probe_gif(output)
+
+
+def delta_palette(frame_dir, args):
+    """One ffmpeg-derived palette for the whole timeline.
+
+    palettegen's full-sequence quantization allocates the scarce
+    entries to sky gradients far better than a median-cut contact
+    sheet. Index 255 is reserved transparent; unused slots duplicate
+    palette entry 0 during mapping, so any pixel the quantizer lands
+    on 255 can be remapped to 0 losslessly before 255 is given its
+    transparent meaning in the output.
+    """
+    palette_path = args.workdir / 'delta-palette.png'
+    run_checked([
+        'ffmpeg', '-y', '-v', 'error', '-framerate', str(args.fps),
+        '-i', str(frame_dir / 'frame_%04d.png'),
+        '-vf', (f'palettegen=max_colors={args.max_colors - 1}:'
+                'reserve_transparent=0:stats_mode=diff'),
+        '-frames:v', '1', str(palette_path),
+    ])
+    with Image.open(palette_path) as palette_image:
+        # palettegen writes an RGBA 16x16 swatch, not a P-mode image:
+        # its pixels in row-major order are the palette entries.
+        seen = set()
+        unique = []
+        raw = palette_image.convert('RGB').tobytes()
+        for offset in range(0, len(raw), 3):
+            rgb = tuple(raw[offset:offset + 3])
+            if rgb not in seen:
+                seen.add(rgb)
+                unique.extend(rgb)
+            if len(unique) >= (args.max_colors - 1) * 3:
+                break
+    palette = unique[:(args.max_colors - 1) * 3]
+    if len(palette) < 3:
+        raise SystemExit('could not derive a GIF palette from the composed frames')
+    palette += palette[:3] * (256 - len(palette) // 3)
+    holder = Image.new('P', (1, 1))
+    holder.putpalette(palette)
+    return holder, palette
+
+
+def frame_durations(count, fps):
+    """Centisecond-exact per-frame durations averaging to 1/fps."""
+    durations = []
+    previous = 0
+    for idx in range(count):
+        boundary = round((idx + 1) * 100 / fps)
+        durations.append((boundary - previous) * 10)
+        previous = boundary
+    return durations
+
+
+def encode_gif_delta(frames, frame_dir, output, args):
+    """Shared-palette GIF whose later frames store only changed pixels.
+
+    A pixel whose quantized color is within --delta-threshold of the
+    displayed color (max channel error) is left transparent, so the
+    reconstruction error stays bounded per frame while static UI and
+    slow gradients stop costing bytes every frame.
+    """
+    output.parent.mkdir(parents=True, exist_ok=True)
+    holder, palette = delta_palette(frame_dir, args)
+    transparent = Image.new('P', frames[0].size, 255)
+    transparent.putpalette(palette)
+    remap_255 = [0 if idx == 255 else idx for idx in range(256)]
+    change_lut = ([0] * (args.delta_threshold + 1) +
+                  [255] * (255 - args.delta_threshold))
+    encoded = []
+    displayed = None
+    for frame in frames:
+        quantized = frame.quantize(palette=holder, dither=Image.Dither.NONE)
+        if quantized.getextrema()[1] == 255:
+            quantized = quantized.point(remap_255)
+            quantized.putpalette(palette)
+        desired = quantized.convert('RGB')
+        if displayed is None:
+            encoded.append(quantized)
+            displayed = desired
+            continue
+        red, green, blue = ImageChops.difference(desired, displayed).split()
+        max_diff = ImageChops.lighter(ImageChops.lighter(red, green), blue)
+        changed = max_diff.point(change_lut)
+        delta = Image.composite(quantized, transparent, changed)
+        delta.putpalette(palette)
+        encoded.append(delta)
+        displayed = Image.composite(desired, displayed, changed)
+    encoded[0].save(
+        output, save_all=True, append_images=encoded[1:],
+        duration=frame_durations(len(encoded), args.fps), loop=0,
+        transparency=255, disposal=1, optimize=True)
+    return probe_gif(output)
 
 
 def sha256(path):
@@ -407,6 +514,13 @@ def main(argv=None):
 
     source = FrameSource(segments)
     frames = [source.render(sample) for sample in samples]
+    capture_size = source.size
+    if args.width and args.width != capture_size[0]:
+        output_size = (args.width,
+                       max(1, round(capture_size[1] * args.width / capture_size[0])))
+        frames = [frame.resize(output_size, Image.LANCZOS) for frame in frames]
+    else:
+        output_size = capture_size
     check_output_frames(frames, picks)
 
     frame_dir = args.workdir / 'frames'
@@ -419,15 +533,18 @@ def main(argv=None):
     contact = args.output.with_name(f'{args.output.stem}-contact.png')
     labels = write_contact_sheet(contact, frames, picks,
                                  [seg.name for seg in segments])
-    probe = encode_gif(frame_dir, args.output, args)
-    if int(probe['width']) != source.size[0] or int(probe['height']) != source.size[1]:
+    if args.encoder == 'delta':
+        probe = encode_gif_delta(frames, frame_dir, args.output, args)
+    else:
+        probe = encode_gif_ffmpeg(frame_dir, args.output, args)
+    if int(probe['width']) != output_size[0] or int(probe['height']) != output_size[1]:
         raise SystemExit(f'encoded GIF dimensions changed: {probe}')
     if int(probe['nb_frames']) != len(frames):
         raise SystemExit(
             f"encoded GIF has {probe['nb_frames']} frames, composed {len(frames)}")
 
     manifest = {
-        'format': 1,
+        'format': 2,
         'output': rel(args.output),
         'contact_sheet': rel(contact),
         'sha256': sha256(args.output),
@@ -435,7 +552,13 @@ def main(argv=None):
         'fps': args.fps,
         'frames': len(frames),
         'duration_seconds': round(len(frames) / args.fps, 3),
-        'size': list(source.size),
+        'size': list(output_size),
+        'capture_size': list(capture_size),
+        'encoding': {
+            'encoder': args.encoder,
+            'max_colors': args.max_colors,
+            'delta_threshold': args.delta_threshold if args.encoder == 'delta' else None,
+        },
         'ffprobe': probe,
         'timeline': {
             'start_seconds': args.start_seconds,
@@ -463,7 +586,7 @@ def main(argv=None):
     print(f'contact: {contact}')
     print(f'manifest: {manifest_path}')
     print(f"frames: {len(frames)} @ {args.fps}fps = {manifest['duration_seconds']}s, "
-          f"{source.size[0]}x{source.size[1]}")
+          f"{output_size[0]}x{output_size[1]}")
     return 0
 
 
