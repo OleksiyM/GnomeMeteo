@@ -1,11 +1,12 @@
 ---
 name: weatherglass-release
-description: Ship a Weatherglass release to extensions.gnome.org (EGO) -- version bump, certification gate, GitHub release-list upkeep (draft release, assets, publish), README release-link bump, live-session verification, upload captures and demo video, zip upload and its sha record, and post-approval hygiene. Use whenever any Weatherglass release or version is prepared, bumped, cut, uploaded, or wrapped up -- "prep for the next release", "ready to upload?", "bump to vN", "update the release list" -- and whenever a GitHub release is missing, stale, or its demo URL 404s.
+description: Ship a Weatherglass release to extensions.gnome.org (EGO) -- version bump, certification gate, GitHub release-list upkeep (draft release, assets, publish), README release-link bump, live-session verification, upload captures and demo assets, zip upload and its sha record, and post-approval hygiene. Use whenever any Weatherglass release or version is prepared, bumped, cut, uploaded, or wrapped up -- "prep for the next release", "ready to upload?", "bump to vN", "update the release list" -- and whenever a GitHub release is missing, stale, or its demo URL 404s.
 ---
 
 # Weatherglass release ritual
 
-Every concrete release command lives in this file and nowhere else.
+Every concrete release command lives in this file, except animated-GIF
+generation and QA, which are delegated to the sibling demo skill below.
 That is a bug lesson, not a style rule: the manual `glib-compile-schemas`
 install step once lived in both `AGENTS.md` and the upload kit, and
 outlived the zip bug that made it necessary -- two homes meant two
@@ -14,7 +15,8 @@ outside this skill fail the suite).
 
 | File | Role |
 |------|------|
-| `skills/weatherglass-release/SKILL.md` (here) | every command, in order |
+| `skills/weatherglass-release/SKILL.md` (here) | every release command, in order, except the delegated GIF workflow |
+| `skills/weatherglass-demo/SKILL.md` | animated transition GIF generation and QA via `tools/compose-demo.py` |
 | `AGENTS.md` § Pre-upload release review | the semantic principles (justify hunks, dead-code sweep, best-practices audit) -- prose only |
 | `ego-upload-notes.md` | EGO-page material: manifest description mirror (verbatim, test-locked), capture order, standing reviewer answers |
 
@@ -221,6 +223,16 @@ is deliberately NOT a certify stage -- the goldens stay the pixel
 canon, and `tools/film.sh --check` is the standalone smoke lock
 (host-gated like the golden lock: SKIPs loudly without gnome-shell or
 an h264 encoder, never a fake PASS).
+
+When the release also needs an animated GIF -- the weather-change
+asset a tab/tile MP4 does not show -- follow
+`skills/weatherglass-demo/SKILL.md`. That sibling skill owns the
+composer invocation, default Berlin sunny -> rain -> golden-hour ->
+full-moon-night arc, contact-sheet QA, and output manifest. Treat its
+manifest SHA like the MP4 provenance: attach the exact generated GIF
+in the same step-3/step-6 asset flow and record the SHA in the
+release notes. The MP4 remains the manifest demo asset unless the
+release plan explicitly supersedes it.
 
 ### 6. Publish the release; the demo URL must resolve before a click can reach it
 

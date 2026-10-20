@@ -45,6 +45,22 @@ export async function shootFilm({fixture, beats, cssPath, pngFor, captureRegion}
     const weather = await import('./weather.js');
     const moon = await import('./moon.js');
     const REG = allFixtures(weather, moon);
+    // Film-only one-day Berlin sequence for weather-transition demos.
+    // 2026-06-29 has a 99.98%-illuminated moon at 23:30 local; the
+    // golden frame is derived from that day's actual sunset.
+    const berlinDay = {city: 'Berlin', lat: 52.52, lon: 13.4};
+    const berlinSunset = weather.sunGeometry(berlinDay.lat, berlinDay.lon,
+        Date.parse('2026-06-29T12:00+02:00')).sunset;
+    Object.assign(REG, {
+        'demo-berlin-sunny': {...berlinDay,
+            local: '2026-06-29T13:00+02:00', condition: 'clear'},
+        'demo-berlin-rain': {...berlinDay,
+            local: '2026-06-29T16:10+02:00', condition: 'rain'},
+        'demo-berlin-golden': {...berlinDay, ms: berlinSunset - 12 * 60000,
+            tzMin: 120, condition: 'clear'},
+        'demo-berlin-fullmoon': {...berlinDay,
+            local: '2026-06-29T23:30+02:00', condition: 'clear'},
+    });
     const fx = REG[fixture];
     if (!fx)
         throw new Error(`film fixture '${fixture}' not in the `
