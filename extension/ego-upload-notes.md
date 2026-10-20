@@ -8,7 +8,7 @@ canonical description block, and the standing reviewer answers.
 
 Upload at: https://extensions.gnome.org/upload/
 Artifact:  dist/weatherglass@vijaybala.dev.zip  (version 8; rebuilt from
-master after every landed change -- its `sha256sum` is recorded in the
+main after every landed change -- its `sha256sum` is recorded in the
 GitHub release body, and the EGO-served bytes must match).
 
 v8 ships the contrast fixes (#49) and the Today-morph fix (#50): night
@@ -84,7 +84,7 @@ What's inside:
 * Hourly chart: switch between temperature, precipitation or wind
 * The moon carries the real lunar phase at night; sunrise and sunset bathe the card in golden-hour light
 * Eight days of forecast tiles, current conditions at a glance
-* 20 languages with full bidirectional support: the entire card mirrors in Arabic, Hebrew, Persian and Urdu
+* 21 languages with full bidirectional support: the entire card mirrors in Arabic, Hebrew, Persian and Urdu
 * Metric or imperial units, 12- or 24-hour clock, live scene previews in preferences
 * Three backdrop styles: animated sky, solid, or theme background with accent charts
 

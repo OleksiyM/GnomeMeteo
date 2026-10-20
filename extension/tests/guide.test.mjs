@@ -273,6 +273,24 @@ test('release ritual: every declared shell owes a certification', () => {
         'the support policy must forbid version-branched product code');
 });
 
+// The README gallery is public imagery: if it hard-codes another branch,
+// the homepage keeps showing that branch's goldens after the current
+// ones move. Local assets must be branch-relative so the pixels a reader
+// sees are the pixels in the tree they are browsing.
+test('public gallery assets are branch-local, not pinned to a retired branch', () => {
+    const readme = read(`${ROOT}/README.md`);
+    const images = [...readme.matchAll(/<img\s+src="([^"]+)"/g)].map(m => m[1]);
+    ok(images.length >= 50, `expected the full README gallery, found ${images.length} images`);
+    const pinned = images.filter(src => /^https?:\/\//.test(src));
+    ok(pinned.length === 0,
+        `README gallery images must be branch-relative, pinned: ${pinned.slice(0, 3).join(', ')}`);
+    for (const path of ['CONTRIBUTING.md', 'ego-upload-notes.md',
+                        'skills/weatherglass-release/SKILL.md']) {
+        ok(!/\bmaster\b/.test(read(`${ROOT}/${path}`)),
+            `${path} must not route work through the retired master branch`);
+    }
+});
+
 /* -- shexli findings from the v8 review (resubmit: same version) -------- */
 
 // EGO-X-004: a synchronous read stalls the UI thread -- one user action

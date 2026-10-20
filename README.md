@@ -5,6 +5,11 @@ and a standalone GJS/GTK4 app that share one design brain — sky physics,
 adaptive ink judgment, the glyph kit, the chart grammar, and the icon
 pipeline.
 
+<img src="extension/assets/weatherglass-demo.gif" width="300" alt="Animated demo: Berlin forecast card transitioning from sunny afternoon to rain, golden hour, and a clear full-moon night">
+
+For the full extension gallery, see
+[extension/README.md](extension/README.md#gallery).
+
 ## Layout
 
 ```

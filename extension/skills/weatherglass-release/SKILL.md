@@ -28,7 +28,7 @@ and the README links all agree.
 
 ## The ritual
 
-Work in a fresh worktree off `master`; never release from the main
+Work in a fresh worktree off `main`; never release from the main
 checkout. All commits carry
 `--author="vijaybala-lang <vijaybala-lang@users.noreply.github.com>"`.
 
@@ -42,9 +42,9 @@ can see):
 
 ```sh
 PREV=$(git tag --sort=-v:refname | head -1)
-git diff "$PREV..master" --stat
-git diff --name-only "$PREV..master"          # the audit file set
-tools/review-diff "$PREV" master              # read every hunk (Meld or vimdiff)
+git diff "$PREV..main" --stat
+git diff --name-only "$PREV..main"            # the audit file set
+tools/review-diff "$PREV" main                # read every hunk (Meld or vimdiff)
 ```
 
 Then validate every changed file against `BEST-PRACTICES.md` -- our
@@ -89,8 +89,8 @@ passed shexli and was still rejected on mechanism: "Don't use
 reviewer prescribed the shape (plain \`destroy()\` chaining up,
 explicit child destroy); ship the shape they name, then encode the
 preference as a guide.test lock so no future round relearns it. The
-branch carrying an EGO answer must merge to master the moment review
-runs it -- master must always build the zip under review.
+branch carrying an EGO answer must merge to main the moment review
+runs it -- main must always build the zip under review.
 
 ### 2. Certify the release commit itself
 
@@ -153,7 +153,7 @@ build -- never bless the failing gate to make the gate pass.
 
 ```sh
 cp "dist/weatherglass@vijaybala.dev.zip" /tmp/weatherglass-vN.zip
-gh release create vN --draft --target master --title vN --notes "..."
+gh release create vN --draft --target main --title vN --notes "..."
 gh release upload vN /tmp/weatherglass-vN.zip
 ```
 
