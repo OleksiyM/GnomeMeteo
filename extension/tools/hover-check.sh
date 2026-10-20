@@ -23,7 +23,7 @@ glib-compile-schemas "$H/.local/share/glib-2.0/schemas"
 DEST="$H/.local/share/gnome-shell/extensions/$UUID"
 mkdir -p "$DEST"
 rsync -a --exclude .git --exclude out --exclude po --exclude tools \
-      --exclude mockups --exclude dist --exclude .gitignore \
+      --exclude dist --exclude .gitignore \
       "$PROJ/" "$DEST/"
 cp -r "$PROBE_SRC" "$H/.local/share/gnome-shell/extensions/"
 

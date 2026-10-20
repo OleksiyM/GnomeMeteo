@@ -8,10 +8,10 @@ import { paintWeather } from './painter.js';
 
 const PADDING_TOP = 38, PADDING_BOTTOM = 30, PADDING_X = 2;
 const LINE_WIDTH = 3, DEFAULT_LABEL_INTERVAL = 3;
+/* one uniform strip scale for every scene: the painter's geometry
+ * already lands each glyph's ink in a 17-19 unit band of the 24 box
+ * (measured), the same treatment the day tiles get */
 const STRIP_CENTER_Y = 13, STRIP_ICON_SCALE = 0.72;
-/* uniform medallion radius for 'icons' mode: half the widest glyph box
- * (moon: 12 * 0.6 * 1.5) plus ~2 px padding -- every condition gets the
- * same coin, only the glyph varies */
 // a little precip in the static icon poses so rain/snow scenes read right
 /* canonical precip poses: same icon for the same scene everywhere
  * (chart strip + day tiles); tilt comes from the painter's calm default,
@@ -153,12 +153,12 @@ export function drawText(cr, text, x, y, { size = 10, bold = false, weight = 0,
     const tx = anchor === 'start' ? x : anchor === 'end' ? x - pixelWidth : x - pixelWidth / 2;
     cr.setSourceRGBA(...rgba);
     // y is the baseline; vcenter instead centres the line box on cy -- the
-    // panel-mock bar hangs its words on the same middle as the glyphs
+    // prefs preview bar hangs its words on the same middle as the glyphs
     cr.moveTo(tx, vcenter === null ? y - pixelHeight : vcenter - pixelHeight / 2);
     (PangoCairo.showLayout ?? PangoCairo.show_layout)(cr, layout);
 }
 
-/** Catmull-Rom -> cubic Bezier, matching the mockup's smoothPath(). */
+/** Catmull-Rom -> cubic Bezier smoothing for the chart curve. */
 function tracePath(cr, pts) {
     cr.moveTo(pts[0][0], pts[0][1]);
     for (let i = 0; i < pts.length - 1; i++) {
@@ -205,14 +205,6 @@ function tracePath(cr, pts) {
  *                    omits it, the no-op default answers
  * }
  */
-
-/* Per-scene strip footprint adjustments. EMPTY on purpose: the
- * painter's mock-true geometry already lands every scene's ink in a
- * 17-19 unit band of the 24 box (measured), so the strip scales
- * uniformly like the mock sheet and the day tiles do. The old table
- * (moon 1.5, cloud 1.35, ...) was tuned for the pre-2026 painter and
- * inflated the clear-night moon to 25 units against the sun's 19. */
-const ICON_FOOTPRINT_SCALE = {};
 
 function pillPath(cr, x0, y0, x1, y1, radius) {
     radius = Math.min(radius, (x1 - x0) / 2, (y1 - y0) / 2);
@@ -331,15 +323,13 @@ export function paintChart(cr, opts) {
     const stripProbe = opts.stripProbe || NOOP_OBSERVER;
     const inkAt = yPx => (bgFn ? pickInk(bgFn(yPx)) : defaultInk);
 
-    // y window with the mockup's asymmetric padding (headroom for labels);
+    // y window with asymmetric padding (headroom for labels);
     // an enabled condition strip asks for noticeably more sky above the line
     // the condition strip needs one scene per plotted point -- refuse
     // mismatched data outright so a short feed can never phantom-paint
     // icons past the last value (the 'missing 8 PM' failure mode)
     const conditionScenes = Array.isArray(opts.scenes) && opts.scenes.length === pointCount
         ? opts.scenes : null;
-    if (Array.isArray(opts.scenes) && !conditionScenes && opts.scenes.length)
-        log(`weatherglass: condition strip needs ${pointCount} scenes, got ${opts.scenes.length} -- strip disabled`);
     let minVal = Math.min(...values), maxVal = Math.max(...values);
     if (maxVal - minVal < 1e-6) { minVal -= 1; maxVal += 1; }
     const yPadding = (maxVal - minVal) * 0.35 + 1;
@@ -733,15 +723,14 @@ export function paintChart(cr, opts) {
             currX = isRtl ? plotEndX : plotStartX;
             for (const [k, run] of conditionRuns.entries()) {
                 paintSingleIcon(run.scene, currX + flowDir * pillWidths[k] / 2, run.night,
-                    PILL_ICON_SCALE * (ICON_FOOTPRINT_SCALE[run.scene] ?? 1), stripCenterY,
+                    PILL_ICON_SCALE, stripCenterY,
                     run.intensity, run.variant);
                 currX += flowDir * pillWidths[k];
             }
             cr.restore();
         } else {
             for (const slot of iconSlots) {
-                const iconScale = STRIP_ICON_SCALE *
-                    (ICON_FOOTPRINT_SCALE[conditionScenes[slot.i]] ?? 1);
+                const iconScale = STRIP_ICON_SCALE;
                 // WHERE each glyph lands and WHICH family inputs it wears
                 // (scene/night), never the pale verdict: the grader must
                 // re-derive that from measured pixels, not trust ours

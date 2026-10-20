@@ -247,8 +247,8 @@ export function wmoInfo(code) {
 }
 
 // Per-code glyph variants: family art WITHIN a scene, mirroring the
-// mock coverage matrix (docs/design/icon-mocks.html) -- drizzle's mini
-// drops, showers' peeking sun/moon, grains instead of flakes, the
+// per-code coverage matrix -- drizzle's
+// sparser count, showers' peeking sun/moon, grains instead of flakes, the
 // bolt beside hailstones. Kept in lockstep with the extension's
 // variantForCode (weather.js there); the painter consumes the names.
 const CODE_VARIANT = {

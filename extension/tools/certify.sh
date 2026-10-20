@@ -58,6 +58,8 @@ stage "card previews"     gjs -m tools/card-preview.mjs
 stage "demo cards render" gjs -m tools/card-demo.mjs
 stage "demo coverage"     gjs -m tools/card-demo.mjs --coverage
 stage "grid certify"      python3 tools/certify-pixels.py --grid tools/out/demo
+stage "motion render"     gjs -m tests/motion-frames.mjs
+stage "motion certify"    python3 tools/certify-pixels.py --motion tools/out/motion
 stage "golden lock (shell)" bash tools/shell-golden.sh card check all
 stage "package + zipcheck" bash tools/package.sh
 stage "shexli (EGO engine)" tools/shexli-check.sh

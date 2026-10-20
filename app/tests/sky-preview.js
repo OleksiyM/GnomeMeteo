@@ -49,7 +49,7 @@ function inkLabel(cr, text, x, y, size, bg) {
     PangoCairo.show_layout(cr, lay);
 }
 
-function cardMock(cr, x, y, w, h, dark) {
+function cardSample(cr, x, y, w, h, dark) {
     const [r, g, b, a] = dark ? [0.05, 0.06, 0.09, 0.52] : [1, 1, 1, 0.55];
     const rr = 12, k = 0.5523 * rr;
     cr.newPath();
@@ -84,7 +84,7 @@ render('tests/out/sky-fog.png',
 render('tests/out/sky-snow.png',
     { scene: 'snow', night: false, glow: 0 }, 8);
 
-// -- ink-judged hero mock over noon sky (big sun in corner) -----------------
+// -- ink-judged hero sample over noon sky (big sun in corner) ---------------
 {
     const o = { scene: 'clear', night: false, glow: 0.9, solar: 0.08, phase: null };
     const sky = createSky();
@@ -97,12 +97,12 @@ render('tests/out/sky-snow.png',
     inkLabel(cr, 'Mostly Clear', 130, 100, 15, groundAt(160, 110, o));
     // header-right clock sits ON the glowing disc — verdict must flip
     inkLabel(cr, '18:32', W - 80, 55, 22, groundAt(W - 40, 70, o));
-    cardMock(cr, 12, 210, W - 24, 60, false);
+    cardSample(cr, 12, 210, W - 24, 60, false);
     cr.setSourceRGBA(0.1, 0.1, 0.12, 1);
     cr.selectFontFace('Sans', Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL);
     cr.setFontSize(12); cr.moveTo(24, 232); cr.showText('glass card over the sky');
-    cr.$dispose(); surf.flush(); surf.writeToPNG('tests/out/sky-inkmock.png');
-    print('wrote tests/out/sky-inkmock.png');
+    cr.$dispose(); surf.flush(); surf.writeToPNG('tests/out/sky-inksample.png');
+    print('wrote tests/out/sky-inksample.png');
 }
 
 // -- dark-theme variant: dark glass + white ink on rainy night ---------------
@@ -113,7 +113,7 @@ render('tests/out/sky-snow.png',
     const cr = new Cairo.Context(surf);
     for (let t = 0; t <= 4; t += 0.05)
         paintSky(cr, { ...o, w: W, h: H, time: t, sky });
-    cardMock(cr, 12, 210, W - 24, 60, true);
+    cardSample(cr, 12, 210, W - 24, 60, true);
     inkLabel(cr, 'Rain', 24, 40, 16, groundAt(60, 55, o));
     cr.$dispose(); surf.flush(); surf.writeToPNG('tests/out/sky-rainnight.png');
     print('wrote tests/out/sky-rainnight.png');
@@ -125,7 +125,7 @@ const PAINTER = await import('../src/painter.js');
 {
     void 0;
 }
-function tilesMock(file, o, theme) {
+function tilesSample(file, o, theme) {
     const sky = createSky();
     const surf = new Cairo.ImageSurface(Cairo.Format.ARGB32, W, H);
     const cr = new Cairo.Context(surf);
@@ -193,8 +193,8 @@ function composite(tint, dst) {
     return [0, 1, 2].map(i => tint[i] * a + dst[i] * (1 - a));
 }
 
-tilesMock('tests/out/sky-tiles-day.png',
+tilesSample('tests/out/sky-tiles-day.png',
     { scene: 'clear', night: false, glow: 0.35, solar: 0.75, phase: null }, 'light');
-tilesMock('tests/out/sky-tiles-night.png',
+tilesSample('tests/out/sky-tiles-night.png',
     { scene: 'clear', night: true, glow: 0.9, solar: null, phase: 0.5 }, 'dark');
 print('done');

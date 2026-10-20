@@ -17,16 +17,11 @@ function rand(min, max) {
     return min + Math.random() * (max - min);
 }
 
+/* Per-icon animation state. Rain/snow/grains are pure functions of
+ * the clock (fixed-lane phase math), so the only simulated bodies
+ * left are the bouncing hailstones; stars are the moon scene's fixed
+ * twinkle field. lastTime feeds the hail integrator. */
 export function createParticles() {
-    const drops = [];
-    for (let i = 0; i < 16; i++)
-        drops.push({ x: rand(3, 21), y: rand(14, 24), length: rand(1.6, 3.2), speed: rand(11, 18) });
-    const flakes = [];
-    for (let i = 0; i < 12; i++)
-        flakes.push({
-            x: rand(3, 21), y: rand(14, 24), radius: rand(0.8, 1.4),
-            speed: rand(2.5, 4.5), phase: rand(0, TWO_PI)
-        });
     const hail = [];
     for (let i = 0; i < 10; i++) {
         // scatter initial heights so the first cycle doesn't fall in unison
@@ -36,7 +31,7 @@ export function createParticles() {
         { x: 19.5, y: 4.5, phase: 0.0 }, { x: 21.5, y: 9, phase: 1.7 },
         { x: 17.5, y: 8, phase: 3.1 }, { x: 20.5, y: 13.5, phase: 4.4 },
     ];
-    return { drops, flakes, hail, stars, lastTime: null, lastT: null };
+    return { hail, stars, lastTime: null };
 }
 
 const FLOOR = 21.8;   // where hailstones bounce
@@ -61,7 +56,7 @@ function line(cr, x1, y1, x2, y2) {
 
 /** Teardrop droplet: round bottom, pointed tip, always upright.
  *  (x, y) is the centre of the round bottom; s the drop scale.
- *  Traced from the mock dropPath: bulb radius 1.45, tip 3.15 above
+ *  Bulb radius 1.45, tip 3.15 above
  *  the bulb centre (2.9 wide x 4.6 tall at s=1). */
 function teardrop(cr, x, y, s) {
     cr.moveTo(x, y - 3.15 * s);
@@ -112,9 +107,9 @@ function staggeredSpots(count, seed, cx, halfSpan, y0, y1, minDist) {
     });
 }
 
-/** Mock-silhouette cloud (2026 icon set): the icon sheet's shared cloud
+/** Cloud silhouette (2026 icon set): the shared cloud
  *  as its three elliptical arcs — right bump, wide flat top, left bump
- *  wider than the base line — mapped from the sheet's 24-box path
+ *  wider than the base line — mapped from a 24-box path
  *  (bbox x 3.9..21.4, y 7.0..19) into this contract: base at
  *  centerY + 2.4, crown at centerY - 6.1, 12.4 wide. The arc joins are
  *  the shoulders; smoothing them (first attempt) read as a semicircle.
@@ -200,7 +195,7 @@ let _pale = false;
  * selection scrim is a deliberate dark slab no sky model sees, so the
  * selected tile claims the night glow for its glyph (same for solid-
  * style dark cards). */
-export const NIGHT_GLOW_MAX = 0.45;
+const NIGHT_GLOW_MAX = 0.45;
 const groundLight = () =>
     _pale ? false
         : _groundLum >= (_night ? NIGHT_GLOW_MAX : GLYPH_INK_BAR) ? true
@@ -263,13 +258,10 @@ function windStreaks(cr, time, alphaScale, count = 3) {
     }
 }
 
-/** Raindrops. Animated falls ride the shared particle clock; static poses
- *  (strip glyphs, day tiles) stagger in a two-row-deep constellation
- *  centred on the cloud. Either way the shape is a teardrop, and
- *  intensity decides the COUNT -- heavier rain, more drops. */
-/* Raindrops. Static poses stagger in the zigzag constellation;
- * animated falls follow the mock exactly: each drop keeps its FIXED
- * static anchor as its lane and loops wg-fall (1.15s) around it with
+/* Raindrops: teardrops whose COUNT carries the intensity tier.
+ * Static poses stagger in the zigzag constellation; animated falls
+ * keep each drop in its FIXED static anchor lane,
+ * looping a 1.15s fall around it with
  * its own delay -- falls -2.4 -> +3.1, drifts +0.45 -> -0.55 (further
  * left as slant grows), fades in by 16% and out from 78%. Fixed lanes
  * keep every lane raining all the time; reseeding lanes per cycle
@@ -277,7 +269,7 @@ function windStreaks(cr, time, alphaScale, count = 3) {
  * marched from side to side across the icon. */
 function rainDrops(cr, particles, time, count, slant, alpha, band = [18.4, 20.0], dropScale = 1, xBand = [5.8, 18.2]) {
     const waterColor = INK_WATER();
-    const total = Math.min(count, particles.drops.length);
+    const total = count;
     // bulb diameter 2.9 at full scale: the zigzag keeps every pair
     // of bulbs at least 2.75 apart (they step past each other
     // diagonally like falling rain, never into each other)
@@ -315,7 +307,7 @@ function rainDrops(cr, particles, time, count, slant, alpha, band = [18.4, 20.0]
         teardrop(cr, drawX, y, s);
     }
     cr.fill();
-    // the mock drop's white catch-light, upper-left of the bulb
+    // white catch-light, upper-left of the bulb
     cr.setSourceRGBA(1, 1, 1, 0.8 * alpha);
     for (const [x, y, s] of marks)
         circle(cr, x - 0.45 * s, y - 0.30 * s, 0.34 * s);
@@ -323,7 +315,7 @@ function rainDrops(cr, particles, time, count, slant, alpha, band = [18.4, 20.0]
 }
 
 /** Snowflakes (six spokes). Static poses stagger; animated falls
- *  follow the mock's wg-snow around each flake's FIXED static anchor:
+ *  around each flake's FIXED static anchor:
  *  a 2.7s soft float -- slow descent (-2.1 -> +2.9), a gentle sway
  *  (-0.5 -> +0.55 -> -0.4), a lazy tumble (-24deg -> +18deg -> +52deg,
  *  never a continuous spin), fading in by 16% and out from 84%, with
@@ -331,7 +323,7 @@ function rainDrops(cr, particles, time, count, slant, alpha, band = [18.4, 20.0]
 function snowFlakes(cr, particles, time, count, flakeBand = [17.8, 20.2], xBand = [6.6, 17.2]) {
     cr.setLineCap(Cairo.LineCap.ROUND);
     cr.setLineWidth(0.75);
-    const total = Math.min(count, particles.flakes.length);
+    const total = count;
     const flakeSpots = staggeredSpots(total, (particles.seed ?? 7) + 37,
         (xBand[0] + xBand[1]) / 2, (xBand[1] - xBand[0]) / 2 - 0.4,
         flakeBand[0], flakeBand[1], 3.5);
@@ -373,9 +365,8 @@ function snowFlakes(cr, particles, time, count, flakeBand = [17.8, 20.2], xBand 
 
 /** Hailstones: fall under gravity, bounce & scatter on the floor, respawn. */
 function hailStones(cr, particles, time, count, xBand = [6.6, 17.2], yBand = [17.4, 19.8], stoneScale = 1) {
-    const lastTime = particles.lastTime ?? particles.lastT;
-    const dt = lastTime === null ? 0 : Math.min(0.06, time - lastTime);
-    // static poses get the mock's pellet row (seeded, highlights and
+    const dt = particles.lastTime === null ? 0 : Math.min(0.06, time - particles.lastTime);
+    // static poses get a fixed pellet row (seeded, highlights and
     // all) instead of wherever the bounce physics froze mid-flight
     const spots = particles.static
         ? staggeredSpots(count, (particles.seed ?? 7) + 71,
@@ -396,7 +387,7 @@ function hailStones(cr, particles, time, count, xBand = [6.6, 17.2], yBand = [17
             cr.fill();
             continue;
         }
-        const radius = (stone.radius ?? stone.r) * 1.5;
+        const radius = stone.radius * 1.5;
         stone.vy += 24 * dt;
         stone.x += stone.vx * dt;
         stone.y += stone.vy * dt;
@@ -424,7 +415,7 @@ function hailStones(cr, particles, time, count, xBand = [6.6, 17.2], yBand = [17
  * is the only motion — no glow, no ray-length pulse: the pulsing halo
  * read as a fading circle behind the glyph and fought the sky. */
 function sunBody(cr, centerX, centerY, radius, time, rayLength) {
-    // mock ray proportions: gap and stroke both 0.38 of the disc radius
+    // ray proportions: gap and stroke both 0.38 of the disc radius
     const gap = radius * 0.38;
     cr.save();
     cr.translate(centerX, centerY);
@@ -502,15 +493,14 @@ function moonBody(cr, centerX, centerY, radius, time, particles, phase) {
     for (const star of particles.stars) {
         if (Math.hypot(star.x - centerX, star.y - centerY) < keepOut)
             continue;
-        const starPhase = star.phase ?? star.ph;
-        const alpha = 0.35 + 0.6 * Math.abs(Math.sin(time * 1.3 + starPhase));
+        const alpha = 0.35 + 0.6 * Math.abs(Math.sin(time * 1.3 + star.phase));
         cr.setSourceRGBA(starColor[0], starColor[1], starColor[2], alpha);
         circle(cr, star.x, star.y, 0.55);
         cr.fill();
     }
 }
 
-// mainly-clear (code 1): the mock shrinks the sun/moon up-left and
+// mainly-clear (code 1): shrunk sun/moon up-left and
 // rests one small cloud low-right -- clear, but not cloudless
 function mainlyCloud(cr, time) {
     const body = overcastBody();
@@ -558,7 +548,7 @@ function scenePartly(cr, ctx) {
 
 function sceneCloud(cr, ctx) {
     const { time, windy, variant } = ctx;
-    // unlisted WMO code: the mock's unknown pose -- one cloud, a
+    // unlisted WMO code: the unknown pose -- one cloud, a
     // question mark standing under it where precip would hang
     if (variant === 'unknown') {
         const body = overcastBody();
@@ -578,7 +568,7 @@ function sceneCloud(cr, ctx) {
     // overcast earns its silhouette: mid-gray over bright skies (the pale
     // cloud vanished into overcast white), pale body over night skies --
     // same light/dark referee as the INK_* family. The back bank is a
-    // DARKER shade of the body (the mock's cloudStorm bank), not the
+    // DARKER shade of the body (the storm-cloud tone), not the
     // same colour faded -- at 65% alpha it washed into the sky and
     // the glyph read as one plain cloud. It also stands taller
     // (squash .85: a proper cap, not a pancake) and further left, so
@@ -609,7 +599,7 @@ function spark(cr, x, y, s, alpha) {
 function sceneFog(cr, ctx) {
     const { time, variant } = ctx;
     // the fog cloud keeps a pale body on night grounds and deepens to
-    // the overcast gray on bright ones. Below it, the mock's three
+    // the overcast gray on bright ones. Below it, three
     // centered tapering lines (not full-width dashes), breathing
     // sideways against each other
     const body = overcastBody();
@@ -640,9 +630,9 @@ function sceneFog(cr, ctx) {
     }
 }
 
-// precip scenes carry the mock's SINGLE cloud (the pair belongs to
-// overcast alone), drifting gently; mark counts follow the mock tiers.
-// Mock geometry, measured: cloud path spans 17.4 of the 24 box with
+// precip scenes carry a SINGLE cloud (the pair belongs to
+// overcast alone), drifting gently; mark counts follow the tier ladder.
+// Geometry, measured: the cloud path spans 17.4 of the 24 box with
 // its base at y15.1, marks in one tight row under it -- cloud() traces
 // the path at 0.711, so scale 1.40 lands the same silhouette
 function precipSceneCloud(cr, time, palette) {
@@ -651,7 +641,7 @@ function precipSceneCloud(cr, time, palette) {
     return cx;
 }
 
-// showers (codes 80-82, 85-86): the mock keeps a complete sun/moon
+// showers (codes 80-82, 85-86): a complete sun/moon
 // peeking from behind the cloud's top-left -- broken sky, brief fall
 function showersPeek(cr, ctx) {
     const { time, night, particles, phase } = ctx;
@@ -689,10 +679,10 @@ function sceneRain(cr, ctx) {
         windStreaks(cr, time, 0.35, 2);
 }
 
-/** Snow grains (code 77): opaque white pellets, not flakes. Rides the
- *  flake particles for motion; only the mark changes. */
+/** Snow grains (code 77): opaque white pellets, not flakes -- same
+ *  fixed-lane motion as the flakes, only the mark changes. */
 function snowGrains(cr, particles, time, count, cloudCx = 12) {
-    const total = Math.min(count, particles.flakes.length);
+    const total = count;
     const spots = staggeredSpots(total, (particles.seed ?? 7) + 37, cloudCx, 4.9,
         17.6, 20.0, 1.75);
     const grainColor = INK_FLAKE();
@@ -701,7 +691,7 @@ function snowGrains(cr, particles, time, count, cloudCx = 12) {
         if (particles.static) {
             [x, y] = spots[i];
         } else {
-            // pellets: the mock hail's fall-fast (0.78s) in fixed lanes,
+            // pellets: a fast fall (0.8s loop) in fixed lanes,
             // falling faster and straighter than drops or flakes
             const p = (time / 0.8 + i * 0.618) % 1;
             const fade = Math.min(p / 0.16, 1, Math.max(0, (1 - p) / 0.22));
@@ -743,7 +733,7 @@ function sceneSleet(cr, ctx) {
     const { time, particles, intensity, windKmh, windy, variant } = ctx;
     const cloudCx = precipSceneCloud(cr, time, precipCloud());
     const heavy = variant === 'freezingheavy';
-    // one shared baseline row, as the mock composes freezing marks:
+    // one shared baseline row for the freezing marks:
     // drop(s) flank the flake, never on top of it. Marks ascend with
     // tier like every family: 2 at tier 3, 3 at tier 4 (57/67)
     rainDrops(cr, particles, time, (heavy || intensity >= 4) ? 2 : 1,
@@ -752,7 +742,7 @@ function sceneSleet(cr, ctx) {
     snowFlakes(cr, particles, time, 1, [18.0, 19.7],
         heavy ? [cloudCx - 0.8, cloudCx + 1.2] : [cloudCx + 1.2, cloudCx + 4.8]);
     if (heavy) {
-        // freezing rain lands as ice: the mock's underline glaze
+        // freezing rain lands as ice: an underline glaze
         const iceColor = INK_FLAKE();
         cr.save();
         cr.setLineCap(Cairo.LineCap.ROUND);
@@ -770,17 +760,17 @@ function sceneSleet(cr, ctx) {
 
 /** Hail: dark storm cloud and bouncing ice stones. The stormhail
  *  variants (codes 96/99, CAPE-derived hail) add the bolt left of the
- *  stones, as the mock composes them. */
+ *  stones. */
 function sceneHail(cr, ctx) {
     const { time, particles, windy, variant } = ctx;
     const cloudCx = precipSceneCloud(cr, time, stormCloud());
     if (variant === 'stormhail' || variant === 'stormhailheavy') {
         const heavy = variant === 'stormhailheavy';
-        // the mock stills shrink the bolt left to make room for the
-        // stones: translate(-2.6,.4) scale(.88), heavy (-3,.2) scale(.9)
+        // stills shrink the bolt left to make room for the stones:
+        // translate(-2.6,.4) scale(.88), heavy (-3,.2) scale(.9)
         drawBolt(cr, time, particles, ...(heavy ? [-3, 0.2, 0.9] : [-2.6, 0.4, 0.88]));
         // heavy pellets ride higher beside the bolt's notch, scaled
-        // .86, exactly the mock's pelletsHeavy use transform
+        // .86, so the row clears the bolt
         hailStones(cr, particles, time,
             Math.min(heavy ? 5 : 2, particles.hail.length),
             heavy ? [8.6, 19.2] : [13.5, 18.5],
@@ -793,11 +783,11 @@ function sceneHail(cr, ctx) {
         windStreaks(cr, time, 0.35, 2);
 }
 
-/* the mock's bolt (#boltPath): a filled polygon, gold gradient
- * #ffd964 -> #f5a524 with a #e89b1c rim, 0.6 wide, round joins.
- * wg-flash keeps it always present at 22% with one double burst per
- * 3.6s cycle (52% .22 -> 58% 1 -> 63% .45 -> 68% 1 -> 100% .22);
- * static poses burn at full opacity like the mock still, since
+/* The bolt: a filled polygon, gold gradient #ffd964 -> #f5a524
+ * with a #e89b1c rim, 0.6 wide, round joins. The flash cycle keeps
+ * it always present at 22% with one double burst per 3.6s
+ * (52% .22 -> 58% 1 -> 63% .45 -> 68% 1 -> 100% .22);
+ * static poses burn at full opacity, since
  * tiles and strip glyphs can't wait for the burst */
 const BOLT_PTS = [
     [13.2, 13.4], [9.7, 19], [12.1, 19], [10.9, 22.4],
@@ -840,9 +830,9 @@ function sceneStorm(cr, ctx) {
     const { time, particles, windKmh, windy } = ctx;
     precipSceneCloud(cr, time, stormCloud());
     if (!particles.static) {
-        /* the mock's animated storm: two drops flanking the bolt at
-         * x 6.8 / 17.4 (scale .85, delays -.5/-.95); its still (#r-storm)
-         * carries the bolt alone, so static poses draw no drops */
+        /* animated storm: two drops flanking the bolt at x 6.8 / 17.4
+         * (scale .85, staggered half a cycle apart); the still pose
+         * carries the bolt alone, so static draws no drops */
         const slant = Math.min(0.9, windKmh / 45);
         rainDrops(cr, particles, time, 1, slant, 0.85,
             [18.4, 20.0], 0.85, [6.4, 7.2]);
@@ -857,7 +847,7 @@ function sceneStorm(cr, ctx) {
 
 function sceneWind(cr, ctx) {
     const { time } = ctx;
-    // the mock's three continuous swooshes with end curls, drifting as
+    // three continuous swooshes with end curls, drifting as
     // one group; dashed streaks stay only as the windy overlay elsewhere
     const ink = INK_STREAK();
     const drift = Math.sin(time * 1.2) * 0.6;
@@ -924,12 +914,20 @@ const SCENES = {
  * Paint one frame. `opts` must already be in grid space -- the caller scales
  * the context. Fields:
  *   scene      one of SCENES
- *   time       seconds since the icon appeared (animation clock)
- *   particles  pool from createParticles()
+ *   time       seconds on the caller's animation clock
+ *   particles  pool from createParticles() (animated poses; a throwaway
+ *              pool is made when omitted, fine for one-shot previews)
+ *   staticPose bool -- canonical still pose (tiles, strip glyphs)
+ *   seed       per-glyph layout variety for static poses
  *   windy      bool -- add wind streaks to the scene
- *   night      bool -- render night variant (partly)
- *   intensity  0..10 precipitation mm, drives drop/flake count
+ *   night      bool -- render night variant
+ *   dark       bool -- the ground is dark (false picks light-ground inks)
+ *   groundLum  measured ground luminance for the ink referee (-1: none)
+ *   pale       bool -- force the pale glow-family glyph
+ *   intensity  precipitation severity tier; drives the mark-count ladder
+ *   variant    per-code glyph family (weather.js variantForCode) or null
  *   windKmh    wind speed in km/h, drives rain slant
+ *   phase      lunar phase 0..1 (non-finite: tonight's real moon)
  */
 let staticPool = null;   // one seeded pool for every static painter
 
@@ -949,9 +947,7 @@ export function paintWeather(cr, opts) {
     const currentTime = opts.time || 0;
     const ctx = {
         time: currentTime,
-        t: currentTime,
         particles,
-        p: particles,
         windy: !!opts.windy,
         night: !!opts.night,
         intensity: opts.intensity || 0,
@@ -965,5 +961,4 @@ export function paintWeather(cr, opts) {
     sceneRenderer(cr, ctx);
     cr.restore();
     particles.lastTime = currentTime;
-    particles.lastT = currentTime;
 }

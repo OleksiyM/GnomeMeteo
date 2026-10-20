@@ -231,7 +231,7 @@ which API answered (the contract is documented above
 ```
 
 Values come back **canonical metric** (degC, km/h, mm/h); display
-converts. Anything unit-testable without a network mock lives in
+converts. Anything unit-testable without a network stub lives in
 `parse()` — the fetch half is one `await get()` deep.
 
 ### The three providers

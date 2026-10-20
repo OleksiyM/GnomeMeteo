@@ -114,7 +114,7 @@ for (const scene of SCENES) {
     cr.$dispose();
 }
 
-// per-code variant poses (mock coverage families): same grounds, same
+// per-code variant poses (coverage families): same grounds, same
 // referee -- variant art must hold the same contrast contract as the
 // plain scenes it decorates
 const VARIANTS = [

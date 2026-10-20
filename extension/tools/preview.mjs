@@ -46,7 +46,7 @@ for (const scene of scenes) {
             intensity: 6, windKmh: 32,
         });
         // step particle clock between frames
-        p.lastT = t - 1 / 30;
+        p.lastTime = t - 1 / 30;
         surf.flush();
         const name = `${scene}-${i}.png`;
         surf.writeToPNG(GLib.build_filenamev([outDir, name]));
@@ -78,7 +78,7 @@ scenes.forEach((scene, c) => {
         scr.setSourceSurface(sub, 0, 0);
         scr.paint();
         scr.restore();
-        p.lastT = t - 1 / 30;
+        p.lastTime = t - 1 / 30;
     }
 });
 sheet.writeToPNG(GLib.build_filenamev([outDir, 'sheet.png']));
