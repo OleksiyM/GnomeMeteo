@@ -2,6 +2,15 @@
 
 Rules for AI agents working in this repository. Read before writing anything.
 
+## Scope routing
+
+This root file owns monorepo workflow: worktrees, branch base, identity,
+push/merge approval, and cleanup. Extension work must also follow
+[extension/AGENTS.md](extension/AGENTS.md) for extension-specific
+verification gates, codebase rules, and pre-upload release review. If a
+workflow rule conflicts, this root file wins; if an extension-specific
+technical rule conflicts, the extension file wins.
+
 ## Worktree discipline (mandatory)
 
 **Never write code in this main checkout.** It is the deployment tree: the
@@ -12,7 +21,7 @@ the tree operators rely on being clean.
 Before any code change:
 
 1. `git fetch` (once `origin` is pushed; otherwise branch from local `main`)
-2. Create a detached worktree and work there:
+2. Create a topic-branch worktree and work there:
    ```bash
    git worktree add ../wg-work/<slug> -b <slug> main
    ```
@@ -26,6 +35,15 @@ Before any code change:
 
 Exceptions requiring the operator's explicit OK (not self-service): docs-only
 typo fixes, and emergency patches the operator directs onto the live tree.
+
+## Identity & PII (repo-wide hard rules)
+
+- Every commit uses
+  `--author="vijaybala-lang <vijaybala-lang@users.noreply.github.com>"`.
+- No personal/gmail address may ever appear in commits, history, or docs;
+  if one slips in, stop and escalate to the operator before more merges.
+- Merge/squash commits must be verified noreply-clean after landing
+  (`git log -1 --format='%ae'`).
 
 ## Verification culture (learned the hard way here)
 

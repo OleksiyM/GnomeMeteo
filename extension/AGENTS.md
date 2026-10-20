@@ -5,34 +5,17 @@ GPL-2.0-or-later). JavaScript/GJS, Cairo painting, no build step.
 
 ## Workflow rules
 
-1. **Feature work happens in a git worktree**, never in the main
-   checkout:
+Monorepo workflow lives in [../AGENTS.md](../AGENTS.md) and wins on
+worktrees, branch base (`main`), identity, push/merge approval, and
+cleanup. Do extension work in a topic-branch worktree from `main`; do
+not push, open a pull request, or merge until the operator explicitly
+says to. This file keeps only the extension-specific verification,
+codebase, and release-review rules below.
 
-   ```sh
-   git worktree add ../wt/<topic> -b topic/short-name master
-   # ... work, commit, verify inside that worktree
-   ```
+## Identity & PII
 
-   Keep `~/projects/weatherglass` on `master` with a clean tree so the
-   operator can inspect or package from it at any moment.
-
-2. **Open a pull request only after the operator explicitly confirms.**
-   Implement, verify, and report what changed and how it was verified;
-   then stop. Do not push a branch to create a PR, and do not merge,
-   until told to go ahead. When confirmed: `git push -u origin <branch>`,
-   `gh pr create`, `gh pr merge --squash`.
-
-3. Merging is the only way anything reaches `master` (branch protection:
-   ruleset `master-branch-policy` + classic protection). Never force-push
-   master, never merge without approval.
-
-## Identity & PII (hard rules)
-
-- Every commit: `--author="vijaybala-lang <vijaybala-lang@users.noreply.github.com>"`.
-- No personal/gmail address may ever appear in commits, history, or docs;
-  if one slips in, stop and escalate to the operator before more merges.
-- Merge/squash commits must be verified noreply-clean after landing
-  (`git log -1 --format='%ae'`).
+Follow the repo-wide identity and PII hard rules in
+[../AGENTS.md](../AGENTS.md) for every commit, merge, and release note.
 
 ## Verification gates (run in this order before reporting done)
 
