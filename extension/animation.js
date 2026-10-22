@@ -33,9 +33,15 @@ export const WeatherIcon = GObject.registerClass(
             };
 
             this._clockId = 0;
-            this.connect('destroy', () => this._stopClock());
-            if (animate)
+            if (animate) {
+                this.connect('destroy', () => this._stopClock());
                 this._startClock();
+            }
+        }
+
+        destroy() {
+            this._stopClock();
+            super.destroy();
         }
 
         setScene(scene, { windy = false, night = false, intensity = 0, windKmh = 0,

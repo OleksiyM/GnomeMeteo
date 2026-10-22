@@ -202,6 +202,25 @@
 .meteo-range-bar,
 .meteo-fill-bar {
     height: 6px;
+    background-color: rgba(255, 255, 255, 0.14);
+    border-radius: 3px;
+}
+
+.meteo-range-fill {
+    border-radius: 3px;
+    background-gradient-direction: horizontal;
+    background-gradient-start: #59c0fa;
+    background-gradient-end: #fba626;
+}
+
+.meteo-range-dot {
+    border-radius: 4px;
+    background-color: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.35);
+}
+
+.meteo-fill-progress {
+    border-radius: 3px;
 }
 
 /* Details 2x3 Grid */

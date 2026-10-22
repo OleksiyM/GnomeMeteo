@@ -256,105 +256,111 @@ const ChartArea = GObject.registerClass(
     });
 
 export const RangeBar = GObject.registerClass(
-class RangeBar extends St.DrawingArea {
+class RangeBar extends St.Widget {
     _init(params) {
         super._init({
             style_class: 'meteo-range-bar',
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
             height: 6,
-            width: 80,
         });
         this._min = params.min ?? 0;
         this._max = params.max ?? 0;
         this._gMin = params.gMin ?? 0;
         this._gMax = params.gMax ?? 0;
         this._current = params.current ?? null;
+
+        this._fill = new St.Widget({ style_class: 'meteo-range-fill' });
+        this.add_child(this._fill);
+
+        if (this._current !== null && this._current !== undefined) {
+            this._dot = new St.Widget({ style_class: 'meteo-range-dot' });
+            this.add_child(this._dot);
+        } else {
+            this._dot = null;
+        }
     }
 
-    vfunc_repaint() {
-        const [w, h] = this.get_surface_size();
+    vfunc_get_preferred_width(_forHeight) {
+        return [60, 100];
+    }
+
+    vfunc_get_preferred_height(_forWidth) {
+        return [6, 6];
+    }
+
+    vfunc_allocate(box) {
+        this.set_allocation(box);
+        const w = box.get_width();
+        const h = box.get_height();
         if (w <= 0 || h <= 0)
             return;
-        const cr = this.get_context();
-        const radius = h / 2;
 
-        // Background track
-        cr.arc(radius, radius, radius, Math.PI / 2, 3 * Math.PI / 2);
-        cr.arc(w - radius, radius, radius, -Math.PI / 2, Math.PI / 2);
-        cr.closePath();
-        cr.setSourceRGBA(1, 1, 1, 0.12);
-        cr.fill();
-
-        // Active range
         const total = (this._gMax - this._gMin) || 1;
-        const x1 = Math.max(radius, ((this._min - this._gMin) / total) * w);
-        const x2 = Math.min(w - radius, Math.max(x1 + radius * 2, ((this._max - this._gMin) / total) * w));
-        const barW = Math.max(radius * 2, x2 - x1);
 
-        cr.arc(x1 + radius, radius, radius, Math.PI / 2, 3 * Math.PI / 2);
-        cr.arc(x1 + barW - radius, radius, radius, -Math.PI / 2, Math.PI / 2);
-        cr.closePath();
-
-        // Apple Weather gradient: cyan to orange
-        const pat = new Cairo.LinearGradient(x1, 0, x1 + barW, 0);
-        pat.addColorStopRGBA(0, 0.35, 0.75, 0.98, 0.95);
-        pat.addColorStopRGBA(1, 0.98, 0.65, 0.15, 0.95);
-        cr.setSource(pat);
-        cr.fill();
-
-        // Current temperature dot for Today
-        if (this._current !== null && this._current !== undefined) {
-            const dotX = Math.max(radius, Math.min(w - radius, ((this._current - this._gMin) / total) * w));
-            cr.arc(dotX, radius, radius + 1.8, 0, 2 * Math.PI);
-            cr.setSourceRGBA(1, 1, 1, 1.0);
-            cr.fill();
-            cr.arc(dotX, radius, radius + 1.8, 0, 2 * Math.PI);
-            cr.setSourceRGBA(0, 0, 0, 0.35);
-            cr.setLineWidth(1);
-            cr.stroke();
+        if (this._fill) {
+            const x1 = Math.max(0, Math.min(w - 6, Math.round(((this._min - this._gMin) / total) * w)));
+            const x2 = Math.min(w, Math.max(x1 + 6, Math.round(((this._max - this._gMin) / total) * w)));
+            const fillBox = new Clutter.ActorBox();
+            fillBox.x1 = x1;
+            fillBox.x2 = x2;
+            fillBox.y1 = 0;
+            fillBox.y2 = h;
+            this._fill.allocate(fillBox);
         }
-        cr.$dispose();
+
+        if (this._dot) {
+            const dotSize = 8;
+            const dotX = Math.max(0, Math.min(w - dotSize, Math.round(((this._current - this._gMin) / total) * w - dotSize / 2)));
+            const dotBox = new Clutter.ActorBox();
+            dotBox.x1 = dotX;
+            dotBox.x2 = dotX + dotSize;
+            dotBox.y1 = Math.round((h - dotSize) / 2);
+            dotBox.y2 = dotBox.y1 + dotSize;
+            this._dot.allocate(dotBox);
+        }
     }
 });
 
 export const FillBar = GObject.registerClass(
-class FillBar extends St.DrawingArea {
-    _init(fraction, colorRgba = [0.30, 0.64, 1.00, 0.9]) {
+class FillBar extends St.Widget {
+    _init(fraction, colorCss = '#4ca3ff') {
         super._init({
             style_class: 'meteo-fill-bar',
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
             height: 6,
-            width: 80,
         });
         this._fraction = Math.min(1, Math.max(0, fraction));
-        this._color = colorRgba;
+        this._fill = new St.Widget({
+            style_class: 'meteo-fill-progress',
+            style: `background-color: ${colorCss};`,
+        });
+        this.add_child(this._fill);
     }
 
-    vfunc_repaint() {
-        const [w, h] = this.get_surface_size();
+    vfunc_get_preferred_width(_forHeight) {
+        return [60, 100];
+    }
+
+    vfunc_get_preferred_height(_forWidth) {
+        return [6, 6];
+    }
+
+    vfunc_allocate(box) {
+        this.set_allocation(box);
+        const w = box.get_width();
+        const h = box.get_height();
         if (w <= 0 || h <= 0)
             return;
-        const cr = this.get_context();
-        const radius = h / 2;
 
-        // Background track
-        cr.arc(radius, radius, radius, Math.PI / 2, 3 * Math.PI / 2);
-        cr.arc(w - radius, radius, radius, -Math.PI / 2, Math.PI / 2);
-        cr.closePath();
-        cr.setSourceRGBA(1, 1, 1, 0.12);
-        cr.fill();
-
-        if (this._fraction > 0) {
-            const fillW = Math.max(radius * 2, w * this._fraction);
-            cr.arc(radius, radius, radius, Math.PI / 2, 3 * Math.PI / 2);
-            cr.arc(fillW - radius, radius, radius, -Math.PI / 2, Math.PI / 2);
-            cr.closePath();
-            cr.setSourceRGBA(this._color[0], this._color[1], this._color[2], this._color[3]);
-            cr.fill();
-        }
-        cr.$dispose();
+        const fillW = Math.max(0, Math.min(w, Math.round(w * this._fraction)));
+        const fillBox = new Clutter.ActorBox();
+        fillBox.x1 = 0;
+        fillBox.x2 = fillW;
+        fillBox.y1 = 0;
+        fillBox.y2 = h;
+        this._fill.allocate(fillBox);
     }
 });
 
@@ -558,7 +564,7 @@ export class ForecastPanel {
         main.add_child(cardsBox);
 
         // Retain compatibility objects for legacy listeners
-        this._chart = new ChartArea(this);
+        this._chart = { queue_repaint() {}, destroy() {} };
         this._daysGrid = column('aw-days-grid');
         this._dayButtons = [];
         this._tabButtons = {};
@@ -744,6 +750,7 @@ export class ForecastPanel {
     /** state = {current, daily, hourly, currentIso, units, windy, effective,
      *           windKmh, updated, dark, shellDark, latitude, longitude} */
     render(state) {
+        console.log(`[METEO-DEBUG] ForecastPanel.render() called! city=${this._cityLabel?.text}, temp=${state.current?.temp}`);
         this._state = state;
         if (state.dark !== undefined)
             this._dark = state.dark;
@@ -944,7 +951,7 @@ export class ForecastPanel {
                 rowItem.add_child(hiLbl);
             } else if (this._metric === 'precip') {
                 const pProb = Math.round(day.precipProb ?? 0);
-                const bar = new FillBar(pProb / 100, [0.30, 0.64, 1.00, 0.9]);
+                const bar = new FillBar(pProb / 100, '#4ca3ff');
                 rowItem.add_child(bar);
 
                 const probLbl = label(`${pProb}%`, 'meteo-daily-metric-val');
@@ -952,7 +959,7 @@ export class ForecastPanel {
                 rowItem.add_child(probLbl);
             } else if (this._metric === 'wind') {
                 const wMs = Math.round((day.windMax ?? 0) / 3.6);
-                const bar = new FillBar(wMs / Math.max(1, maxWind / 3.6), [0.24, 0.81, 0.56, 0.9]);
+                const bar = new FillBar(wMs / Math.max(1, maxWind / 3.6), '#3dcf8e');
                 rowItem.add_child(bar);
 
                 const windLbl = label(`${wMs} ${_('m/s')}`, 'meteo-daily-metric-val');
@@ -1206,98 +1213,13 @@ export class ForecastPanel {
     }
 
     _buildDayTiles() {
-        const { daily, units } = this._state;
-        this._daysGrid.destroy_all_children();
         this._dayButtons = [];
-        this._hoverDay = -1;                       // old crossings are stale
         this._dayLowLabels = [];
         this._dayHiLabels = [];
         this._tileIcons = [];
-        const count = Math.min(daily.length, 8);
-        for (let r = 0; r < count; r += 4) {
-            const rowTiles = row('aw-days');
-            for (let i = r; i < Math.min(r + 4, count); i++) {
-                const dayItem = daily[i];
-                const { scene } = sceneFor(dayItem.code, true);
-                const btn = new St.Button({
-                    style_class: 'aw-day',
-                    can_focus: true,
-                    x_expand: true,
-                });
-                const col = new St.BoxLayout({
-                    vertical: true, style_class: 'aw-day-col',
-                    x_align: ACTOR_FILL
-                });
-                col.add_child(new St.Label({
-                    text: i === 0 ? _('Today') : _(dayName(dayItem.date)),
-                    style_class: 'aw-day-name',
-                    x_align: Clutter.ActorAlign.CENTER
-                }));
-                const icon = new WeatherIcon({
-                    size: 26, animate: false,
-                    time: STATIC_TIME,
-                    dark: this._iconDark(), seed: i * 13 + 5,
-                    groundLum: lumOf(this._bgAt(0.8))
-                });
-                this._tileIcons.push(icon);
-                // canonical pose (shared with the chart strip): the WMO code
-                // sets the severity tier, never the day's live precip/wind --
-                // same code always paints the identical glyph
-                icon.setScene(scene, {
-                    intensity: CODE_PRECIP_INTENSITY[dayItem.code] ?? STRIP_PRECIP_INTENSITY[scene] ?? 0,
-                    variant: variantForCode(dayItem.code),
-                });
-                col.add_child(icon);
-                const hl = new St.BoxLayout({
-                    style_class: 'aw-day-hl',
-                    x_align: Clutter.ActorAlign.CENTER
-                });
-                const hiLabel = new St.Label({
-                    text: fmtTemp(dayItem.tmax, units),
-                    style_class: 'aw-day-hi'
-                });
-                if (i === 0)
-                    this._dayHiLabels[i] = hiLabel;   // chart-window stats land here
-                hl.add_child(hiLabel);
-                const lowLabel = new St.Label({
-                    text: fmtTemp(dayItem.tmin, units),
-                    style_class: 'aw-day-lo'
-                });
-                this._dayLowLabels.push(lowLabel);   // smart ink dims it slightly
-                hl.add_child(lowLabel);
-                col.add_child(hl);
-                btn.set_child(col);
-                btn.connect('clicked', () => this._selectDay(i));
-                // St.Button has no 'hovered' property -- hover is a
-                // Clutter state flag CSS sees but JS notify never fires
-                // for. Track the crossing events directly and re-run the
-                // ink pass so a hovered glyph glows with its labels.
-                btn.connect('event', (actor, event) => {
-                    const type = event.type();
-                    if (type === Clutter.EventType.ENTER)
-                        this._hoverDay = i;
-                    else if (type === Clutter.EventType.LEAVE && this._hoverDay === i)
-                        this._hoverDay = -1;
-                    else
-                        return Clutter.EVENT_PROPAGATE;
-                    this._applyTileInk();
-                    return Clutter.EVENT_PROPAGATE;
-                });
-                rowTiles.add_child(btn);
-                this._dayButtons.push(btn);
-            }
-            this._daysGrid.add_child(rowTiles);
-        }
     }
 
     _markTiles() {
-        this._dayButtons.forEach((btn, i) => {
-            if (i === this._day)
-                btn.add_style_class_name('aw-day-sel');
-            else
-                btn.remove_style_class_name('aw-day-sel');
-        });
-        this._applyTileInk();
     }
 
     _applyTileInk() {
