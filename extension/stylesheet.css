@@ -27,18 +27,77 @@
 }
 
 .aw-content {
-    width: 330px;
-    min-height: 430px;
-    /* no horizontal padding: the chart spans the full card and bleeds its
-     * fill to the edges; rows pad themselves instead */
-    padding: 12px 0 8px 0;
-    border-radius: 18px;
-    /* firmer than a .35 scrim: card ink must clear sun-bright skies */
+    width: 324px;
+    min-height: 480px;
+    padding: 8px 0 12px 0;
+    border-radius: 24px;
     text-shadow: 0 1px 4px rgba(0, 0, 10, 0.65);
 }
 
 .aw-main {
-    spacing: 4px;
+    spacing: 6px;
+}
+
+/* -- Meteo Header (Apple Weather style, centered hero + corner buttons) -- */
+
+.meteo-header {
+    spacing: 1px;
+    padding: 4px 14px 10px 14px;
+}
+
+.meteo-top-bar {
+    margin-bottom: 2px;
+}
+
+.meteo-city {
+    font-size: 1.25em;
+    font-weight: 600;
+    text-align: center;
+}
+
+.meteo-temp {
+    font-size: 3.8em;
+    font-weight: 200;
+    text-align: center;
+    margin: -6px 0 -2px 0;
+}
+
+.meteo-desc {
+    font-size: 1.05em;
+    font-weight: 500;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.meteo-hilo {
+    font-size: 0.88em;
+    font-weight: 400;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 2px;
+}
+
+.meteo-summary {
+    font-size: 0.82em;
+    font-weight: 400;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.65);
+    margin-top: 6px;
+}
+
+/* -- Rounded Card Sections (iOS style panels) -- */
+
+.meteo-card {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 10px 12px;
+    margin: 4px 12px;
+}
+
+.aw-hidden-clock {
+    height: 0;
+    width: 0;
+    opacity: 0;
 }
 
 /* -- header --------------------------------------------------------------- */

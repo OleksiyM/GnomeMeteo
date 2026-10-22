@@ -334,56 +334,66 @@ export class ForecastPanel {
         const main = column('aw-main');
         this._main = main;
 
-        const header = row('aw-header');
+        const header = column('meteo-header');
 
-        const leftCol = new St.BoxLayout({
-            vertical: true, style_class: 'aw-temp-col',
-            y_align: Clutter.ActorAlign.START
-        });
-        const tempWrap = row('aw-temp-line');
-        this._temperatureLabel = label('', 'aw-current-temp');
-        tempWrap.add_child(this._temperatureLabel);
-        leftCol.add_child(tempWrap);
-
-        this._descriptionLabel = label('', 'aw-desc');
-        this._descriptionLabel.clutter_text.ellipsize = Pango.EllipsizeMode.END;
-        this._descriptionLabel.x_align = Clutter.ActorAlign.START;
-        leftCol.add_child(this._descriptionLabel);
-        header.add_child(leftCol);
-
-        header.add_child(spacer());
-
-        const right = new St.BoxLayout({
-            vertical: true, style_class: 'aw-city-col',
-            x_align: Clutter.ActorAlign.END,
-            y_align: Clutter.ActorAlign.START
-        });
-        this._cityLabel = label(_('Weather'), 'aw-city');
-        this._cityLabel.clutter_text.ellipsize = Pango.EllipsizeMode.END;
-        this._cityLabel.x_align = Clutter.ActorAlign.END;
-        right.add_child(this._cityLabel);
-
-        const infoRow = row('aw-info-row');
-        infoRow.x_align = Clutter.ActorAlign.END;
-        this._clockRow = infoRow;
-        this._clockLabel = label('', 'aw-clockline');
-        infoRow.add_child(this._clockLabel);
-        right.add_child(infoRow);
-        const btnRow = row('aw-btn-row');
-        btnRow.x_align = Clutter.ActorAlign.END;
+        // 1. Top action bar with Refresh on Left and Settings on Right
+        const topBar = row('meteo-top-bar');
         this._refreshButton = this._iconButton('view-refresh-symbolic', _('Refresh now'),
             () => {
                 if (this._onRefresh)
                     this._onRefresh();
             });
-        btnRow.add_child(this._refreshButton);
-        btnRow.add_child(this._iconButton('emblem-system-symbolic', _('Preferences'),
+        this._refreshButton.track_hover = true;
+        this._refreshButton.connect('notify::hover', () => {
+            if (this._refreshButton.hover && this._lastUpdatedTime) {
+                this._summaryLabel.set_text(`${_('Updated')}: ${this._lastUpdatedTime}`);
+            } else {
+                this._syncSummary();
+            }
+        });
+        topBar.add_child(this._refreshButton);
+
+        topBar.add_child(spacer());
+
+        this._settingsButton = this._iconButton('emblem-system-symbolic', _('Preferences'),
             () => {
                 if (this._onSettings)
                     this._onSettings();
-            }, 18));
-        right.add_child(btnRow);
-        header.add_child(right);
+            }, 18);
+        topBar.add_child(this._settingsButton);
+        header.add_child(topBar);
+
+        // 2. Centered hero info
+        this._cityLabel = label(_('Weather'), 'meteo-city');
+        this._cityLabel.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+        this._cityLabel.x_align = Clutter.ActorAlign.CENTER;
+        header.add_child(this._cityLabel);
+
+        this._temperatureLabel = label('', 'meteo-temp');
+        this._temperatureLabel.x_align = Clutter.ActorAlign.CENTER;
+        header.add_child(this._temperatureLabel);
+
+        this._descriptionLabel = label('', 'meteo-desc');
+        this._descriptionLabel.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+        this._descriptionLabel.x_align = Clutter.ActorAlign.CENTER;
+        header.add_child(this._descriptionLabel);
+
+        this._hiLoLabel = label('', 'meteo-hilo');
+        this._hiLoLabel.x_align = Clutter.ActorAlign.CENTER;
+        header.add_child(this._hiLoLabel);
+
+        this._summaryLabel = label('', 'meteo-summary');
+        this._summaryLabel.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+        this._summaryLabel.x_align = Clutter.ActorAlign.CENTER;
+        header.add_child(this._summaryLabel);
+
+        // Hidden clock helper for ink / theme compatibility
+        this._clockRow = row('aw-hidden-clock');
+        this._clockRow.hide();
+        this._clockLabel = label('', 'aw-clockline');
+        this._clockRow.add_child(this._clockLabel);
+        header.add_child(this._clockRow);
+
         main.add_child(header);
 
         const tabs = row('aw-tabs');
@@ -621,9 +631,11 @@ export class ForecastPanel {
 
         // no visible "updated" row -- keep it as the refresh button's
         // accessible name instead of visible clutter
-        if (state.updated)
+        if (state.updated) {
+            this._lastUpdatedTime = state.updated.format('%H:%M');
             this._refreshButton.set_accessible_name(
-                `${_('Refresh forecast — updated')} ${state.updated.format('%H:%M')}`);
+                `${_('Refresh forecast — updated')} ${this._lastUpdatedTime}`);
+        }
 
         this._buildDayTiles();
         if (this._day >= daily.length)
@@ -687,14 +699,33 @@ export class ForecastPanel {
             return;
         if (this._day === 0) {
             this._temperatureLabel.set_text(fmtTemp(state.current.temp, state.units));
-            this._descriptionLabel.set_text(`${_('Now')}: ${this._desc}`);
+            this._descriptionLabel.set_text(this._desc);
+            if (state.daily && state.daily.length > 0) {
+                const today = state.daily[0];
+                this._hiLoLabel.set_text(
+                    `${_('H')}: ${fmtTemp(today.tmax, state.units)}   ·   ${_('L')}: ${fmtTemp(today.tmin, state.units)}`
+                );
+            }
         } else {
             const dayData = state.daily[Math.min(this._day, state.daily.length - 1)];
             this._temperatureLabel.set_text(fmtTemp(dayData.tmax, state.units));
             this._descriptionLabel.set_text(
                 `${_(dayName(dayData.date))}: ${_(sceneFor(dayData.code, true).desc)}`);
+            this._hiLoLabel.set_text(
+                `${_('H')}: ${fmtTemp(dayData.tmax, state.units)}   ·   ${_('L')}: ${fmtTemp(dayData.tmin, state.units)}`
+            );
         }
-        this._clockRow.visible = this._day === 0;
+        this._syncSummary();
+    }
+
+    _syncSummary() {
+        if (this._state?.effective?.summary) {
+            this._summaryLabel.set_text(this._state.effective.summary);
+            this._summaryLabel.show();
+        } else {
+            this._summaryLabel.set_text('');
+            this._summaryLabel.hide();
+        }
     }
 
     _chartValues() {
@@ -982,7 +1013,7 @@ export class ForecastPanel {
         };
         if (plain) {
             for (const actor of [this._temperatureLabel, this._descriptionLabel, this._cityLabel,
-            this._clockLabel])
+            this._clockLabel, this._hiLoLabel, this._summaryLabel])
                 setActorStyle(actor, '');
             for (const icon of this._ghostIcons)
                 setActorStyle(icon, '');
