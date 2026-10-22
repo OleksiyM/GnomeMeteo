@@ -6,7 +6,7 @@
  */
 import { lumOf, pickInk, INK_DARK, tileGlyphPale, GLYPH_BAR } from '../chart.js';
 import { bodyOf } from '../sky.js';
-import { chromeVerdicts } from '../ink-policy.js';
+import { chromeVerdicts, compositeGround } from '../ink-policy.js';
 import { file, test, ok, near, report, lumOfPlain } from './harness.mjs';
 
 file('ink');
@@ -105,6 +105,43 @@ test('chrome grouping: one verdict per judged group', () => {
     // proof the compGlass pass is actually applied to that group
     ok(v.tabActive.ink !== INK_DARK, 'glass-deepened ground keeps the glow seat');
     ok(v.tabsIdle.ink === INK_DARK, 'a disc under ANY idle tab inks the row');
+});
+
+// -- the composited ground (issue #89, solid style) ------------------
+// paintSky paints the disc FIRST and the solid scrim OVER it; the ink
+// sampler once composited in the opposite order (scrim, then the full
+// undimmed disc), so on a solid-dark card the judge believed the
+// top-right sat on a bright sun and inked city+clock black over a
+// ground that is actually dim. compositeGround is the one shared
+// composition -- disc over sky, scrim over both -- for menu and demo.
+
+const solidDarkScrim = [0.03, 0.045, 0.08, 0.78];
+const solidLightScrim = [0.97, 0.975, 0.995, 0.80];
+const daySkyTop = [0.35, 0.55, 0.85];
+const sunBody = bodyOf('sun', false, 330, 430, 0, 0.95);
+
+test('solid-dark: the scrim dims the disc before the judge sees it (#89)', () => {
+    const onDisc = compositeGround(daySkyTop, solidDarkScrim, sunBody, 0);
+    ok(pickInk(onDisc) !== INK_DARK,
+        'top-right on a scrim-dimmed sun must stay white, not ink black');
+});
+
+test('animated: the bare disc still inks the header (Tokyo stays fixed)', () => {
+    const onDisc = compositeGround(daySkyTop, null, sunBody, 0);
+    ok(pickInk(onDisc) === INK_DARK,
+        'no scrim: text on the painted sun core still goes ink');
+});
+
+test('solid-light: the bright wash keeps ink on the disc', () => {
+    const onDisc = compositeGround(daySkyTop, solidLightScrim, sunBody, 0);
+    ok(pickInk(onDisc) === INK_DARK, 'light wash ground must wear ink');
+});
+
+test('off-disc grounds are plain scrimmed sky', () => {
+    const far = compositeGround(daySkyTop, solidDarkScrim, sunBody, 10000);
+    const noBody = compositeGround(daySkyTop, solidDarkScrim, null, 0);
+    far.forEach((c, i) => near(c, noBody[i], 1e-9));
+    near(noBody[0], daySkyTop[0] * 0.22 + 0.03 * 0.78, 1e-9);
 });
 
 report('ink');

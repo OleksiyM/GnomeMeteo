@@ -17,6 +17,7 @@ import { ForecastPanel } from './menu.js';
 import { WeatherClient, sceneFor, deriveScene, fmtTemp,
          ensureDesktopEntry, removeDesktopEntry } from './weather.js';
 import { moonPhase } from './moon.js';
+import { resolveIsDark } from './theme.js';
 
 /* Adwaita accent swatches (org.gnome.desktop.interface accent-color) */
 const ACCENTS = {
@@ -95,11 +96,12 @@ class SystemThemeWatcher {
         if (!this._iface)
             return this._dark;
         const scheme = this._iface.get_string('color-scheme');
-        if (scheme === 'prefer-dark' || scheme === 'force-dark')
-            return true;
-        if (scheme === 'prefer-light' || scheme === 'force-light')
-            return false;
-        return this._iface.get_boolean('gtk-application-prefer-dark-theme');
+        // schemas 50 removed the legacy key and get_* on an absent key
+        // throws: ask the schema first, pass null for "no such key"
+        const legacyDark = this._iface.settings_schema
+            .has_key('gtk-application-prefer-dark-theme')
+            ? this._iface.get_boolean('gtk-application-prefer-dark-theme') : null;
+        return resolveIsDark(scheme, legacyDark);
     }
 
     _readAccentColor() {

@@ -147,6 +147,10 @@ export const FIXTURES = {
     'style-solid-light': {city: 'Berlin', lat: 52.52, lon: 13.4,
         local: '2026-11-03T14:10+01:00', condition: 'rain',
         style: 'solid', session: 'light'},
+    /* issue #89: solid-dark under a high sun (see card-demo roster) */
+    'style-solid-sun': {city: 'Berlin', lat: 52.52, lon: 13.4,
+        local: '2026-07-03T13:05+02:00', condition: 'clear',
+        style: 'solid', session: 'dark'},
     'style-accent-dark': {city: 'New York', lat: 40.71, lon: -74.01,
         local: '2027-01-19T10:20-05:00', condition: 'snow',
         style: 'accent', session: 'dark'},

@@ -11,7 +11,7 @@ import { gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.j
 const N_ = s => s;
 import { WeatherIcon } from './animation.js';
 import { paintSky, createSky, sampleSky, bodyOf } from './sky.js';
-import { chromeVerdicts, boxSampleFractions } from './ink-policy.js';
+import { chromeVerdicts, boxSampleFractions, compositeGround } from './ink-policy.js';
 import {
     paintChart, ease, lerp, morphPair, contrastSafe, lumOf, pickInk,
     judgeInk, INK_DARK, tileGlyphPale, STRIP_PRECIP_INTENSITY, CODE_PRECIP_INTENSITY
@@ -562,24 +562,18 @@ export class ForecastPanel {
         const { glow, solar } = this._sunShade();
         const skyRgb = sampleSky(this._skyOpts.scene, this._skyOpts.night, heightFraction,
             glow, solar);
-        const scrim = this._skyOpts.scrim;
-        const background = scrim
-            ? skyRgb.map((channelVal, i) => channelVal * (1 - scrim[3]) + scrim[i] * scrim[3])
-            : skyRgb;
+        let celestialBody = null;
+        let distance = 0;
         if (samplePoint) {
             const [cardWidth, cardHeight] = this._content.get_size();
-            const celestialBody = bodyOf(this._skyOpts.scene, this._skyOpts.night,
+            celestialBody = bodyOf(this._skyOpts.scene, this._skyOpts.night,
                 cardWidth || 330, cardHeight || 430, glow, solar);
-            if (celestialBody) {
-                const distance = Math.hypot(samplePoint.x * (cardWidth || 330) - celestialBody.x,
+            if (celestialBody)
+                distance = Math.hypot(samplePoint.x * (cardWidth || 330) - celestialBody.x,
                     samplePoint.f * (cardHeight || 430) - celestialBody.y);
-                const coverage = distance <= celestialBody.r ? celestialBody.max
-                    : Math.max(0, celestialBody.max * (1 - (distance - celestialBody.r) / celestialBody.soft));
-                if (coverage > 0.02)
-                    return background.map((channelVal, i) => channelVal + (celestialBody.col[i] - channelVal) * coverage);
-            }
         }
-        return background;
+        // disc over sky, scrim over both -- the paint order (ink-policy)
+        return compositeGround(skyRgb, this._skyOpts.scrim, celestialBody, distance);
     }
 
     _bgUnderChart() {

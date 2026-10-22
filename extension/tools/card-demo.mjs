@@ -35,7 +35,7 @@ import PangoCairo from 'gi://PangoCairo';
 import {paintSky, sampleSky, createSky, bodyOf} from '../sky.js';
 import {paintChart, CODE_PRECIP_INTENSITY, STRIP_PRECIP_INTENSITY, tileGlyphPale,
         pickInk, INK_DARK} from '../chart.js';
-import {chromeVerdicts} from '../ink-policy.js';
+import {chromeVerdicts, compositeGround} from '../ink-policy.js';
 import {paintWeather} from '../painter.js';
 import {sceneFor, sunGeometry} from '../weather.js';
 import {moonPhase} from '../moon.js';
@@ -360,22 +360,18 @@ function renderCard(p, outDir, probe = null) {
     const night = !isDay;
     const data = buildData(p.condition, p.lat, p.lon, ms);
 
-    /* menu.js verbatim: solid washes the scene with a near-opaque slab,
-     * accent samples a FIXED ground (no sky at all); animated scrim is
-     * null. Transcribed from THEME_CONFIG.scrimSolid and _bgAt. */
+    /* menu.js values verbatim (THEME_CONFIG.scrimSolid, the accent
+     * fixed ground); the COMPOSITION is ink-policy.compositeGround,
+     * shared with menu._bgAt so the judged stack cannot drift. */
     const SCRIM_SOLID = { dark: [0.03, 0.045, 0.08, 0.78],
         light: [0.97, 0.975, 0.995, 0.80] };
     const ACCENT_GROUND = { dark: [0.185, 0.185, 0.19],
         light: [0.96, 0.96, 0.97] };
     const scrim = style === 'solid' ? SCRIM_SOLID[paintDark ? 'dark' : 'light'] : null;
-    const bgAt = f => {
-        if (style === 'accent')
-            return ACCENT_GROUND[paintDark ? 'dark' : 'light'];
-        const sky = sampleSky(scene, night, f, glow, solar);
-        return scrim
-            ? sky.map((c, i) => c * (1 - scrim[3]) + scrim[i] * scrim[3])
-            : sky;
-    };
+    const skyAt = f => style === 'accent'
+        ? ACCENT_GROUND[paintDark ? 'dark' : 'light']
+        : sampleSky(scene, night, f, glow, solar);
+    const bgAt = f => compositeGround(skyAt(f), scrim, null, 0);
 
     const surf = new Cairo.ImageSurface(Cairo.Format.ARGB32, W, H);
     const cr = new Cairo.Context(surf);
@@ -404,17 +400,8 @@ function renderCard(p, outDir, probe = null) {
      * live menu's judge samples -- a disc BEHIND the text is part of
      * its ground, so on a clear day the city wears ink */
     const body = style === 'accent' ? null : bodyOf(scene, night, W, H, glow, solar);
-    const bgPoint = (fx, fy) => {
-        const base = bgAt(fy);
-        if (!body)
-            return base;
-        const d = Math.hypot(fx * W - body.x, fy * H - body.y);
-        const cover = d <= body.r ? body.max
-            : Math.max(0, body.max * (1 - (d - body.r) / body.soft));
-        return cover > 0.02
-            ? base.map((c, i) => c + (body.col[i] - c) * cover)
-            : base;
-    };
+    const bgPoint = (fx, fy) => compositeGround(skyAt(fy), scrim, body,
+        body ? Math.hypot(fx * W - body.x, fy * H - body.y) : 0);
     /* chrome verdicts -- the SHARED policy of ink-policy.js, the exact
      * grouping menu._applyTextInk reaches for: header pairs, the whole
      * inactive tab row as one group, the active tab judged through its
@@ -657,6 +644,12 @@ const PRESETS = [
     {slug: 'style-solid-light', city: 'Berlin', lat: 52.52, lon: 13.40,
         local: '2026-11-03T14:10+01:00', condition: 'rain',
         style: 'solid', session: 'light'},
+    /* issue #89: solid-dark under a high sun -- the scrim paints OVER
+     * the disc, so city+clock at top-right must stay white; the old
+     * sampler composited the undimmed disc last and inked them black */
+    {slug: 'style-solid-sun', city: 'Berlin', lat: 52.52, lon: 13.40,
+        local: '2026-07-03T13:05+02:00', condition: 'clear',
+        style: 'solid', session: 'dark'},
     {slug: 'style-accent-dark', city: 'New York', lat: 40.71, lon: -74.01,
         local: '2027-01-19T10:20-05:00', condition: 'snow',
         style: 'accent', session: 'dark'},

@@ -54,8 +54,8 @@ function judgeBoxes(boxes, cardWidth, cardHeight, bgPoint,
  *  - tabsIdle:    the whole inactive row, one verdict for all -- a
  *    disc under the last tab sends the first tab to ink too.
  * bgPoint(fx, fy) answers "what is the ground rgb at this card
- * fraction", the caller's job alone (menu samples sky+scrim+disc, the
- * demo samples its own identical stack). */
+ * fraction", the caller's job alone (both menu and demo build it from
+ * compositeGround below, so the stack cannot drift either). */
 export function chromeVerdicts(boxes, cardWidth, cardHeight, bgPoint,
     compGlass) {
     const judge = (list, comp) => judgeBoxes(list.filter(Boolean),
@@ -68,4 +68,27 @@ export function chromeVerdicts(boxes, cardWidth, cardHeight, bgPoint,
         tabsIdle: boxes.tabsIdle.length
             ? judge(boxes.tabsIdle) : null,
     };
+}
+
+/** The ground the judge must believe in, composited in PAINT order:
+ * celestial disc over the sky first, then the solid-style scrim over
+ * BOTH -- paintSky draws the disc and only then paints the scrim.
+ * The sampler once ran the order backwards (scrim, then the undimmed
+ * disc at full coverage), so solid-dark city+clock text inked black
+ * over a sun the scrim had actually dimmed away (issue #89).
+ * body is sky.bodyOf()'s disc (or null); distancePx is the sample
+ * point's distance from the disc centre, in card pixels. */
+export function compositeGround(skyRgb, scrim, body, distancePx) {
+    let ground = skyRgb;
+    if (body) {
+        const coverage = distancePx <= body.r ? body.max
+            : Math.max(0, body.max * (1 - (distancePx - body.r) / body.soft));
+        if (coverage > 0.02)
+            ground = ground.map((channelVal, i) =>
+                channelVal + (body.col[i] - channelVal) * coverage);
+    }
+    return scrim
+        ? ground.map((channelVal, i) =>
+            channelVal * (1 - scrim[3]) + scrim[i] * scrim[3])
+        : ground;
 }
