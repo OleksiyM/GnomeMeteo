@@ -978,19 +978,20 @@ export const MeteoIndicator = GObject.registerClass(
                 const tile = new St.BoxLayout({
                     vertical: true,
                     x_expand: true,
-                    style: 'background-color: rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 8px 10px;',
+                    style: 'background-color: rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 10px 12px; min-height: 84px;',
                 });
                 const tLab = new St.Label({
                     text: title,
-                    style: 'font-size: 10px; font-weight: 700; opacity: 0.5; margin-bottom: 2px;',
+                    style: 'font-size: 11px; font-weight: bold; color: rgba(255, 255, 255, 0.55); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 4px;',
                 });
+                const valFontSize = (typeof value === 'string' && value.length > 8) ? 17 : 21;
                 const vLab = new St.Label({
                     text: value,
-                    style: 'font-size: 17px; font-weight: 500;',
+                    style: `font-size: ${valFontSize}px; font-weight: 600; color: #ffffff; margin: 2px 0;`,
                 });
                 const sLab = new St.Label({
-                    text: subtext,
-                    style: 'font-size: 10px; opacity: 0.6; margin-top: 2px;',
+                    text: subtext || '',
+                    style: 'font-size: 11px; color: #ffffff; margin-top: auto;',
                 });
                 tile.add_child(tLab);
                 tile.add_child(vLab);
