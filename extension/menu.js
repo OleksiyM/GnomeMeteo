@@ -263,6 +263,7 @@ class RangeBar extends St.DrawingArea {
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
             height: 6,
+            width: 80,
         });
         this._min = params.min ?? 0;
         this._max = params.max ?? 0;
@@ -272,12 +273,10 @@ class RangeBar extends St.DrawingArea {
     }
 
     vfunc_repaint() {
-        const cr = this.get_context();
         const [w, h] = this.get_surface_size();
-        if (!w || !h) {
-            cr.$dispose();
+        if (w <= 0 || h <= 0)
             return;
-        }
+        const cr = this.get_context();
         const radius = h / 2;
 
         // Background track
@@ -327,18 +326,17 @@ class FillBar extends St.DrawingArea {
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
             height: 6,
+            width: 80,
         });
         this._fraction = Math.min(1, Math.max(0, fraction));
         this._color = colorRgba;
     }
 
     vfunc_repaint() {
-        const cr = this.get_context();
         const [w, h] = this.get_surface_size();
-        if (!w || !h) {
-            cr.$dispose();
+        if (w <= 0 || h <= 0)
             return;
-        }
+        const cr = this.get_context();
         const radius = h / 2;
 
         // Background track
@@ -503,14 +501,8 @@ export class ForecastPanel {
 
         main.add_child(header);
 
-        // Body scroll view (Apple Weather card layout)
-        const scroll = new St.ScrollView({
-            style_class: 'meteo-scroll',
-            hscrollbar_policy: St.PolicyType.NEVER,
-            vscrollbar_policy: St.PolicyType.AUTOMATIC,
-            x_expand: true, y_expand: true,
-        });
-        const scrollBox = column('meteo-scroll-box');
+        // Cards container (Apple Weather cards)
+        const cardsBox = column('meteo-scroll-box');
 
         // 1. Hourly Forecast Card
         const hourlyCard = column('meteo-card meteo-hourly-card');
@@ -547,7 +539,7 @@ export class ForecastPanel {
 
         this._hourlyColumnsBox = row('meteo-hourly-columns');
         hourlyCard.add_child(this._hourlyColumnsBox);
-        scrollBox.add_child(hourlyCard);
+        cardsBox.add_child(hourlyCard);
 
         // 2. 8-Day Forecast Card
         const dailyCard = column('meteo-card meteo-daily-card');
@@ -557,14 +549,13 @@ export class ForecastPanel {
 
         this._dailyRowsBox = column('meteo-daily-rows');
         dailyCard.add_child(this._dailyRowsBox);
-        scrollBox.add_child(dailyCard);
+        cardsBox.add_child(dailyCard);
 
         // 3. Details 2x3 Grid
         this._detailsBox = column('meteo-details-container');
-        scrollBox.add_child(this._detailsBox);
+        cardsBox.add_child(this._detailsBox);
 
-        scroll.add_child(scrollBox);
-        main.add_child(scroll);
+        main.add_child(cardsBox);
 
         // Retain compatibility objects for legacy listeners
         this._chart = new ChartArea(this);
@@ -926,7 +917,7 @@ export class ForecastPanel {
             rowItem.add_child(dayLbl);
 
             // 2. Weather Icon
-            const icon = new WeatherIcon({ size: 20, animate: this._animate });
+            const icon = new WeatherIcon({ size: 20, animate: false, time: STATIC_TIME });
             icon.setScene(sceneFor(day.code, true).scene);
             const iconBox = new St.BoxLayout({ width: 30, x_align: Clutter.ActorAlign.CENTER });
             iconBox.add_child(icon);
@@ -1042,10 +1033,7 @@ export class ForecastPanel {
         if (!state)
             return;
         this._syncHeader();
-        this._morphTo(this._chartValues());
         this._updateSky();
-        this._applyTileInk();          // day switch moves the glass tile and
-        this._chart.queue_repaint();   // can swap the sampled sky
     }
 
     /** Big temp + condition text follow the selected day tile: Today shows

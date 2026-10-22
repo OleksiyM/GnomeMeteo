@@ -83,8 +83,8 @@ export const WeatherIcon = GObject.registerClass(
         }
 
         vfunc_repaint() {
-            const [surfaceWidth] = this.get_surface_size();   // device px (HiDPI scaled)
-            if (surfaceWidth <= 0)
+            const [surfaceWidth, surfaceHeight] = this.get_surface_size();   // device px (HiDPI scaled)
+            if (surfaceWidth <= 0 || surfaceHeight <= 0)
                 return;
             const cr = this.get_context();
             cr.setOperator(Cairo.Operator.CLEAR);
