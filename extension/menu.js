@@ -1,5 +1,6 @@
 /* menu.js -- forecast dropdown panel */
 
+import Cairo from 'gi://cairo';
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
@@ -10,6 +11,7 @@ import { gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.j
 
 const N_ = s => s;
 import { WeatherIcon } from './animation.js';
+import { moonPhase } from './moon.js';
 import { paintSky, createSky, sampleSky, bodyOf } from './sky.js';
 import { chromeVerdicts, boxSampleFractions, compositeGround } from './ink-policy.js';
 import {
@@ -253,6 +255,111 @@ const ChartArea = GObject.registerClass(
         }
     });
 
+export const RangeBar = GObject.registerClass(
+class RangeBar extends St.DrawingArea {
+    _init(params) {
+        super._init({
+            style_class: 'meteo-range-bar',
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+            height: 6,
+        });
+        this._min = params.min ?? 0;
+        this._max = params.max ?? 0;
+        this._gMin = params.gMin ?? 0;
+        this._gMax = params.gMax ?? 0;
+        this._current = params.current ?? null;
+    }
+
+    vfunc_repaint() {
+        const cr = this.get_context();
+        const [w, h] = this.get_surface_size();
+        if (!w || !h) {
+            cr.$dispose();
+            return;
+        }
+        const radius = h / 2;
+
+        // Background track
+        cr.arc(radius, radius, radius, Math.PI / 2, 3 * Math.PI / 2);
+        cr.arc(w - radius, radius, radius, -Math.PI / 2, Math.PI / 2);
+        cr.closePath();
+        cr.setSourceRGBA(1, 1, 1, 0.12);
+        cr.fill();
+
+        // Active range
+        const total = (this._gMax - this._gMin) || 1;
+        const x1 = Math.max(radius, ((this._min - this._gMin) / total) * w);
+        const x2 = Math.min(w - radius, Math.max(x1 + radius * 2, ((this._max - this._gMin) / total) * w));
+        const barW = Math.max(radius * 2, x2 - x1);
+
+        cr.arc(x1 + radius, radius, radius, Math.PI / 2, 3 * Math.PI / 2);
+        cr.arc(x1 + barW - radius, radius, radius, -Math.PI / 2, Math.PI / 2);
+        cr.closePath();
+
+        // Apple Weather gradient: cyan to orange
+        const pat = new Cairo.LinearGradient(x1, 0, x1 + barW, 0);
+        pat.addColorStopRGBA(0, 0.35, 0.75, 0.98, 0.95);
+        pat.addColorStopRGBA(1, 0.98, 0.65, 0.15, 0.95);
+        cr.setSource(pat);
+        cr.fill();
+
+        // Current temperature dot for Today
+        if (this._current !== null && this._current !== undefined) {
+            const dotX = Math.max(radius, Math.min(w - radius, ((this._current - this._gMin) / total) * w));
+            cr.arc(dotX, radius, radius + 1.8, 0, 2 * Math.PI);
+            cr.setSourceRGBA(1, 1, 1, 1.0);
+            cr.fill();
+            cr.arc(dotX, radius, radius + 1.8, 0, 2 * Math.PI);
+            cr.setSourceRGBA(0, 0, 0, 0.35);
+            cr.setLineWidth(1);
+            cr.stroke();
+        }
+        cr.$dispose();
+    }
+});
+
+export const FillBar = GObject.registerClass(
+class FillBar extends St.DrawingArea {
+    _init(fraction, colorRgba = [0.30, 0.64, 1.00, 0.9]) {
+        super._init({
+            style_class: 'meteo-fill-bar',
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+            height: 6,
+        });
+        this._fraction = Math.min(1, Math.max(0, fraction));
+        this._color = colorRgba;
+    }
+
+    vfunc_repaint() {
+        const cr = this.get_context();
+        const [w, h] = this.get_surface_size();
+        if (!w || !h) {
+            cr.$dispose();
+            return;
+        }
+        const radius = h / 2;
+
+        // Background track
+        cr.arc(radius, radius, radius, Math.PI / 2, 3 * Math.PI / 2);
+        cr.arc(w - radius, radius, radius, -Math.PI / 2, Math.PI / 2);
+        cr.closePath();
+        cr.setSourceRGBA(1, 1, 1, 0.12);
+        cr.fill();
+
+        if (this._fraction > 0) {
+            const fillW = Math.max(radius * 2, w * this._fraction);
+            cr.arc(radius, radius, radius, Math.PI / 2, 3 * Math.PI / 2);
+            cr.arc(fillW - radius, radius, radius, -Math.PI / 2, Math.PI / 2);
+            cr.closePath();
+            cr.setSourceRGBA(this._color[0], this._color[1], this._color[2], this._color[3]);
+            cr.fill();
+        }
+        cr.$dispose();
+    }
+});
+
 export class ForecastPanel {
     constructor({ animate }) {
         this._animate = animate;
@@ -396,32 +503,74 @@ export class ForecastPanel {
 
         main.add_child(header);
 
-        const tabs = row('aw-tabs');
-        tabs.x_align = Clutter.ActorAlign.CENTER;
-        this._tabButtons = {};
-        for (const [key, metricConfig] of Object.entries(METRICS)) {
-            const btn = new St.Button({
-                style_class: 'aw-tab',
-                can_focus: true,
-                child: label(_(metricConfig.label), 'aw-tab-label'),
+        // Body scroll view (Apple Weather card layout)
+        const scroll = new St.ScrollView({
+            style_class: 'meteo-scroll',
+            hscrollbar_policy: St.PolicyType.NEVER,
+            vscrollbar_policy: St.PolicyType.AUTOMATIC,
+            x_expand: true, y_expand: true,
+        });
+        const scrollBox = column('meteo-scroll-box');
+
+        // 1. Hourly Forecast Card
+        const hourlyCard = column('meteo-card meteo-hourly-card');
+        const hourlyHeader = row('meteo-card-header');
+        hourlyHeader.add_child(label(_('HOURLY FORECAST'), 'meteo-card-title'));
+        hourlyHeader.add_child(spacer());
+
+        const metricRow = row('meteo-metric-toggle-row');
+        this._metricButtons = {};
+        const METRIC_ICONS = {
+            temp: 'weather-temperature-symbolic',
+            precip: 'weather-showers-symbolic',
+            wind: 'weather-windy-symbolic',
+        };
+        for (const [key, iconName] of Object.entries(METRIC_ICONS)) {
+            const icon = new St.Icon({
+                icon_name: iconName,
+                icon_size: 14,
+                y_align: Clutter.ActorAlign.CENTER,
             });
-            btn.set_accessible_name(`${_('Show')} ${_(metricConfig.label.toLowerCase())} ${_('chart')}`);
+            const btn = new St.Button({
+                style_class: 'meteo-metric-btn',
+                can_focus: true,
+                child: icon,
+            });
+            if (key === this._metric)
+                btn.add_style_class_name('meteo-metric-btn-active');
             btn.connect('clicked', () => this._selectMetric(key));
-            tabs.add_child(btn);
-            this._tabButtons[key] = btn;
+            metricRow.add_child(btn);
+            this._metricButtons[key] = btn;
         }
-        this._tabButtons[this._metric].add_style_class_name('aw-tab-active');
-        main.add_child(tabs);
+        hourlyHeader.add_child(metricRow);
+        hourlyCard.add_child(hourlyHeader);
 
-        // chart -- full card width (.aw-content has no horizontal padding,
-        // the padded rows above/below make their own 14px insets)
+        this._hourlyColumnsBox = row('meteo-hourly-columns');
+        hourlyCard.add_child(this._hourlyColumnsBox);
+        scrollBox.add_child(hourlyCard);
+
+        // 2. 8-Day Forecast Card
+        const dailyCard = column('meteo-card meteo-daily-card');
+        const dailyHeader = row('meteo-card-header');
+        dailyHeader.add_child(label(_('8-DAY FORECAST'), 'meteo-card-title'));
+        dailyCard.add_child(dailyHeader);
+
+        this._dailyRowsBox = column('meteo-daily-rows');
+        dailyCard.add_child(this._dailyRowsBox);
+        scrollBox.add_child(dailyCard);
+
+        // 3. Details 2x3 Grid
+        this._detailsBox = column('meteo-details-container');
+        scrollBox.add_child(this._detailsBox);
+
+        scroll.add_child(scrollBox);
+        main.add_child(scroll);
+
+        // Retain compatibility objects for legacy listeners
         this._chart = new ChartArea(this);
-        main.add_child(this._chart);
-
-        // day tiles: narrow grid = 2 rows x 4 (rebuilt on render)
         this._daysGrid = column('aw-days-grid');
-        main.add_child(this._daysGrid);
         this._dayButtons = [];
+        this._tabButtons = {};
 
         return main;
     }
@@ -642,6 +791,9 @@ export class ForecastPanel {
             this._day = 0;
         this._applySelection();
         this._markTiles();
+        this._renderHourlyColumns();
+        this._renderDailyRows();
+        this._renderDetailsGrid();
     }
 
     destroy() {
@@ -666,16 +818,222 @@ export class ForecastPanel {
     }
 
     _selectMetric(key) {
-        if (key === this._metric)
+        if (!METRICS[key])
             return;
         this._metric = key;
-        for (const [k, btn] of Object.entries(this._tabButtons)) {
+        for (const [k, btn] of Object.entries(this._tabButtons || {})) {
             if (k === key)
                 btn.add_style_class_name('aw-tab-active');
             else
                 btn.remove_style_class_name('aw-tab-active');
         }
+        for (const [k, btn] of Object.entries(this._metricButtons || {})) {
+            if (k === key)
+                btn.add_style_class_name('meteo-metric-btn-active');
+            else
+                btn.remove_style_class_name('meteo-metric-btn-active');
+        }
         this._applySelection();
+        this._renderHourlyColumns();
+        this._renderDailyRows();
+    }
+
+    _renderHourlyColumns() {
+        if (!this._hourlyColumnsBox)
+            return;
+        this._hourlyColumnsBox.destroy_all_children();
+        const state = this._state;
+        if (!state || !state.hourly || !state.hourly.time || state.hourly.time.length === 0)
+            return;
+
+        const indices = daySlice(state.hourly, state.daily, 0, state.currentIso);
+        if (!indices || indices.length === 0)
+            return;
+
+        const count = Math.min(6, indices.length);
+        for (let i = 0; i < count; i++) {
+            const idx = indices[i];
+            const col = new St.BoxLayout({
+                vertical: true,
+                style_class: 'meteo-hourly-col',
+                x_expand: true,
+                x_align: Clutter.ActorAlign.CENTER,
+                y_align: Clutter.ActorAlign.CENTER,
+            });
+
+            // 1. Time label
+            let timeText = '';
+            if (i === 0) {
+                timeText = _('Now');
+            } else {
+                const iso = state.hourly.time[idx] || '';
+                timeText = hourLabel(iso, this._is24Hour);
+            }
+            const timeLbl = label(timeText, 'meteo-hourly-time');
+            col.add_child(timeLbl);
+
+            // 2. Weather Icon
+            const code = state.hourly.code ? state.hourly.code[idx] : 0;
+            const isDay = state.hourly.isDay ? !!state.hourly.isDay[idx] : true;
+            const icon = new WeatherIcon({ size: 22, animate: this._animate });
+            icon.setScene(sceneFor(code, isDay).scene);
+            col.add_child(icon);
+
+            // 3. Metric Value
+            let valText = '';
+            if (this._metric === 'temp') {
+                const t = state.hourly.temp ? state.hourly.temp[idx] : 0;
+                valText = fmtTemp(t, state.units);
+            } else if (this._metric === 'precip') {
+                const p = state.hourly.precipProb ? state.hourly.precipProb[idx] : 0;
+                valText = `${Math.round(p)}%`;
+            } else if (this._metric === 'wind') {
+                const wKmh = state.hourly.wind ? state.hourly.wind[idx] : 0;
+                valText = `${Math.round(wKmh / 3.6)} ${_('m/s')}`;
+            }
+            const valLbl = label(valText, 'meteo-hourly-val');
+            col.add_child(valLbl);
+
+            this._hourlyColumnsBox.add_child(col);
+        }
+    }
+
+    _renderDailyRows() {
+        if (!this._dailyRowsBox)
+            return;
+        this._dailyRowsBox.destroy_all_children();
+        const state = this._state;
+        if (!state || !state.daily || state.daily.length === 0)
+            return;
+
+        let gMin = 999, gMax = -999;
+        let maxWind = 1;
+        for (const day of state.daily) {
+            if (day.tmin < gMin) gMin = day.tmin;
+            if (day.tmax > gMax) gMax = day.tmax;
+            if (day.windMax > maxWind) maxWind = day.windMax;
+        }
+
+        const count = Math.min(8, state.daily.length);
+        for (let i = 0; i < count; i++) {
+            const day = state.daily[i];
+            const rowItem = row('meteo-daily-row');
+
+            // 1. Day Name
+            const dayText = i === 0 ? _('Today') : _(dayName(day.date));
+            const dayLbl = label(dayText, 'meteo-daily-day');
+            dayLbl.width = 54;
+            rowItem.add_child(dayLbl);
+
+            // 2. Weather Icon
+            const icon = new WeatherIcon({ size: 20, animate: this._animate });
+            icon.setScene(sceneFor(day.code, true).scene);
+            const iconBox = new St.BoxLayout({ width: 30, x_align: Clutter.ActorAlign.CENTER });
+            iconBox.add_child(icon);
+            rowItem.add_child(iconBox);
+
+            // 3. Metric specifics
+            if (this._metric === 'temp') {
+                const lowLbl = label(fmtTemp(day.tmin, state.units), 'meteo-daily-temp-low');
+                lowLbl.width = 28;
+                rowItem.add_child(lowLbl);
+
+                const currentTemp = (i === 0 && state.current) ? state.current.temp : null;
+                const bar = new RangeBar({
+                    min: day.tmin,
+                    max: day.tmax,
+                    gMin,
+                    gMax,
+                    current: currentTemp,
+                });
+                rowItem.add_child(bar);
+
+                const hiLbl = label(fmtTemp(day.tmax, state.units), 'meteo-daily-temp-hi');
+                hiLbl.width = 28;
+                rowItem.add_child(hiLbl);
+            } else if (this._metric === 'precip') {
+                const pProb = Math.round(day.precipProb ?? 0);
+                const bar = new FillBar(pProb / 100, [0.30, 0.64, 1.00, 0.9]);
+                rowItem.add_child(bar);
+
+                const probLbl = label(`${pProb}%`, 'meteo-daily-metric-val');
+                probLbl.width = 38;
+                rowItem.add_child(probLbl);
+            } else if (this._metric === 'wind') {
+                const wMs = Math.round((day.windMax ?? 0) / 3.6);
+                const bar = new FillBar(wMs / Math.max(1, maxWind / 3.6), [0.24, 0.81, 0.56, 0.9]);
+                rowItem.add_child(bar);
+
+                const windLbl = label(`${wMs} ${_('m/s')}`, 'meteo-daily-metric-val');
+                windLbl.width = 46;
+                rowItem.add_child(windLbl);
+            }
+
+            this._dailyRowsBox.add_child(rowItem);
+        }
+    }
+
+    _renderDetailsGrid() {
+        if (!this._detailsBox)
+            return;
+        this._detailsBox.destroy_all_children();
+        const state = this._state;
+        if (!state || !state.current)
+            return;
+
+        const makeCard = (iconText, titleText, mainVal, subText) => {
+            const card = column('meteo-card meteo-detail-card');
+            const top = row('meteo-detail-top');
+            top.add_child(label(iconText, 'meteo-detail-icon'));
+            top.add_child(label(titleText, 'meteo-detail-title'));
+            card.add_child(top);
+
+            const valLbl = label(mainVal, 'meteo-detail-val');
+            card.add_child(valLbl);
+
+            if (subText) {
+                const subLbl = label(subText, 'meteo-detail-sub');
+                card.add_child(subLbl);
+            }
+            return card;
+        };
+
+        // Row 1: Sunrise/Sunset + Moon
+        const row1 = row('meteo-detail-row');
+        let sunMain = '—', sunSub = '';
+        if (state.daily && state.daily[0] && state.daily[0].sunrise) {
+            const sr = state.daily[0].sunrise.slice(11, 16);
+            const ss = state.daily[0].sunset.slice(11, 16);
+            sunMain = `${_('Sunset')}: ${ss}`;
+            sunSub = `${_('Sunrise')}: ${sr}`;
+        }
+        row1.add_child(makeCard('🌅', _('SUN'), sunMain, sunSub));
+
+        const moon = moonPhase(new Date());
+        const moonPct = Math.round((moon.illum ?? 0) * 100);
+        row1.add_child(makeCard('🌖', _('MOON'), `${_(moon.name)}`, `${_('Illumination')}: ${moonPct}%`));
+        this._detailsBox.add_child(row1);
+
+        // Row 2: Feels like + Visibility
+        const row2 = row('meteo-detail-row');
+        const feelsVal = fmtTemp(state.current.feels ?? state.current.temp, state.units);
+        row2.add_child(makeCard('🌡️', _('FEELS LIKE'), feelsVal, `${_('Humidity')}: ${Math.round(state.current.humidity ?? 0)}%`));
+
+        const visKm = state.current.visibility !== null ? Math.round(state.current.visibility / 1000) : 10;
+        const visSub = visKm >= 10 ? _('Clear view') : _('Haze');
+        row2.add_child(makeCard('👁️', _('VISIBILITY'), `${visKm} ${_('km')}`, visSub));
+        this._detailsBox.add_child(row2);
+
+        // Row 3: Humidity + Pressure
+        const row3 = row('meteo-detail-row');
+        const humVal = `${Math.round(state.current.humidity ?? 0)}%`;
+        const dewPoint = fmtTemp((state.current.temp ?? 0) - ((100 - (state.current.humidity ?? 0)) / 5), state.units);
+        row3.add_child(makeCard('💧', _('HUMIDITY'), humVal, `${_('Dew point')}: ${dewPoint}`));
+
+        const pMmhg = state.current.pressure ? Math.round(state.current.pressure * 0.750062) : 752;
+        const pSub = pMmhg > 760 ? _('High pressure') : (pMmhg < 745 ? _('Low pressure') : _('Normal'));
+        row3.add_child(makeCard('🧭', _('PRESSURE'), `${pMmhg} ${_('mm')}`, pSub));
+        this._detailsBox.add_child(row3);
     }
 
     /** Recompute chart series + sky for the current day/metric. */

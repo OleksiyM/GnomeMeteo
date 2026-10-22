@@ -87,11 +87,166 @@
 
 /* -- Rounded Card Sections (iOS style panels) -- */
 
+.meteo-scroll {
+    max-height: 590px;
+}
+
+.meteo-scroll-box {
+    spacing: 6px;
+    padding-bottom: 8px;
+}
+
 .meteo-card {
     background-color: rgba(255, 255, 255, 0.08);
     border-radius: 16px;
     padding: 10px 12px;
     margin: 4px 12px;
+}
+
+.meteo-card-header {
+    spacing: 6px;
+    margin-bottom: 8px;
+}
+
+.meteo-card-title {
+    font-size: 0.72em;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+/* Metric Toggle Pills */
+.meteo-metric-toggle-row {
+    spacing: 4px;
+}
+
+.meteo-metric-btn {
+    padding: 3px 8px;
+    border-radius: 12px;
+    background-color: rgba(255, 255, 255, 0.08);
+    transition-duration: 150ms;
+}
+
+.meteo-metric-btn:hover {
+    background-color: rgba(255, 255, 255, 0.16);
+}
+
+.meteo-metric-btn-active {
+    background-color: rgba(255, 255, 255, 0.28);
+}
+
+/* Hourly Columns */
+.meteo-hourly-columns {
+    spacing: 4px;
+    padding: 4px 0 2px 0;
+}
+
+.meteo-hourly-col {
+    spacing: 6px;
+}
+
+.meteo-hourly-time {
+    font-size: 0.75em;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+}
+
+.meteo-hourly-val {
+    font-size: 0.85em;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* Daily Rows */
+.meteo-daily-rows {
+    spacing: 7px;
+    padding: 2px 0;
+}
+
+.meteo-daily-row {
+    spacing: 8px;
+    height: 26px;
+}
+
+.meteo-daily-day {
+    font-size: 0.88em;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.meteo-daily-temp-low {
+    font-size: 0.85em;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.55);
+    text-align: right;
+}
+
+.meteo-daily-temp-hi {
+    font-size: 0.85em;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.95);
+    text-align: left;
+}
+
+.meteo-daily-metric-val {
+    font-size: 0.82em;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.85);
+    text-align: right;
+}
+
+/* RangeBar and FillBar */
+.meteo-range-bar,
+.meteo-fill-bar {
+    height: 6px;
+}
+
+/* Details 2x3 Grid */
+.meteo-details-container {
+    spacing: 6px;
+    margin: 2px 6px 6px 6px;
+}
+
+.meteo-detail-row {
+    spacing: 6px;
+}
+
+.meteo-detail-card {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 8px 10px;
+    spacing: 3px;
+    x-expand: true;
+    margin: 2px 3px;
+}
+
+.meteo-detail-top {
+    spacing: 5px;
+}
+
+.meteo-detail-icon {
+    font-size: 0.85em;
+}
+
+.meteo-detail-title {
+    font-size: 0.68em;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.meteo-detail-val {
+    font-size: 1.15em;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+.meteo-detail-sub {
+    font-size: 0.72em;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 2px;
 }
 
 .aw-hidden-clock {

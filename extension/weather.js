@@ -334,7 +334,7 @@ class OpenMeteoProvider extends WeatherProvider {
                 'temperature_2m', 'relative_humidity_2m', 'apparent_temperature',
                 'is_day', 'precipitation', 'weather_code', 'cloud_cover',
                 'wind_speed_10m', 'wind_direction_10m', 'uv_index',
-                'visibility', 'cape',
+                'visibility', 'cape', 'surface_pressure',
             ].join(','),
             hourly: [
                 'temperature_2m', 'precipitation_probability',
@@ -382,6 +382,7 @@ class OpenMeteoProvider extends WeatherProvider {
             windDeg: rawCurrent.wind_direction_10m,
             uv: rawCurrent.uv_index ?? null,
             visibility: rawCurrent.visibility ?? null,   // metres
+            pressure: rawCurrent.surface_pressure ?? null, // hPa
             intensity: rawCurrent.precipitation ?? 0,
             timeIso: rawCurrent.time ?? '',
         };
