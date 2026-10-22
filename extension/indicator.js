@@ -1,4 +1,4 @@
-// Meteo Indicator (Apple-inspired smartphone card layout, synchronized metric switcher)
+// Meteo Indicator (Apple Weather smartphone cards, 24h scroll, 10 days with dot, 2x3 details)
 
 import GObject from 'gi://GObject';
 import St from 'gi://St';
@@ -9,6 +9,7 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import { WeatherClient, deriveScene, ensureDesktopEntry, removeDesktopEntry } from './weather.js';
+import { moonPhase } from './moon.js';
 
 function getSymbolicIcon(scene, isDay = true) {
     switch (scene) {
@@ -36,6 +37,24 @@ function formatDayName(dateStr, index) {
     } catch {
         return dateStr;
     }
+}
+
+function getMoonInfo() {
+    const info = moonPhase();
+    const names = {
+        'New Moon': 'Молодик',
+        'Waxing Crescent': 'Молодий місяць',
+        'First Quarter': 'Перша чверть',
+        'Waxing Gibbous': 'Зростаючий місяць',
+        'Full Moon': 'Повня',
+        'Waning Gibbous': 'Спадаючий місяць',
+        'Last Quarter': 'Остання чверть',
+        'Waning Crescent': 'Старий місяць',
+    };
+    return {
+        ...info,
+        nameUk: names[info.name] || info.name,
+    };
 }
 
 class TooltipHelper {
@@ -155,7 +174,7 @@ export const MeteoIndicator = GObject.registerClass(
             this._tooltipHelper = new TooltipHelper();
             this._lastUpdateStr = '';
             this._weatherData = null;
-            this._hourlyMetric = 'temp'; // 'temp' | 'precip' | 'wind'
+            this._hourlyMetric = 'temp';
 
             this._hourlyTitleLabel = null;
             this._dailyTitleLabel = null;
@@ -259,14 +278,16 @@ export const MeteoIndicator = GObject.registerClass(
             this._dailySlots = [];
             this._metricButtons = {};
 
+            const dailyArr = Array.isArray(daily) ? daily : [];
+
             // ══════════════════════════════════════════════════════════════════
-            // 1. HEADER (Top controls + Centered City, Big Temp, Condition)
+            // 1. PINNED HEADER (Top controls + City, Big Temp, Condition, Summary)
             // ══════════════════════════════════════════════════════════════════
             const headerItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
             const headerContainer = new St.BoxLayout({
                 vertical: true,
                 x_expand: true,
-                style: 'padding: 4px 6px 8px 6px;',
+                style: 'padding: 4px 6px 6px 6px;',
             });
 
             // Top control row: [🔄 Refresh] on left, [⚙️ Settings] on right, City in center
@@ -329,7 +350,7 @@ export const MeteoIndicator = GObject.registerClass(
             // Centered Big Temperature
             const tempLabel = new St.Label({
                 text: `${Math.round(current.temp)}°`,
-                style: 'font-size: 48px; font-weight: 200; text-align: center; margin-top: 4px;',
+                style: 'font-size: 48px; font-weight: 200; text-align: center; margin-top: 2px;',
                 x_align: Clutter.ActorAlign.CENTER,
             });
             headerContainer.add_child(tempLabel);
@@ -343,7 +364,6 @@ export const MeteoIndicator = GObject.registerClass(
             headerContainer.add_child(condLabel);
 
             // Daily Range (High / Low for today)
-            const dailyArr = Array.isArray(daily) ? daily : [];
             if (dailyArr.length > 0 && dailyArr[0].tmax !== undefined) {
                 const todayMax = Math.round(dailyArr[0].tmax);
                 const todayMin = Math.round(dailyArr[0].tmin);
@@ -355,14 +375,48 @@ export const MeteoIndicator = GObject.registerClass(
                 headerContainer.add_child(rangeLabel);
             }
 
+            // Summary text (e.g. 💬 В найближчі години опадів не очікується)
+            let summaryText = '💬 В найближчі години опадів не очікується.';
+            if (hourly && Array.isArray(hourly.precipProb)) {
+                const nextHoursPrecip = hourly.precipProb.slice(0, 6);
+                const maxPrecip = Math.max(...nextHoursPrecip, 0);
+                if (maxPrecip >= 45) {
+                    summaryText = '💬 Очікуються опади в найближчі години.';
+                } else if (maxPrecip >= 20) {
+                    summaryText = '💬 Можливий невеликий дощ.';
+                }
+            }
+            const summaryLabel = new St.Label({
+                text: summaryText,
+                style: 'font-size: 11px; opacity: 0.65; text-align: center; margin-top: 4px;',
+                x_align: Clutter.ActorAlign.CENTER,
+            });
+            headerContainer.add_child(summaryLabel);
+
             headerItem.add_child(headerContainer);
             this.menu.addMenuItem(headerItem);
 
             // ══════════════════════════════════════════════════════════════════
-            // 2. CARD: HOURLY FORECAST (with Switcher)
+            // SCROLLABLE CONTAINER (Hourly 24h, 10 Days, 2x3 Details Grid)
             // ══════════════════════════════════════════════════════════════════
+            const scrollItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+            const vScroll = new St.ScrollView({
+                hscrollbar_policy: St.PolicyType.NEVER,
+                vscrollbar_policy: St.PolicyType.AUTOMATIC,
+                enable_mouse_scrolling: true,
+                style: 'max-height: 520px; x-expand: true;',
+            });
+
+            const contentBox = new St.BoxLayout({
+                vertical: true,
+                x_expand: true,
+                style: 'padding-right: 4px;',
+            });
+
+            // ──────────────────────────────────────────────────────────────────
+            // 2. CARD: HOURLY FORECAST (with Switcher & Horizontal Scroll)
+            // ──────────────────────────────────────────────────────────────────
             if (hourly && Array.isArray(hourly.temp) && hourly.temp.length > 0) {
-                const hourlyCardItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
                 const hourlyCardBox = new St.BoxLayout({
                     vertical: true,
                     x_expand: true,
@@ -377,14 +431,14 @@ export const MeteoIndicator = GObject.registerClass(
                 });
 
                 this._hourlyTitleLabel = new St.Label({
-                    text: 'ПОГОДИННИЙ ПРОГНОЗ',
+                    text: 'ПОГОДИННИЙ ПРОГНОЗ: ТЕМПЕРАТУРА',
                     style: 'font-size: 11px; font-weight: 700; opacity: 0.6;',
                     x_expand: true,
                     y_align: Clutter.ActorAlign.CENTER,
                 });
                 hourlyHeaderRow.add_child(this._hourlyTitleLabel);
 
-                // Metric Switcher buttons: Temp, Precip (Опади), Wind (Вітер)
+                // Metric Switcher buttons
                 const switcherBox = new St.BoxLayout({
                     style: 'spacing: 4px;',
                     y_align: Clutter.ActorAlign.CENTER,
@@ -424,18 +478,23 @@ export const MeteoIndicator = GObject.registerClass(
                 hourlyHeaderRow.add_child(switcherBox);
                 hourlyCardBox.add_child(hourlyHeaderRow);
 
-                // Hourly Columns Row
-                const hourlyRow = new St.BoxLayout({
-                    x_expand: true,
-                    style: 'spacing: 12px;',
+                // Horizontal Scroll for 24 Hours
+                const hScroll = new St.ScrollView({
+                    hscrollbar_policy: St.PolicyType.AUTOMATIC,
+                    vscrollbar_policy: St.PolicyType.NEVER,
+                    enable_mouse_scrolling: true,
+                    style: 'height: 72px;',
                 });
 
-                const count = Math.min(6, hourly.temp.length);
-                for (let i = 0; i < count; i++) {
+                const hourlyRow = new St.BoxLayout({
+                    style: 'spacing: 14px; padding: 2px 0;',
+                });
+
+                const hoursLimit = Math.min(24, hourly.temp.length);
+                for (let i = 0; i < hoursLimit; i++) {
                     const col = new St.BoxLayout({
                         vertical: true,
-                        x_expand: true,
-                        style: 'spacing: 4px;',
+                        style: 'spacing: 4px; min-width: 44px;',
                         x_align: Clutter.ActorAlign.CENTER,
                     });
 
@@ -476,16 +535,15 @@ export const MeteoIndicator = GObject.registerClass(
                     this._hourlySlots.push({ icon: hIcon, val: valLab });
                 }
 
-                hourlyCardBox.add_child(hourlyRow);
-                hourlyCardItem.add_child(hourlyCardBox);
-                this.menu.addMenuItem(hourlyCardItem);
+                hScroll.add_child(hourlyRow);
+                hourlyCardBox.add_child(hScroll);
+                contentBox.add_child(hourlyCardBox);
             }
 
-            // ══════════════════════════════════════════════════════════════════
-            // 3. CARD: 10-DAY FORECAST (Dynamic according to selected metric)
-            // ══════════════════════════════════════════════════════════════════
+            // ──────────────────────────────────────────────────────────────────
+            // 3. CARD: 10-DAY FORECAST (with today dot ● and dynamic metric bars)
+            // ──────────────────────────────────────────────────────────────────
             if (dailyArr.length > 0) {
-                const dailyCardItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
                 const dailyCardBox = new St.BoxLayout({
                     vertical: true,
                     x_expand: true,
@@ -494,7 +552,7 @@ export const MeteoIndicator = GObject.registerClass(
 
                 const daysCount = Math.min(10, dailyArr.length);
                 this._dailyTitleLabel = new St.Label({
-                    text: `ПРОГНОЗ НА ${daysCount} ДНІВ`,
+                    text: `ПРОГНОЗ НА ${daysCount} ДНІВ: ТЕМПЕРАТУРА`,
                     style: 'font-size: 11px; font-weight: 700; opacity: 0.6; margin-bottom: 6px;',
                 });
                 dailyCardBox.add_child(this._dailyTitleLabel);
@@ -542,6 +600,15 @@ export const MeteoIndicator = GObject.registerClass(
                     });
                     barBox.add_child(barFill);
 
+                    // Today current temperature dot
+                    let dotWidget = null;
+                    if (i === 0) {
+                        dotWidget = new St.Widget({
+                            style: 'width: 6px; height: 6px; border-radius: 3px; background-color: #ffffff; border: 1px solid rgba(0,0,0,0.5); margin-top: -1px;',
+                        });
+                        barBox.add_child(dotWidget);
+                    }
+
                     // Right value / max temp
                     const rightLab = new St.Label({
                         text: '',
@@ -557,26 +624,26 @@ export const MeteoIndicator = GObject.registerClass(
                     dailyCardBox.add_child(dayRow);
 
                     this._dailySlots.push({
+                        isToday: (i === 0),
                         data: dayData,
                         icon: dIcon,
                         leftLab,
                         barFill,
+                        dotWidget,
                         rightLab,
                     });
                 }
 
-                dailyCardItem.add_child(dailyCardBox);
-                this.menu.addMenuItem(dailyCardItem);
+                contentBox.add_child(dailyCardBox);
             }
 
-            // ══════════════════════════════════════════════════════════════════
-            // 4. CARD: 2×2 WEATHER DETAILS GRID
-            // ══════════════════════════════════════════════════════════════════
-            const detailsItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+            // ──────────────────────────────────────────────────────────────────
+            // 4. CARD: 2×3 WEATHER DETAILS GRID
+            // ──────────────────────────────────────────────────────────────────
             const detailsContainer = new St.BoxLayout({
                 vertical: true,
                 x_expand: true,
-                style: 'spacing: 8px; margin-top: 4px;',
+                style: 'spacing: 8px; margin: 4px 0;',
             });
 
             const makeTile = (title, value, subtext) => {
@@ -591,7 +658,7 @@ export const MeteoIndicator = GObject.registerClass(
                 });
                 const vLab = new St.Label({
                     text: value,
-                    style: 'font-size: 18px; font-weight: 500;',
+                    style: 'font-size: 17px; font-weight: 500;',
                 });
                 const sLab = new St.Label({
                     text: subtext,
@@ -603,27 +670,54 @@ export const MeteoIndicator = GObject.registerClass(
                 return tile;
             };
 
+            // Row 1: Sunrise & Sunset | Moon Phase
             const row1 = new St.BoxLayout({ x_expand: true, style: 'spacing: 8px;' });
-            const feelsVal = current.feels !== undefined ? `${Math.round(current.feels)}°` : `${Math.round(current.temp)}°`;
-            const uvVal = current.uv !== null && current.uv !== undefined ? `${Math.round(current.uv)}` : '0';
-            const uvDesc = Number(uvVal) <= 2 ? 'Низький' : Number(uvVal) <= 5 ? 'Помірний' : 'Високий';
+            let sunriseStr = '07:15';
+            let sunsetStr = '17:45';
+            if (dailyArr[0] && dailyArr[0].sunrise) {
+                try {
+                    const sr = new Date(dailyArr[0].sunrise);
+                    const ss = new Date(dailyArr[0].sunset);
+                    sunriseStr = `${String(sr.getHours()).padStart(2, '0')}:${String(sr.getMinutes()).padStart(2, '0')}`;
+                    sunsetStr = `${String(ss.getHours()).padStart(2, '0')}:${String(ss.getMinutes()).padStart(2, '0')}`;
+                } catch { }
+            }
+            const moon = getMoonInfo();
 
-            row1.add_child(makeTile('ВІДЧУВАЄТЬСЯ', feelsVal, 'Схоже на реальну'));
-            row1.add_child(makeTile('УФ-ІНДЕКС', uvVal, uvDesc));
+            row1.add_child(makeTile('🌅 СХІД І ЗАХІД', `Схід: ${sunriseStr}`, `Захід: ${sunsetStr}`));
+            row1.add_child(makeTile('🌖 ФАЗА МІСЯЦЯ', moon.nameUk, `${Math.round(moon.illum * 100)}% освіченості`));
             detailsContainer.add_child(row1);
 
+            // Row 2: Feels Like | Visibility
             const row2 = new St.BoxLayout({ x_expand: true, style: 'spacing: 8px;' });
-            const humVal = current.humidity !== undefined ? `${Math.round(current.humidity)}%` : '—';
-            const pressMm = current.pressure ? Math.round(current.pressure * 0.750062) : 750;
+            const feelsVal = current.feels !== undefined ? `${Math.round(current.feels)}°` : `${Math.round(current.temp)}°`;
+            const feelsDiff = Math.round(current.feels - current.temp);
+            const feelsSub = feelsDiff < -1 ? 'Через вітер прохолодніше' : feelsDiff > 1 ? 'Через вологість тепліше' : 'Схоже на реальну';
 
-            row2.add_child(makeTile('ВОЛОГІСТЬ', humVal, 'Точка роси в нормі'));
-            row2.add_child(makeTile('ТИСК', `${pressMm} мм`, 'Нормальний'));
+            const visKm = current.visibility !== null ? Math.round(current.visibility / 1000) : 10;
+            const visSub = visKm >= 10 ? 'Чисте повітря' : 'Легкий серпанок';
+
+            row2.add_child(makeTile('🌡️ ВІДЧУВАЄТЬСЯ', feelsVal, feelsSub));
+            row2.add_child(makeTile('👁️ ВИДИМІСТЬ', `${visKm} км`, visSub));
             detailsContainer.add_child(row2);
 
-            detailsItem.add_child(detailsContainer);
-            this.menu.addMenuItem(detailsItem);
+            // Row 3: Humidity | Pressure
+            const row3 = new St.BoxLayout({ x_expand: true, style: 'spacing: 8px;' });
+            const humVal = current.humidity !== undefined ? `${Math.round(current.humidity)}%` : '—';
+            const dewPoint = current.humidity !== undefined ? Math.round(current.temp - ((100 - current.humidity) / 5)) : Math.round(current.temp - 4);
+            const pressMm = current.pressure ? Math.round(current.pressure * 0.750062) : 750;
 
-            // Initial sync for titles, buttons, and rows
+            row3.add_child(makeTile('💧 ВОЛОГІСТЬ', humVal, `Точка роси: ${dewPoint}°`));
+            row3.add_child(makeTile('🧭 ТИСК', `${pressMm} мм`, 'Нормальний'));
+            detailsContainer.add_child(row3);
+
+            contentBox.add_child(detailsContainer);
+
+            vScroll.set_child(contentBox);
+            scrollItem.add_child(vScroll);
+            this.menu.addMenuItem(scrollItem);
+
+            // Initial sync
             this._applyMetricUpdates();
         }
 
@@ -703,6 +797,7 @@ export const MeteoIndicator = GObject.registerClass(
         _updateDailyRows() {
             if (!this._dailySlots || this._dailySlots.length === 0) return;
             const BAR_WIDTH = 75;
+            const currentTemp = this._weatherData?.current?.temp ?? 0;
 
             // Global min/max for temperature
             let globalMin = Infinity;
@@ -726,6 +821,7 @@ export const MeteoIndicator = GObject.registerClass(
                     slot.leftLab.text = '';
                     const fillW = Math.max(0, Math.min(BAR_WIDTH, Math.round((prob / 100) * BAR_WIDTH)));
                     slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 4px; background-color: #3898ec; border-radius: 2px;`;
+                    if (slot.dotWidget) slot.dotWidget.hide();
                     slot.rightLab.text = `${prob}%`;
                 } else if (this._hourlyMetric === 'wind') {
                     // Wind mode: teal progress bar for max wind speed
@@ -734,9 +830,10 @@ export const MeteoIndicator = GObject.registerClass(
                     slot.leftLab.text = '';
                     const fillW = Math.max(0, Math.min(BAR_WIDTH, Math.round((windVal / Math.max(1, maxWind)) * BAR_WIDTH)));
                     slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 4px; background-color: #30b0c7; border-radius: 2px;`;
+                    if (slot.dotWidget) slot.dotWidget.hide();
                     slot.rightLab.text = `${windVal}`;
                 } else {
-                    // Temperature mode: gradient bar from min to max
+                    // Temperature mode: gradient bar from min to max + dot for today
                     const dScene = deriveScene({
                         code: d.code ?? 0,
                         visibility: null,
@@ -751,6 +848,13 @@ export const MeteoIndicator = GObject.registerClass(
                     const fillWidth = Math.max(8, fillRight - fillLeft);
 
                     slot.barFill.style = `margin-left: ${fillLeft}px; width: ${fillWidth}px; height: 4px; background: linear-gradient(to right, #59c0fa, #fba626); border-radius: 2px;`;
+
+                    if (slot.dotWidget) {
+                        const dotPos = Math.max(fillLeft, Math.min(fillRight - 4, Math.round(((currentTemp - globalMin) / rangeSpan) * BAR_WIDTH)));
+                        slot.dotWidget.style = `margin-left: ${dotPos}px; width: 6px; height: 6px; border-radius: 3px; background-color: #ffffff; border: 1px solid rgba(0,0,0,0.6); margin-top: -1px;`;
+                        slot.dotWidget.show();
+                    }
+
                     slot.rightLab.text = `${Math.round(d.tmax)}°`;
                 }
             }
