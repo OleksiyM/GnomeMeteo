@@ -27,7 +27,9 @@ const MESSAGES = {
             precip: 'Ймовірність опадів (%)',
             wind: 'Швидкість вітру (км/год)',
         },
-        dailyTitle: 'ПРОГНОЗ НА {n} ДНІВ',
+        dailyTitle: '🗓️ ПРОГНОЗ НА {n} ДНІВ',
+        windUnit: 'км/год',
+        windUnitImperial: 'миль/год',
         now: 'Зараз',
         max: 'Макс.',
         min: 'мін.',
@@ -114,7 +116,9 @@ const MESSAGES = {
             precip: 'Вероятность осадков (%)',
             wind: 'Скорость ветра (км/ч)',
         },
-        dailyTitle: 'ПРОГНОЗ НА {n} ДНЕЙ',
+        dailyTitle: '🗓️ ПРОГНОЗ НА {n} ДНЕЙ',
+        windUnit: 'км/ч',
+        windUnitImperial: 'миль/ч',
         now: 'Сейчас',
         max: 'Макс.',
         min: 'мин.',
@@ -201,7 +205,9 @@ const MESSAGES = {
             precip: 'Precipitation chance (%)',
             wind: 'Wind speed (km/h)',
         },
-        dailyTitle: '{n}-DAY FORECAST',
+        dailyTitle: '🗓️ {n}-DAY FORECAST',
+        windUnit: 'km/h',
+        windUnitImperial: 'mph',
         now: 'Now',
         max: 'H:',
         min: 'L:',
@@ -761,8 +767,8 @@ export const MeteoIndicator = GObject.registerClass(
                 });
 
                 this._hourlyTitleLabel = new St.Label({
-                    text: `${t.hourlyTitle}: ${t.hourlyMetrics[this._hourlyMetric]}`,
-                    style: 'font-size: 11px; font-weight: 700; opacity: 0.6;',
+                    text: t.hourlyMetrics[this._hourlyMetric],
+                    style: 'font-size: 11px; font-weight: bold; color: rgba(255, 255, 255, 0.55); letter-spacing: 0.05em; text-transform: uppercase;',
                     x_expand: true,
                     y_align: Clutter.ActorAlign.CENTER,
                 });
@@ -835,7 +841,7 @@ export const MeteoIndicator = GObject.registerClass(
 
                     const tLab = new St.Label({
                         text: timeStr,
-                        style: 'font-size: 11px; opacity: 0.7;',
+                        style: 'font-size: 11px; color: #ffffff; font-weight: 500;',
                         x_align: Clutter.ActorAlign.CENTER,
                     });
 
@@ -848,7 +854,7 @@ export const MeteoIndicator = GObject.registerClass(
 
                     const valLab = new St.Label({
                         text: '',
-                        style: 'font-size: 12px; font-weight: 600;',
+                        style: 'font-size: 12px; font-weight: 600; color: #ffffff;',
                         x_align: Clutter.ActorAlign.CENTER,
                     });
 
@@ -878,8 +884,8 @@ export const MeteoIndicator = GObject.registerClass(
                 const daysCount = Math.min(10, dailyArr.length);
                 const titleTemplate = t.dailyTitle.replace('{n}', daysCount);
                 this._dailyTitleLabel = new St.Label({
-                    text: `${titleTemplate}: ${t.hourlyMetrics[this._hourlyMetric]}`,
-                    style: 'font-size: 11px; font-weight: 700; opacity: 0.6; margin-bottom: 6px;',
+                    text: titleTemplate,
+                    style: 'font-size: 11px; font-weight: bold; color: rgba(255, 255, 255, 0.55); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px;',
                 });
                 dailyCardBox.add_child(this._dailyTitleLabel);
 
@@ -895,7 +901,7 @@ export const MeteoIndicator = GObject.registerClass(
 
                     const nameLab = new St.Label({
                         text: formatDayName(dayData.date, i, lang),
-                        style: 'font-size: 13px; font-weight: 500; min-width: 65px;',
+                        style: 'font-size: 13px; font-weight: 500; min-width: 62px; color: #ffffff;',
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
@@ -908,7 +914,7 @@ export const MeteoIndicator = GObject.registerClass(
 
                     const leftLab = new St.Label({
                         text: '',
-                        style: 'font-size: 13px; opacity: 0.7; min-width: 26px; text-align: right;',
+                        style: 'font-size: 13px; color: rgba(255, 255, 255, 0.55); min-width: 26px; text-align: right;',
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
@@ -932,7 +938,7 @@ export const MeteoIndicator = GObject.registerClass(
 
                     const rightLab = new St.Label({
                         text: '',
-                        style: 'font-size: 13px; font-weight: 600; min-width: 32px; text-align: right;',
+                        style: 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 32px; text-align: right;',
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
@@ -948,6 +954,7 @@ export const MeteoIndicator = GObject.registerClass(
                         data: dayData,
                         icon: dIcon,
                         leftLab,
+                        barBox,
                         barFill,
                         dotWidget,
                         rightLab,
@@ -1065,10 +1072,10 @@ export const MeteoIndicator = GObject.registerClass(
             const metricName = t.hourlyMetrics[this._hourlyMetric];
 
             if (this._hourlyTitleLabel) {
-                this._hourlyTitleLabel.text = `${t.hourlyTitle}: ${metricName}`;
+                this._hourlyTitleLabel.text = metricName;
             }
             if (this._dailyTitleLabel) {
-                this._dailyTitleLabel.text = `${titleTemplate}: ${metricName}`;
+                this._dailyTitleLabel.text = titleTemplate;
             }
 
             this._updateHourlyRow();
@@ -1112,8 +1119,11 @@ export const MeteoIndicator = GObject.registerClass(
 
         _updateDailyRows() {
             if (!this._dailySlots || this._dailySlots.length === 0) return;
-            const BAR_WIDTH = 75;
             const currentTemp = this._weatherData?.current?.temp ?? 0;
+            const isImperial = this._settings.get_string('units') === 'imperial';
+            const lang = resolveLang(this._settings);
+            const t = MESSAGES[lang] || MESSAGES.uk;
+            const windUnit = isImperial ? t.windUnitImperial : t.windUnit;
 
             let globalMin = Infinity;
             let globalMax = -Infinity;
@@ -1130,30 +1140,60 @@ export const MeteoIndicator = GObject.registerClass(
                 const d = slot.data;
 
                 if (this._hourlyMetric === 'precip') {
-                    slot.icon.icon_name = 'weather-showers-symbolic';
+                    // Hide repetitive icon, show blue droplet if prob >= 20%
+                    slot.icon.hide();
                     const prob = Math.round(d.precipProb ?? 0);
-                    slot.leftLab.text = '';
+                    if (prob >= 20) {
+                        slot.leftLab.text = '💧';
+                        slot.leftLab.style = 'font-size: 11px; min-width: 22px; text-align: center;';
+                        slot.leftLab.show();
+                    } else {
+                        slot.leftLab.text = '';
+                        slot.leftLab.style = 'min-width: 22px; text-align: center;';
+                        slot.leftLab.show();
+                    }
+
+                    const BAR_WIDTH = 100;
+                    slot.barBox.style = `width: ${BAR_WIDTH}px; height: 4px; background-color: rgba(255, 255, 255, 0.15); border-radius: 2px;`;
                     const fillW = Math.max(0, Math.min(BAR_WIDTH, Math.round((prob / 100) * BAR_WIDTH)));
                     slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 4px; background-color: #3898ec; border-radius: 2px;`;
                     if (slot.dotWidget) slot.dotWidget.hide();
+
                     slot.rightLab.text = `${prob}%`;
+                    slot.rightLab.style = 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 38px; text-align: right;';
                 } else if (this._hourlyMetric === 'wind') {
-                    slot.icon.icon_name = 'weather-windy-symbolic';
-                    const windVal = Math.round(d.windMax ?? 0);
-                    slot.leftLab.text = '';
-                    const fillW = Math.max(0, Math.min(BAR_WIDTH, Math.round((windVal / Math.max(1, maxWind)) * BAR_WIDTH)));
+                    // Hide repetitive icon and left label, show full speed + unit at the end
+                    slot.icon.hide();
+                    slot.leftLab.hide();
+
+                    const BAR_WIDTH = 100;
+                    slot.barBox.style = `width: ${BAR_WIDTH}px; height: 4px; background-color: rgba(255, 255, 255, 0.15); border-radius: 2px;`;
+                    const rawSpeed = d.windMax ?? 0;
+                    const windVal = Math.round(isImperial ? rawSpeed * 0.621371 : rawSpeed);
+                    const maxDisplayWind = Math.round(isImperial ? maxWind * 0.621371 : maxWind);
+                    const fillW = Math.max(0, Math.min(BAR_WIDTH, Math.round((windVal / Math.max(1, maxDisplayWind)) * BAR_WIDTH)));
                     slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 4px; background-color: #30b0c7; border-radius: 2px;`;
                     if (slot.dotWidget) slot.dotWidget.hide();
-                    slot.rightLab.text = `${windVal}`;
+
+                    slot.rightLab.text = `${windVal} ${windUnit}`;
+                    slot.rightLab.style = 'font-size: 12px; font-weight: 600; color: #ffffff; min-width: 62px; text-align: right;';
                 } else {
+                    // Temperature: condition icon, gray min temp, gradient bar with today dot, white max temp
                     const dScene = deriveScene({
                         code: d.code ?? 0,
                         visibility: null,
                         cape: 0,
                         isDay: true,
                     });
+                    slot.icon.show();
                     slot.icon.icon_name = getSymbolicIcon(dScene.scene, true);
+
+                    const BAR_WIDTH = 75;
+                    slot.barBox.style = `width: ${BAR_WIDTH}px; height: 4px; background-color: rgba(255, 255, 255, 0.15); border-radius: 2px;`;
+
+                    slot.leftLab.show();
                     slot.leftLab.text = `${Math.round(d.tmin)}°`;
+                    slot.leftLab.style = 'font-size: 13px; color: rgba(255, 255, 255, 0.55); min-width: 26px; text-align: right;';
 
                     const fillLeft = Math.max(0, Math.min(BAR_WIDTH - 10, Math.round(((d.tmin - globalMin) / rangeSpan) * BAR_WIDTH)));
                     const fillRight = Math.max(fillLeft + 8, Math.min(BAR_WIDTH, Math.round(((d.tmax - globalMin) / rangeSpan) * BAR_WIDTH)));
@@ -1168,6 +1208,7 @@ export const MeteoIndicator = GObject.registerClass(
                     }
 
                     slot.rightLab.text = `${Math.round(d.tmax)}°`;
+                    slot.rightLab.style = 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 32px; text-align: right;';
                 }
             }
         }
