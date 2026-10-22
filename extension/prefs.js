@@ -18,6 +18,7 @@ const N_ = s => s;
 
 const UNITS = ['metric', 'imperial'];
 const HOURS = ['auto', '12h', '24h'];
+const LANGUAGES = ['auto', 'uk', 'ru', 'en'];
 
 let interfaceSettings = null;
 const systemClockIs24 = () => {
@@ -403,7 +404,21 @@ export default class AnimatedWeatherPrefs extends ExtensionPreferences {
     }
 
     _buildUnitsGroup(settings) {
-        const unitsGroup = new Adw.PreferencesGroup({ title: _('Units') });
+        const unitsGroup = new Adw.PreferencesGroup({ title: _('Units & Language') });
+
+        const langRow = new Adw.ComboRow({
+            title: _('Language'),
+            subtitle: _('Interface display language'),
+            model: new Gtk.StringList({
+                strings: ['Авто (Системна / System)', 'Українська', 'Русский', 'English'],
+            }),
+        });
+        const currentLang = settings.get_string('language');
+        langRow.set_selected(Math.max(0, LANGUAGES.indexOf(currentLang)));
+        langRow.connect('notify::selected', () =>
+            settings.set_string('language', LANGUAGES[langRow.get_selected()] ?? 'auto'));
+        unitsGroup.add(langRow);
+
         const unitsRow = new Adw.ComboRow({
             title: _('Measurement system'),
             model: new Gtk.StringList({

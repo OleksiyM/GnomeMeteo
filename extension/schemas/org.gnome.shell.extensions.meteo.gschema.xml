@@ -34,6 +34,18 @@
       <description>metric = °C / km/h, imperial = °F / mph</description>
     </key>
 
+    <key name="language" type="s">
+      <choices>
+        <choice value="auto"/>
+        <choice value="uk"/>
+        <choice value="ru"/>
+        <choice value="en"/>
+      </choices>
+      <default>'auto'</default>
+      <summary>Interface language</summary>
+      <description>Interface language: auto, uk, ru, en</description>
+    </key>
+
     <key name="show-temperature" type="b">
       <default>true</default>
       <summary>Show temperature in the panel</summary>

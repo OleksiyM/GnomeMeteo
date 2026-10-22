@@ -1,4 +1,4 @@
-// Meteo Indicator (Apple Weather smartphone cards, 24h scroll, 10 days with dot, 2x3 details)
+// Meteo Indicator (Apple-inspired smartphone card layout, full i18n with settings switch)
 
 import GObject from 'gi://GObject';
 import St from 'gi://St';
@@ -10,6 +10,282 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import { WeatherClient, deriveScene, ensureDesktopEntry, removeDesktopEntry } from './weather.js';
 import { moonPhase } from './moon.js';
+
+const MESSAGES = {
+    uk: {
+        today: 'Сьогодні',
+        days: ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'],
+        hourlyTitle: 'ПОГОДИННИЙ ПРОГНОЗ',
+        hourlyMetrics: {
+            temp: 'ТЕМПЕРАТУРА',
+            precip: 'ОПАДИ',
+            wind: 'ВІТЕР',
+        },
+        metricTips: {
+            temp: 'Температура (°C)',
+            precip: 'Ймовірність опадів (%)',
+            wind: 'Швидкість вітру (км/год)',
+        },
+        dailyTitle: 'ПРОГНОЗ НА {n} ДНІВ',
+        now: 'Зараз',
+        hPrefix: '+{n}г',
+        max: 'Макс.',
+        min: 'мін.',
+        updatedAt: 'Оновлено о',
+        recently: 'нещодавно',
+        myLocation: 'Моє розташування',
+        loading: 'Завантаження погоди…',
+        error: 'Помилка',
+        summaryNoPrecip: '💬 В найближчі години опадів не очікується.',
+        summaryPrecip: '💬 Очікуються опади в найближчі години.',
+        summaryLightRain: '💬 Можливий невеликий дощ.',
+        details: {
+            sunriseSunset: '🌅 СХІД І ЗАХІД',
+            sunrise: 'Схід',
+            sunset: 'Захід',
+            moon: '🌖 ФАЗА МІСЯЦЯ',
+            moonIllum: '{n}% освіченості',
+            feelsLike: '🌡️ ВІДЧУВАЄТЬСЯ',
+            feelsCooler: 'Через вітер прохолодніше',
+            feelsWarmer: 'Через вологість тепліше',
+            feelsSimilar: 'Схоже на реальну',
+            visibility: '👁️ ВИДИМІСТЬ',
+            km: 'км',
+            cleanAir: 'Чисте повітря',
+            haze: 'Легкий серпанок',
+            humidity: '💧 ВОЛОГІСТЬ',
+            dewPoint: 'Точка роси: {n}°',
+            pressure: '🧭 ТИСК',
+            mm: 'мм',
+            normal: 'Нормальний',
+        },
+        moonPhases: {
+            'New Moon': 'Молодик',
+            'Waxing Crescent': 'Молодий місяць',
+            'First Quarter': 'Перша чверть',
+            'Waxing Gibbous': 'Зростаючий місяць',
+            'Full Moon': 'Повня',
+            'Waning Gibbous': 'Спадаючий місяць',
+            'Last Quarter': 'Остання чверть',
+            'Waning Crescent': 'Старий місяць',
+        },
+        wmo: {
+            0: 'Ясно',
+            1: 'Переважно ясно',
+            2: 'Мінлива хмарність',
+            3: 'Суцільна хмарність',
+            45: 'Туман',
+            48: 'Паморозь',
+            51: 'Невелика мряка',
+            53: 'Помірна мряка',
+            55: 'Густа мряка',
+            56: 'Крижана мряка',
+            57: 'Густа крижана мряка',
+            61: 'Невеликий дощ',
+            63: 'Помірний дощ',
+            65: 'Сильний дощ',
+            66: 'Крижаний дощ',
+            67: 'Сильний крижаний дощ',
+            71: 'Невеликий сніг',
+            73: 'Помірний сніг',
+            75: 'Сильний снігопад',
+            77: 'Снігова крупа',
+            80: 'Невелика злива',
+            81: 'Помірна злива',
+            82: 'Сильна злива',
+            85: 'Невеликий снігопад',
+            86: 'Сильний снігопад',
+            95: 'Гроза',
+            96: 'Гроза з градом',
+            99: 'Сильна гроза з градом',
+        },
+    },
+    ru: {
+        today: 'Сегодня',
+        days: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'],
+        hourlyTitle: 'ПОЧАСОВОЙ ПРОГНОЗ',
+        hourlyMetrics: {
+            temp: 'ТЕМПЕРАТУРА',
+            precip: 'ОСАДКИ',
+            wind: 'ВЕТЕР',
+        },
+        metricTips: {
+            temp: 'Температура (°C)',
+            precip: 'Вероятность осадков (%)',
+            wind: 'Скорость ветра (км/ч)',
+        },
+        dailyTitle: 'ПРОГНОЗ НА {n} ДНЕЙ',
+        now: 'Сейчас',
+        hPrefix: '+{n}ч',
+        max: 'Макс.',
+        min: 'мин.',
+        updatedAt: 'Обновлено в',
+        recently: 'недавно',
+        myLocation: 'Моё местоположение',
+        loading: 'Загрузка погоды…',
+        error: 'Ошибка',
+        summaryNoPrecip: '💬 В ближайшие часы осадков не ожидается.',
+        summaryPrecip: '💬 Ожидаются осадки в ближайшие часы.',
+        summaryLightRain: '💬 Возможен небольшой дождь.',
+        details: {
+            sunriseSunset: '🌅 ВОСХОД И ЗАКАТ',
+            sunrise: 'Восход',
+            sunset: 'Закат',
+            moon: '🌖 ФАЗА ЛУНЫ',
+            moonIllum: '{n}% освещенности',
+            feelsLike: '🌡️ ОЩУЩАЕТСЯ',
+            feelsCooler: 'Из-за ветра холоднее',
+            feelsWarmer: 'Из-за влажности теплее',
+            feelsSimilar: 'Похоже на реальную',
+            visibility: '👁️ ВИДИМОСТЬ',
+            km: 'км',
+            cleanAir: 'Чистый воздух',
+            haze: 'Лёгкая дымка',
+            humidity: '💧 ВЛАЖНОСТЬ',
+            dewPoint: 'Точка росы: {n}°',
+            pressure: '🧭 ДАВЛЕНИЕ',
+            mm: 'мм',
+            normal: 'Нормальное',
+        },
+        moonPhases: {
+            'New Moon': 'Новолуние',
+            'Waxing Crescent': 'Молодая луна',
+            'First Quarter': 'Первая четверть',
+            'Waxing Gibbous': 'Растущая луна',
+            'Full Moon': 'Полнолуние',
+            'Waning Gibbous': 'Убывающая луна',
+            'Last Quarter': 'Последняя четверть',
+            'Waning Crescent': 'Старая луна',
+        },
+        wmo: {
+            0: 'Ясно',
+            1: 'Преимущественно ясно',
+            2: 'Переменная облачность',
+            3: 'Пасмурно',
+            45: 'Туман',
+            48: 'Изморозь',
+            51: 'Лёгкая морось',
+            53: 'Умеренная морось',
+            55: 'Плотная морось',
+            56: 'Ледяная морось',
+            57: 'Плотная ледяная морось',
+            61: 'Небольшой дождь',
+            63: 'Умеренный дождь',
+            65: 'Сильный дождь',
+            66: 'Ледяной дождь',
+            67: 'Сильный ледяной дождь',
+            71: 'Небольшой снег',
+            73: 'Умеренный снег',
+            75: 'Сильный снегопад',
+            77: 'Снежная крупа',
+            80: 'Кратковременный дождь',
+            81: 'Ливень',
+            82: 'Сильный ливень',
+            85: 'Небольшой снегопад',
+            86: 'Сильный снегопад',
+            95: 'Гроза',
+            96: 'Гроза с градом',
+            99: 'Сильная гроза с градом',
+        },
+    },
+    en: {
+        today: 'Today',
+        days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+        hourlyTitle: 'HOURLY FORECAST',
+        hourlyMetrics: {
+            temp: 'TEMPERATURE',
+            precip: 'PRECIPITATION',
+            wind: 'WIND',
+        },
+        metricTips: {
+            temp: 'Temperature (°C)',
+            precip: 'Precipitation chance (%)',
+            wind: 'Wind speed (km/h)',
+        },
+        dailyTitle: '{n}-DAY FORECAST',
+        now: 'Now',
+        hPrefix: '+{n}h',
+        max: 'H:',
+        min: 'L:',
+        updatedAt: 'Updated at',
+        recently: 'recently',
+        myLocation: 'My location',
+        loading: 'Fetching weather…',
+        error: 'Error',
+        summaryNoPrecip: '💬 No precipitation expected in the coming hours.',
+        summaryPrecip: '💬 Precipitation expected in the coming hours.',
+        summaryLightRain: '💬 Light rain possible.',
+        details: {
+            sunriseSunset: '🌅 SUNRISE & SUNSET',
+            sunrise: 'Rise',
+            sunset: 'Set',
+            moon: '🌖 MOON PHASE',
+            moonIllum: '{n}% illumination',
+            feelsLike: '🌡️ FEELS LIKE',
+            feelsCooler: 'Wind makes it cooler',
+            feelsWarmer: 'Humidity makes it warmer',
+            feelsSimilar: 'Similar to actual',
+            visibility: '👁️ VISIBILITY',
+            km: 'km',
+            cleanAir: 'Clear air',
+            haze: 'Light haze',
+            humidity: '💧 HUMIDITY',
+            dewPoint: 'Dew point: {n}°',
+            pressure: '🧭 PRESSURE',
+            mm: 'mmHg',
+            normal: 'Normal',
+        },
+        moonPhases: {
+            'New Moon': 'New Moon',
+            'Waxing Crescent': 'Waxing Crescent',
+            'First Quarter': 'First Quarter',
+            'Waxing Gibbous': 'Waxing Gibbous',
+            'Full Moon': 'Full Moon',
+            'Waning Gibbous': 'Waning Gibbous',
+            'Last Quarter': 'Last Quarter',
+            'Waning Crescent': 'Waning Crescent',
+        },
+        wmo: {
+            0: 'Clear sky',
+            1: 'Mainly clear',
+            2: 'Partly cloudy',
+            3: 'Overcast',
+            45: 'Fog',
+            48: 'Rime fog',
+            51: 'Light drizzle',
+            53: 'Drizzle',
+            55: 'Dense drizzle',
+            56: 'Freezing drizzle',
+            57: 'Dense freezing drizzle',
+            61: 'Light rain',
+            63: 'Rain',
+            65: 'Heavy rain',
+            66: 'Freezing rain',
+            67: 'Heavy freezing rain',
+            71: 'Light snow',
+            73: 'Snow',
+            75: 'Heavy snow',
+            77: 'Snow grains',
+            80: 'Light showers',
+            81: 'Showers',
+            82: 'Violent showers',
+            85: 'Snow showers',
+            86: 'Heavy snow showers',
+            95: 'Thunderstorm',
+            96: 'Thunderstorm, hail',
+            99: 'Thunderstorm, heavy hail',
+        },
+    },
+};
+
+function resolveLang(settings) {
+    const pref = settings.get_string('language');
+    if (['uk', 'ru', 'en'].includes(pref)) return pref;
+    const sys = GLib.get_language_names()[0] || '';
+    if (sys.startsWith('uk')) return 'uk';
+    if (sys.startsWith('ru')) return 'ru';
+    return 'uk';
+}
 
 function getSymbolicIcon(scene, isDay = true) {
     switch (scene) {
@@ -28,32 +304,23 @@ function getSymbolicIcon(scene, isDay = true) {
     }
 }
 
-function formatDayName(dateStr, index) {
-    if (index === 0) return 'Сьогодні';
+function formatDayName(dateStr, index, lang) {
+    const t = MESSAGES[lang] || MESSAGES.uk;
+    if (index === 0) return t.today;
     try {
         const d = new Date(dateStr);
-        const days = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-        return days[d.getDay()];
+        return t.days[d.getDay()];
     } catch {
         return dateStr;
     }
 }
 
-function getMoonInfo() {
+function getMoonInfo(lang) {
+    const t = MESSAGES[lang] || MESSAGES.uk;
     const info = moonPhase();
-    const names = {
-        'New Moon': 'Молодик',
-        'Waxing Crescent': 'Молодий місяць',
-        'First Quarter': 'Перша чверть',
-        'Waxing Gibbous': 'Зростаючий місяць',
-        'Full Moon': 'Повня',
-        'Waning Gibbous': 'Спадаючий місяць',
-        'Last Quarter': 'Остання чверть',
-        'Waning Crescent': 'Старий місяць',
-    };
     return {
         ...info,
-        nameUk: names[info.name] || info.name,
+        nameTrans: t.moonPhases[info.name] || info.name,
     };
 }
 
@@ -210,11 +477,18 @@ export const MeteoIndicator = GObject.registerClass(
             this._coordinator.onData((data, isAuto) => this._onWeatherReceived(data, isAuto));
             this._coordinator.onError(err => this._onWeatherError(err));
 
-            this._buildPlaceholder('Завантаження погоди…');
+            const lang = resolveLang(this._settings);
+            const t = MESSAGES[lang] || MESSAGES.uk;
+            this._buildPlaceholder(t.loading);
 
             // 4. Settings listener
             this._settingsChangedId = this._settings.connect('changed', (settings, key) => {
-                if (key === 'auto-location') {
+                if (key === 'language') {
+                    if (this._weatherData) {
+                        const isAuto = settings.get_boolean('auto-location');
+                        this._onWeatherReceived(this._weatherData, isAuto);
+                    }
+                } else if (key === 'auto-location') {
                     if (settings.get_boolean('auto-location')) ensureDesktopEntry();
                     else removeDesktopEntry();
                     this._coordinator.fetch(true);
@@ -250,19 +524,24 @@ export const MeteoIndicator = GObject.registerClass(
 
             this._lastUpdateStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+            const lang = resolveLang(this._settings);
+            const t = MESSAGES[lang] || MESSAGES.uk;
+
             const cityName = (isAuto && detectedName)
                 ? detectedName
-                : (this._settings.get_string('location-name') || 'Моє розташування');
+                : (this._settings.get_string('location-name') || t.myLocation);
 
-            console.log(`[Meteo] Weather updated: city=${cityName}, temp=${roundedTemp}°, days=${Array.isArray(daily) ? daily.length : 0}`);
+            console.log(`[Meteo] Weather updated: city=${cityName}, temp=${roundedTemp}°, lang=${lang}`);
 
-            this._buildFullMenu(cityName, current, daily, hourly, sceneInfo);
+            this._buildFullMenu(cityName, current, daily, hourly, sceneInfo, lang);
         }
 
         _onWeatherError(err) {
             if (!this._coordinator.data) {
+                const lang = resolveLang(this._settings);
+                const t = MESSAGES[lang] || MESSAGES.uk;
                 this._label.text = '—';
-                this._buildPlaceholder(`Помилка: ${err.message}`);
+                this._buildPlaceholder(`${t.error}: ${err.message}`);
             }
         }
 
@@ -272,12 +551,13 @@ export const MeteoIndicator = GObject.registerClass(
             this.menu.addMenuItem(item);
         }
 
-        _buildFullMenu(cityName, current, daily, hourly, sceneInfo) {
+        _buildFullMenu(cityName, current, daily, hourly, sceneInfo, lang) {
             this.menu.removeAll();
             this._hourlySlots = [];
             this._dailySlots = [];
             this._metricButtons = {};
 
+            const t = MESSAGES[lang] || MESSAGES.uk;
             const dailyArr = Array.isArray(daily) ? daily : [];
 
             // ══════════════════════════════════════════════════════════════════
@@ -308,7 +588,7 @@ export const MeteoIndicator = GObject.registerClass(
             });
             refreshBtn.connect('notify::hover', () => {
                 if (refreshBtn.hover) {
-                    this._tooltipHelper.show(refreshBtn, `Оновлено о ${this._lastUpdateStr}`);
+                    this._tooltipHelper.show(refreshBtn, `${t.updatedAt} ${this._lastUpdateStr || t.recently}`);
                 } else {
                     this._tooltipHelper.hide();
                 }
@@ -355,9 +635,10 @@ export const MeteoIndicator = GObject.registerClass(
             });
             headerContainer.add_child(tempLabel);
 
-            // Condition Description
+            // Translated Condition Description (via WMO code)
+            const condText = t.wmo[current.code] || sceneInfo.desc || 'Ясно';
             const condLabel = new St.Label({
-                text: sceneInfo.desc || 'Ясно',
+                text: condText,
                 style: 'font-size: 14px; font-weight: 500; opacity: 0.85; text-align: center;',
                 x_align: Clutter.ActorAlign.CENTER,
             });
@@ -368,22 +649,22 @@ export const MeteoIndicator = GObject.registerClass(
                 const todayMax = Math.round(dailyArr[0].tmax);
                 const todayMin = Math.round(dailyArr[0].tmin);
                 const rangeLabel = new St.Label({
-                    text: `Макс.: ${todayMax}° · Мін.: ${todayMin}°`,
+                    text: `${t.max}: ${todayMax}° · ${t.min}: ${todayMin}°`,
                     style: 'font-size: 13px; opacity: 0.7; text-align: center; margin-top: 2px;',
                     x_align: Clutter.ActorAlign.CENTER,
                 });
                 headerContainer.add_child(rangeLabel);
             }
 
-            // Summary text (e.g. 💬 В найближчі години опадів не очікується)
-            let summaryText = '💬 В найближчі години опадів не очікується.';
+            // Summary text
+            let summaryText = t.summaryNoPrecip;
             if (hourly && Array.isArray(hourly.precipProb)) {
                 const nextHoursPrecip = hourly.precipProb.slice(0, 6);
                 const maxPrecip = Math.max(...nextHoursPrecip, 0);
                 if (maxPrecip >= 45) {
-                    summaryText = '💬 Очікуються опади в найближчі години.';
+                    summaryText = t.summaryPrecip;
                 } else if (maxPrecip >= 20) {
-                    summaryText = '💬 Можливий невеликий дощ.';
+                    summaryText = t.summaryLightRain;
                 }
             }
             const summaryLabel = new St.Label({
@@ -423,7 +704,6 @@ export const MeteoIndicator = GObject.registerClass(
                     style: 'background-color: rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 10px 12px; margin: 4px 0;',
                 });
 
-                // Header with Title + Metric Switcher Row
                 const hourlyHeaderRow = new St.BoxLayout({
                     x_expand: true,
                     style: 'margin-bottom: 8px;',
@@ -431,23 +711,22 @@ export const MeteoIndicator = GObject.registerClass(
                 });
 
                 this._hourlyTitleLabel = new St.Label({
-                    text: 'ПОГОДИННИЙ ПРОГНОЗ: ТЕМПЕРАТУРА',
+                    text: `${t.hourlyTitle}: ${t.hourlyMetrics[this._hourlyMetric]}`,
                     style: 'font-size: 11px; font-weight: 700; opacity: 0.6;',
                     x_expand: true,
                     y_align: Clutter.ActorAlign.CENTER,
                 });
                 hourlyHeaderRow.add_child(this._hourlyTitleLabel);
 
-                // Metric Switcher buttons
                 const switcherBox = new St.BoxLayout({
                     style: 'spacing: 4px;',
                     y_align: Clutter.ActorAlign.CENTER,
                 });
 
                 const METRICS = [
-                    { id: 'temp', icon: 'weather-clear-symbolic', tip: 'Температура (°C)' },
-                    { id: 'precip', icon: 'weather-showers-symbolic', tip: 'Ймовірність опадів (%)' },
-                    { id: 'wind', icon: 'weather-windy-symbolic', tip: 'Швидкість вітру (км/год)' },
+                    { id: 'temp', icon: 'weather-clear-symbolic', tip: t.metricTips.temp },
+                    { id: 'precip', icon: 'weather-showers-symbolic', tip: t.metricTips.precip },
+                    { id: 'wind', icon: 'weather-windy-symbolic', tip: t.metricTips.wind },
                 ];
 
                 for (const m of METRICS) {
@@ -498,13 +777,13 @@ export const MeteoIndicator = GObject.registerClass(
                         x_align: Clutter.ActorAlign.CENTER,
                     });
 
-                    let timeStr = 'Зараз';
+                    let timeStr = t.now;
                     if (i > 0 && hourly.time && hourly.time[i]) {
                         try {
                             const d = new Date(hourly.time[i]);
                             timeStr = `${String(d.getHours()).padStart(2, '0')}:00`;
                         } catch {
-                            timeStr = `+${i}г`;
+                            timeStr = t.hPrefix.replace('{n}', i);
                         }
                     }
 
@@ -541,7 +820,7 @@ export const MeteoIndicator = GObject.registerClass(
             }
 
             // ──────────────────────────────────────────────────────────────────
-            // 3. CARD: 10-DAY FORECAST (with today dot ● and dynamic metric bars)
+            // 3. CARD: 10-DAY FORECAST
             // ──────────────────────────────────────────────────────────────────
             if (dailyArr.length > 0) {
                 const dailyCardBox = new St.BoxLayout({
@@ -551,8 +830,9 @@ export const MeteoIndicator = GObject.registerClass(
                 });
 
                 const daysCount = Math.min(10, dailyArr.length);
+                const titleTemplate = t.dailyTitle.replace('{n}', daysCount);
                 this._dailyTitleLabel = new St.Label({
-                    text: `ПРОГНОЗ НА ${daysCount} ДНІВ: ТЕМПЕРАТУРА`,
+                    text: `${titleTemplate}: ${t.hourlyMetrics[this._hourlyMetric]}`,
                     style: 'font-size: 11px; font-weight: 700; opacity: 0.6; margin-bottom: 6px;',
                 });
                 dailyCardBox.add_child(this._dailyTitleLabel);
@@ -567,14 +847,12 @@ export const MeteoIndicator = GObject.registerClass(
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
-                    // Day name
                     const nameLab = new St.Label({
-                        text: formatDayName(dayData.date, i),
+                        text: formatDayName(dayData.date, i, lang),
                         style: 'font-size: 13px; font-weight: 500; min-width: 65px;',
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
-                    // Weather icon
                     const dIcon = new St.Icon({
                         icon_name: 'weather-clear-symbolic',
                         icon_size: 16,
@@ -582,14 +860,12 @@ export const MeteoIndicator = GObject.registerClass(
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
-                    // Left value / min temp
                     const leftLab = new St.Label({
                         text: '',
                         style: 'font-size: 13px; opacity: 0.7; min-width: 26px; text-align: right;',
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
-                    // Range Bar container (fixed width 75px)
                     const barBox = new St.Widget({
                         style: `width: ${BAR_WIDTH}px; height: 4px; background-color: rgba(255, 255, 255, 0.15); border-radius: 2px;`,
                         y_align: Clutter.ActorAlign.CENTER,
@@ -600,7 +876,6 @@ export const MeteoIndicator = GObject.registerClass(
                     });
                     barBox.add_child(barFill);
 
-                    // Today current temperature dot
                     let dotWidget = null;
                     if (i === 0) {
                         dotWidget = new St.Widget({
@@ -609,7 +884,6 @@ export const MeteoIndicator = GObject.registerClass(
                         barBox.add_child(dotWidget);
                     }
 
-                    // Right value / max temp
                     const rightLab = new St.Label({
                         text: '',
                         style: 'font-size: 13px; font-weight: 600; min-width: 32px; text-align: right;',
@@ -640,6 +914,7 @@ export const MeteoIndicator = GObject.registerClass(
             // ──────────────────────────────────────────────────────────────────
             // 4. CARD: 2×3 WEATHER DETAILS GRID
             // ──────────────────────────────────────────────────────────────────
+            const dt = t.details;
             const detailsContainer = new St.BoxLayout({
                 vertical: true,
                 x_expand: true,
@@ -682,23 +957,23 @@ export const MeteoIndicator = GObject.registerClass(
                     sunsetStr = `${String(ss.getHours()).padStart(2, '0')}:${String(ss.getMinutes()).padStart(2, '0')}`;
                 } catch { }
             }
-            const moon = getMoonInfo();
+            const moon = getMoonInfo(lang);
 
-            row1.add_child(makeTile('🌅 СХІД І ЗАХІД', `Схід: ${sunriseStr}`, `Захід: ${sunsetStr}`));
-            row1.add_child(makeTile('🌖 ФАЗА МІСЯЦЯ', moon.nameUk, `${Math.round(moon.illum * 100)}% освіченості`));
+            row1.add_child(makeTile(dt.sunriseSunset, `${dt.sunrise}: ${sunriseStr}`, `${dt.sunset}: ${sunsetStr}`));
+            row1.add_child(makeTile(dt.moon, moon.nameTrans, dt.moonIllum.replace('{n}', Math.round(moon.illum * 100))));
             detailsContainer.add_child(row1);
 
             // Row 2: Feels Like | Visibility
             const row2 = new St.BoxLayout({ x_expand: true, style: 'spacing: 8px;' });
             const feelsVal = current.feels !== undefined ? `${Math.round(current.feels)}°` : `${Math.round(current.temp)}°`;
             const feelsDiff = Math.round(current.feels - current.temp);
-            const feelsSub = feelsDiff < -1 ? 'Через вітер прохолодніше' : feelsDiff > 1 ? 'Через вологість тепліше' : 'Схоже на реальну';
+            const feelsSub = feelsDiff < -1 ? dt.feelsCooler : feelsDiff > 1 ? dt.feelsWarmer : dt.feelsSimilar;
 
             const visKm = current.visibility !== null ? Math.round(current.visibility / 1000) : 10;
-            const visSub = visKm >= 10 ? 'Чисте повітря' : 'Легкий серпанок';
+            const visSub = visKm >= 10 ? dt.cleanAir : dt.haze;
 
-            row2.add_child(makeTile('🌡️ ВІДЧУВАЄТЬСЯ', feelsVal, feelsSub));
-            row2.add_child(makeTile('👁️ ВИДИМІСТЬ', `${visKm} км`, visSub));
+            row2.add_child(makeTile(dt.feelsLike, feelsVal, feelsSub));
+            row2.add_child(makeTile(dt.visibility, `${visKm} ${dt.km}`, visSub));
             detailsContainer.add_child(row2);
 
             // Row 3: Humidity | Pressure
@@ -707,8 +982,8 @@ export const MeteoIndicator = GObject.registerClass(
             const dewPoint = current.humidity !== undefined ? Math.round(current.temp - ((100 - current.humidity) / 5)) : Math.round(current.temp - 4);
             const pressMm = current.pressure ? Math.round(current.pressure * 0.750062) : 750;
 
-            row3.add_child(makeTile('💧 ВОЛОГІСТЬ', humVal, `Точка роси: ${dewPoint}°`));
-            row3.add_child(makeTile('🧭 ТИСК', `${pressMm} мм`, 'Нормальний'));
+            row3.add_child(makeTile(dt.humidity, humVal, dt.dewPoint.replace('{n}', dewPoint)));
+            row3.add_child(makeTile(dt.pressure, `${pressMm} ${dt.mm}`, dt.normal));
             detailsContainer.add_child(row3);
 
             contentBox.add_child(detailsContainer);
@@ -717,7 +992,6 @@ export const MeteoIndicator = GObject.registerClass(
             scrollItem.add_child(vScroll);
             this.menu.addMenuItem(scrollItem);
 
-            // Initial sync
             this._applyMetricUpdates();
         }
 
@@ -727,7 +1001,9 @@ export const MeteoIndicator = GObject.registerClass(
         }
 
         _applyMetricUpdates() {
-            // 1. Sync switcher buttons
+            const lang = resolveLang(this._settings);
+            const t = MESSAGES[lang] || MESSAGES.uk;
+
             for (const [key, btn] of Object.entries(this._metricButtons)) {
                 if (key === this._hourlyMetric) {
                     btn.style = 'padding: 3px 8px; border-radius: 6px; background-color: rgba(255, 255, 255, 0.25);';
@@ -738,23 +1014,18 @@ export const MeteoIndicator = GObject.registerClass(
                 }
             }
 
-            // 2. Sync Titles according to selected metric
             const daysCount = this._dailySlots.length;
-            if (this._hourlyMetric === 'precip') {
-                if (this._hourlyTitleLabel) this._hourlyTitleLabel.text = 'ПОГОДИННИЙ ПРОГНОЗ: ОПАДИ';
-                if (this._dailyTitleLabel) this._dailyTitleLabel.text = `ПРОГНОЗ НА ${daysCount} ДНІВ: ОПАДИ`;
-            } else if (this._hourlyMetric === 'wind') {
-                if (this._hourlyTitleLabel) this._hourlyTitleLabel.text = 'ПОГОДИННИЙ ПРОГНОЗ: ВІТЕР';
-                if (this._dailyTitleLabel) this._dailyTitleLabel.text = `ПРОГНОЗ НА ${daysCount} ДНІВ: ВІТЕР`;
-            } else {
-                if (this._hourlyTitleLabel) this._hourlyTitleLabel.text = 'ПОГОДИННИЙ ПРОГНОЗ: ТЕМПЕРАТУРА';
-                if (this._dailyTitleLabel) this._dailyTitleLabel.text = `ПРОГНОЗ НА ${daysCount} ДНІВ: ТЕМПЕРАТУРА`;
+            const titleTemplate = t.dailyTitle.replace('{n}', daysCount);
+            const metricName = t.hourlyMetrics[this._hourlyMetric];
+
+            if (this._hourlyTitleLabel) {
+                this._hourlyTitleLabel.text = `${t.hourlyTitle}: ${metricName}`;
+            }
+            if (this._dailyTitleLabel) {
+                this._dailyTitleLabel.text = `${titleTemplate}: ${metricName}`;
             }
 
-            // 3. Update Hourly Row
             this._updateHourlyRow();
-
-            // 4. Update Daily Rows
             this._updateDailyRows();
         }
 
@@ -781,7 +1052,6 @@ export const MeteoIndicator = GObject.registerClass(
                         : 0;
                     slot.val.text = `${windSpeed}`;
                 } else {
-                    // 'temp'
                     const hScene = deriveScene({
                         code: hourly.code ? hourly.code[i] : current.code,
                         visibility: null,
@@ -799,7 +1069,6 @@ export const MeteoIndicator = GObject.registerClass(
             const BAR_WIDTH = 75;
             const currentTemp = this._weatherData?.current?.temp ?? 0;
 
-            // Global min/max for temperature
             let globalMin = Infinity;
             let globalMax = -Infinity;
             let maxWind = 1;
@@ -815,7 +1084,6 @@ export const MeteoIndicator = GObject.registerClass(
                 const d = slot.data;
 
                 if (this._hourlyMetric === 'precip') {
-                    // Precipitation mode: blue progress bar for rain probability
                     slot.icon.icon_name = 'weather-showers-symbolic';
                     const prob = Math.round(d.precipProb ?? 0);
                     slot.leftLab.text = '';
@@ -824,7 +1092,6 @@ export const MeteoIndicator = GObject.registerClass(
                     if (slot.dotWidget) slot.dotWidget.hide();
                     slot.rightLab.text = `${prob}%`;
                 } else if (this._hourlyMetric === 'wind') {
-                    // Wind mode: teal progress bar for max wind speed
                     slot.icon.icon_name = 'weather-windy-symbolic';
                     const windVal = Math.round(d.windMax ?? 0);
                     slot.leftLab.text = '';
@@ -833,7 +1100,6 @@ export const MeteoIndicator = GObject.registerClass(
                     if (slot.dotWidget) slot.dotWidget.hide();
                     slot.rightLab.text = `${windVal}`;
                 } else {
-                    // Temperature mode: gradient bar from min to max + dot for today
                     const dScene = deriveScene({
                         code: d.code ?? 0,
                         visibility: null,
