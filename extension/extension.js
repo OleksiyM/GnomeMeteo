@@ -17,7 +17,7 @@ import { ForecastPanel } from './menu.js';
 import { WeatherClient, sceneFor, deriveScene, fmtTemp,
          ensureDesktopEntry, removeDesktopEntry } from './weather.js';
 import { moonPhase } from './moon.js';
-import { resolveIsDark } from './theme.js';
+import { resolveIsDark, resolveShellDark } from './theme.js';
 
 /* Adwaita accent swatches (org.gnome.desktop.interface accent-color) */
 const ACCENTS = {
@@ -59,15 +59,18 @@ class SystemThemeWatcher {
         this._iface = null;
         this._changedId = 0;
         this._dark = true;
+        this._shellDark = true;
         this._accent = FALLBACK_ACCENT;
 
         try {
             this._iface = new Gio.Settings({ schema_id: 'org.gnome.desktop.interface' });
             this._dark = this._readIsDark();
+            this._shellDark = this._readShellDark();
             this._accent = this._readAccentColor();
             this._changedId = this._iface.connect('changed', (settings, key) => {
                 if (key === 'color-scheme' || key === 'gtk-application-prefer-dark-theme') {
                     this._dark = this._readIsDark();
+                    this._shellDark = this._readShellDark();
                     if (this._onChange)
                         this._onChange({ type: 'dark', isDark: this._dark });
                 } else if (key === 'accent-color') {
@@ -88,6 +91,10 @@ class SystemThemeWatcher {
         return this._iface ? this._readIsDark() : this._dark;
     }
 
+    get shellDark() {
+        return this._iface ? this._readShellDark() : this._shellDark;
+    }
+
     get accentColor() {
         return this._iface ? this._readAccentColor() : this._accent;
     }
@@ -102,6 +109,14 @@ class SystemThemeWatcher {
             .has_key('gtk-application-prefer-dark-theme')
             ? this._iface.get_boolean('gtk-application-prefer-dark-theme') : null;
         return resolveIsDark(scheme, legacyDark);
+    }
+
+    _readShellDark() {
+        if (!this._iface)
+            return this._shellDark;
+        const shell = resolveShellDark(this._iface.get_string('color-scheme'),
+            Main.sessionMode.colorScheme);
+        return shell === null ? this._readIsDark() : shell;
     }
 
     _readAccentColor() {
@@ -284,8 +299,10 @@ const WeatherIndicator = GObject.registerClass(
             this._previewTimeoutId = 0;
 
             this._themeWatcher = new SystemThemeWatcher(event => {
-                if (event.type === 'dark')
+                if (event.type === 'dark') {
                     this._panel.setDark(this._themeWatcher.isDark);
+                    this._panel.setShellDark(this._themeWatcher.shellDark);
+                }
                 else if (event.type === 'accent')
                     this._panel.setAccent(this._themeWatcher.accentColor);
                 else if (event.type === 'clock')
@@ -379,6 +396,7 @@ const WeatherIndicator = GObject.registerClass(
 
         _syncPanelLook() {
             this._panel.setDark(this._themeWatcher.isDark);
+            this._panel.setShellDark(this._themeWatcher.shellDark);
             this._panel.setAccent(this._themeWatcher.accentColor);
             this._panel.setHourFormat(this._resolveHour24());
             this._panel.setTextEmph(this._settings.get_string('text-emphasis'));
@@ -431,6 +449,7 @@ const WeatherIndicator = GObject.registerClass(
                 effective,
                 windKmh: current.wind,
                 dark: this._themeWatcher.isDark,
+                shellDark: this._themeWatcher.shellDark,
                 phase,
                 latitude: data.latitude,
                 longitude: data.longitude,

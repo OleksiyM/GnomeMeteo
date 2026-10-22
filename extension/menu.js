@@ -261,6 +261,7 @@ export class ForecastPanel {
         this._day = 0;
         this._metric = 'temp';
         this._dark = true;
+        this._shellDark = null;     // shell surface variant; null follows _dark
         this._state = null;
         this._shown = [];          // currently displayed chart values (morphs)
         this._morphId = 0;
@@ -456,6 +457,16 @@ export class ForecastPanel {
         this._applyTheme();
     }
 
+    /** Whether the SHELL's own popup surface is dark. Only the accent
+     * style borrows that surface, so only it re-judges on a flip. */
+    setShellDark(enabled) {
+        if (this._shellDark === enabled)
+            return;
+        this._shellDark = enabled;
+        if (this._style === 'accent')
+            this._applyTheme();
+    }
+
     /** Menu background treatment: 'animated' | 'solid' | 'accent'. */
     setStyle(style) {
         this._style = style;
@@ -558,7 +569,7 @@ export class ForecastPanel {
 
     _bgAt(heightFraction, samplePoint) {
         if (this._style === 'accent')
-            return this._dark ? [0.185, 0.185, 0.19] : [0.96, 0.96, 0.97];
+            return this._paintDark() ? [0.185, 0.185, 0.19] : [0.96, 0.96, 0.97];
         const { glow, solar } = this._sunShade();
         const skyRgb = sampleSky(this._skyOpts.scene, this._skyOpts.night, heightFraction,
             glow, solar);
@@ -581,11 +592,13 @@ export class ForecastPanel {
     }
 
     /** state = {current, daily, hourly, currentIso, units, windy, effective,
-     *           windKmh, updated, dark, latitude, longitude} */
+     *           windKmh, updated, dark, shellDark, latitude, longitude} */
     render(state) {
         this._state = state;
         if (state.dark !== undefined)
             this._dark = state.dark;
+        if (state.shellDark !== undefined)
+            this._shellDark = state.shellDark;
         this._applyTheme();
         this._showBody(true);
 
@@ -1057,8 +1070,14 @@ export class ForecastPanel {
     /* what the CARD shows is not always what the system is: animated sky
      * is a self-contrasting painting, so it keeps the dark presentation in
      * light sessions too (no wash, white-biased ink, dark pills). The ink
-     * judge still flips individual labels over bright sun/clouds. */
+     * judge still flips individual labels over bright sun/clouds. The
+     * accent style paints no ground of its own -- it borrows the shell
+     * popup surface, whose variant the session mode referees (a plain
+     * light desktop keeps a dark shell), so it judges by _shellDark;
+     * null (probe/demo drive, pre-variant shells) follows _dark. */
     _paintDark() {
+        if (this._style === 'accent')
+            return this._shellDark === null ? this._dark : this._shellDark;
         return this._style === 'animated' || this._dark;
     }
 

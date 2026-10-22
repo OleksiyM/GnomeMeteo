@@ -7,7 +7,7 @@
  * is pure (scheme + legacy value-or-null) so it locks here without a
  * shell; null means "the schema has no legacy key" (GNOME 50+).
  */
-import { resolveIsDark } from '../theme.js';
+import { resolveIsDark, resolveShellDark } from '../theme.js';
 import { file, test, eq, report } from './harness.mjs';
 
 file('theme');
@@ -35,6 +35,43 @@ test("GNOME 50 light: 'default' with no legacy key reads LIGHT (#89)", () => {
     // throw and leave the card dark-locked on a light desktop.
     eq(resolveIsDark('default', null), false);
     eq(resolveIsDark('', null), false);
+});
+
+// -- the SHELL surface verdict (accent style, #89 follow-up) ----------
+// The accent style borrows the shell's own popup surface, whose variant
+// is NOT the app scheme: gnome-shell (ui/main.js getStyleVariant) runs
+// the session mode's colorScheme preference against the system scheme.
+// Vanilla user mode is 'prefer-dark', so 'default' (light apps) leaves
+// the shell DARK -- accent ink judged by resolveIsDark alone stranded
+// dark text on that dark popup. resolveShellDark mirrors the shell's
+// table; null = mode declares no preference (pre-variant shells), and
+// the caller falls back to the app verdict.
+
+test("prefer-dark session mode: 'default' keeps the shell DARK (#89fu)", () => {
+    eq(resolveShellDark('default', 'prefer-dark'), true);
+    eq(resolveShellDark('', 'prefer-dark'), true);
+    eq(resolveShellDark('prefer-dark', 'prefer-dark'), true);
+    eq(resolveShellDark('prefer-light', 'prefer-dark'), false);
+    eq(resolveShellDark('force-light', 'prefer-dark'), false);
+});
+
+test('prefer-light session mode: only explicit dark darkens the shell', () => {
+    eq(resolveShellDark('default', 'prefer-light'), false);
+    eq(resolveShellDark('prefer-light', 'prefer-light'), false);
+    eq(resolveShellDark('prefer-dark', 'prefer-light'), true);
+    eq(resolveShellDark('force-dark', 'prefer-light'), true);
+});
+
+test('forced session modes win over the system scheme', () => {
+    eq(resolveShellDark('prefer-light', 'force-dark'), true);
+    eq(resolveShellDark('prefer-dark', 'force-light'), false);
+    eq(resolveShellDark('default', 'force-light'), false);
+});
+
+test('no mode preference: null, caller falls back to the app verdict', () => {
+    eq(resolveShellDark('default', ''), null);
+    eq(resolveShellDark('prefer-dark', undefined), null);
+    eq(resolveShellDark('prefer-light', null), null);
 });
 
 report('theme');
