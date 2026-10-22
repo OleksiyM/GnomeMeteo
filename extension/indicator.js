@@ -1,4 +1,4 @@
-// Meteo Indicator (Apple-inspired smartphone card layout, 10-day forecast, clean architecture)
+// Meteo Indicator (Apple-inspired smartphone card layout, 10-day forecast, hourly metric switcher)
 
 import GObject from 'gi://GObject';
 import St from 'gi://St';
@@ -22,7 +22,7 @@ function getSymbolicIcon(scene, isDay = true) {
         case 'snow': return 'weather-snow-symbolic';
         case 'storm':
         case 'hail': return 'weather-severe-alert-symbolic';
-        case 'wind': return 'weather-wind-symbolic';
+        case 'wind': return 'weather-windy-symbolic';
         default: return isDay ? 'weather-clear-symbolic' : 'weather-clear-night-symbolic';
     }
 }
@@ -55,7 +55,7 @@ class TooltipHelper {
         const [x, y] = actor.get_transformed_position();
         const [w, h] = actor.get_transformed_size();
         const [, naturalWidth] = this._tooltip.get_preferred_width(-1);
-        const tipWidth = naturalWidth || 110;
+        const tipWidth = naturalWidth || 120;
 
         this._tooltip.set_position(
             Math.round(x + w / 2 - tipWidth / 2),
@@ -112,7 +112,7 @@ class WeatherCoordinator {
                 auto: isAuto,
                 latitude: this._settings.get_double('location-latitude'),
                 longitude: this._settings.get_double('location-longitude'),
-                days: 10, // Request full 10-day forecast
+                days: 10, // Request full 10 days
             });
             this._data = data;
             this._lastFetch = GLib.get_monotonic_time() / 1000000;
@@ -154,6 +154,10 @@ export const MeteoIndicator = GObject.registerClass(
             this._settings = extension.getSettings();
             this._tooltipHelper = new TooltipHelper();
             this._lastUpdateStr = '';
+            this._weatherData = null;
+            this._hourlyMetric = 'temp'; // 'temp' | 'precip' | 'wind'
+            this._hourlySlots = [];
+            this._metricButtons = {};
 
             // 1. Panel button: clean symbolic icon + temperature (e.g. 13°)
             this._box = new St.BoxLayout({
@@ -211,6 +215,7 @@ export const MeteoIndicator = GObject.registerClass(
         }
 
         _onWeatherReceived(data, isAuto) {
+            this._weatherData = data;
             const { current, daily, hourly, detectedName } = data;
             const sceneInfo = deriveScene(current);
             const iconName = getSymbolicIcon(sceneInfo.scene, current.isDay);
@@ -246,6 +251,8 @@ export const MeteoIndicator = GObject.registerClass(
 
         _buildFullMenu(cityName, current, daily, hourly, sceneInfo) {
             this.menu.removeAll();
+            this._hourlySlots = [];
+            this._metricButtons = {};
 
             // ══════════════════════════════════════════════════════════════════
             // 1. HEADER (Top controls + Centered City, Big Temp, Condition)
@@ -347,7 +354,7 @@ export const MeteoIndicator = GObject.registerClass(
             this.menu.addMenuItem(headerItem);
 
             // ══════════════════════════════════════════════════════════════════
-            // 2. CARD: HOURLY FORECAST (Horizontal scroll row)
+            // 2. CARD: HOURLY FORECAST WITH [🌡️] [💧 Опади] [💨 Вітер] SWITCHER
             // ══════════════════════════════════════════════════════════════════
             if (hourly && Array.isArray(hourly.temp) && hourly.temp.length > 0) {
                 const hourlyCardItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
@@ -357,12 +364,64 @@ export const MeteoIndicator = GObject.registerClass(
                     style: 'background-color: rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 10px 12px; margin: 4px 0;',
                 });
 
+                // Header with Title + Metric Switcher Row
+                const hourlyHeaderRow = new St.BoxLayout({
+                    x_expand: true,
+                    style: 'margin-bottom: 8px;',
+                    y_align: Clutter.ActorAlign.CENTER,
+                });
+
                 const hourlyTitle = new St.Label({
                     text: 'ПОГОДИННИЙ ПРОГНОЗ',
-                    style: 'font-size: 11px; font-weight: 700; opacity: 0.55; margin-bottom: 8px;',
+                    style: 'font-size: 11px; font-weight: 700; opacity: 0.55;',
+                    x_expand: true,
+                    y_align: Clutter.ActorAlign.CENTER,
                 });
-                hourlyCardBox.add_child(hourlyTitle);
+                hourlyHeaderRow.add_child(hourlyTitle);
 
+                // Metric Switcher buttons: Temp, Precip (Опади), Wind (Вітер)
+                const switcherBox = new St.BoxLayout({
+                    style: 'spacing: 4px;',
+                    y_align: Clutter.ActorAlign.CENTER,
+                });
+
+                const METRICS = [
+                    { id: 'temp', icon: 'weather-clear-symbolic', tip: 'Температура (°C)' },
+                    { id: 'precip', icon: 'weather-showers-symbolic', tip: 'Ймовірність опадів (%)' },
+                    { id: 'wind', icon: 'weather-windy-symbolic', tip: 'Швидкість вітру (км/год)' },
+                ];
+
+                for (const m of METRICS) {
+                    const btn = new St.Button({
+                        child: new St.Icon({
+                            icon_name: m.icon,
+                            icon_size: 13,
+                            style_class: 'system-status-icon',
+                        }),
+                        can_focus: true,
+                        y_align: Clutter.ActorAlign.CENTER,
+                    });
+
+                    btn.connect('notify::hover', () => {
+                        if (btn.hover) this._tooltipHelper.show(btn, m.tip);
+                        else this._tooltipHelper.hide();
+                    });
+
+                    btn.connect('clicked', () => {
+                        this._tooltipHelper.hide();
+                        this._hourlyMetric = m.id;
+                        this._syncMetricButtons();
+                        this._updateHourlyRow();
+                    });
+
+                    switcherBox.add_child(btn);
+                    this._metricButtons[m.id] = btn;
+                }
+
+                hourlyHeaderRow.add_child(switcherBox);
+                hourlyCardBox.add_child(hourlyHeaderRow);
+
+                // Hourly Columns Row
                 const hourlyRow = new St.BoxLayout({
                     x_expand: true,
                     style: 'spacing: 12px;',
@@ -393,34 +452,34 @@ export const MeteoIndicator = GObject.registerClass(
                         x_align: Clutter.ActorAlign.CENTER,
                     });
 
-                    const hScene = deriveScene({
-                        code: hourly.code ? hourly.code[i] : current.code,
-                        visibility: null,
-                        cape: 0,
-                        isDay: hourly.isDay ? hourly.isDay[i] : current.isDay,
-                    });
                     const hIcon = new St.Icon({
-                        icon_name: getSymbolicIcon(hScene.scene, hourly.isDay ? hourly.isDay[i] : current.isDay),
+                        icon_name: 'weather-clear-symbolic',
                         icon_size: 16,
                         style_class: 'system-status-icon',
                         x_align: Clutter.ActorAlign.CENTER,
                     });
 
-                    const degLab = new St.Label({
-                        text: `${Math.round(hourly.temp[i])}°`,
+                    const valLab = new St.Label({
+                        text: '',
                         style: 'font-size: 12px; font-weight: 600;',
                         x_align: Clutter.ActorAlign.CENTER,
                     });
 
                     col.add_child(tLab);
                     col.add_child(hIcon);
-                    col.add_child(degLab);
+                    col.add_child(valLab);
                     hourlyRow.add_child(col);
+
+                    this._hourlySlots.push({ icon: hIcon, val: valLab });
                 }
 
                 hourlyCardBox.add_child(hourlyRow);
                 hourlyCardItem.add_child(hourlyCardBox);
                 this.menu.addMenuItem(hourlyCardItem);
+
+                // Initial sync for hourly row & buttons
+                this._syncMetricButtons();
+                this._updateHourlyRow();
             }
 
             // ══════════════════════════════════════════════════════════════════
@@ -577,6 +636,54 @@ export const MeteoIndicator = GObject.registerClass(
 
             detailsItem.add_child(detailsContainer);
             this.menu.addMenuItem(detailsItem);
+        }
+
+        _syncMetricButtons() {
+            for (const [key, btn] of Object.entries(this._metricButtons)) {
+                if (key === this._hourlyMetric) {
+                    btn.style = 'padding: 3px 8px; border-radius: 6px; background-color: rgba(255, 255, 255, 0.25);';
+                    btn.opacity = 255;
+                } else {
+                    btn.style = 'padding: 3px 8px; border-radius: 6px; background-color: rgba(255, 255, 255, 0.05);';
+                    btn.opacity = 140;
+                }
+            }
+        }
+
+        _updateHourlyRow() {
+            if (!this._weatherData || !this._weatherData.hourly) return;
+            const { hourly, current } = this._weatherData;
+            if (!Array.isArray(hourly.temp)) return;
+
+            const count = Math.min(this._hourlySlots.length, hourly.temp.length);
+            for (let i = 0; i < count; i++) {
+                const slot = this._hourlySlots[i];
+                if (!slot) continue;
+
+                if (this._hourlyMetric === 'precip') {
+                    slot.icon.icon_name = 'weather-showers-symbolic';
+                    const prob = (hourly.precipProb && hourly.precipProb[i] !== undefined)
+                        ? Math.round(hourly.precipProb[i])
+                        : 0;
+                    slot.val.text = `${prob}%`;
+                } else if (this._hourlyMetric === 'wind') {
+                    slot.icon.icon_name = 'weather-windy-symbolic';
+                    const windSpeed = (hourly.wind && hourly.wind[i] !== undefined)
+                        ? Math.round(hourly.wind[i])
+                        : 0;
+                    slot.val.text = `${windSpeed}`;
+                } else {
+                    // 'temp'
+                    const hScene = deriveScene({
+                        code: hourly.code ? hourly.code[i] : current.code,
+                        visibility: null,
+                        cape: 0,
+                        isDay: hourly.isDay ? hourly.isDay[i] : current.isDay,
+                    });
+                    slot.icon.icon_name = getSymbolicIcon(hScene.scene, hourly.isDay ? hourly.isDay[i] : current.isDay);
+                    slot.val.text = `${Math.round(hourly.temp[i])}°`;
+                }
+            }
         }
 
         destroy() {
