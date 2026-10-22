@@ -1,4 +1,4 @@
-// Meteo Indicator (Apple-inspired smartphone card layout, 10-day forecast, hourly metric switcher)
+// Meteo Indicator (Apple-inspired smartphone card layout, synchronized metric switcher)
 
 import GObject from 'gi://GObject';
 import St from 'gi://St';
@@ -112,7 +112,7 @@ class WeatherCoordinator {
                 auto: isAuto,
                 latitude: this._settings.get_double('location-latitude'),
                 longitude: this._settings.get_double('location-longitude'),
-                days: 10, // Request full 10 days
+                days: 10,
             });
             this._data = data;
             this._lastFetch = GLib.get_monotonic_time() / 1000000;
@@ -156,7 +156,11 @@ export const MeteoIndicator = GObject.registerClass(
             this._lastUpdateStr = '';
             this._weatherData = null;
             this._hourlyMetric = 'temp'; // 'temp' | 'precip' | 'wind'
+
+            this._hourlyTitleLabel = null;
+            this._dailyTitleLabel = null;
             this._hourlySlots = [];
+            this._dailySlots = [];
             this._metricButtons = {};
 
             // 1. Panel button: clean symbolic icon + temperature (e.g. 13°)
@@ -252,6 +256,7 @@ export const MeteoIndicator = GObject.registerClass(
         _buildFullMenu(cityName, current, daily, hourly, sceneInfo) {
             this.menu.removeAll();
             this._hourlySlots = [];
+            this._dailySlots = [];
             this._metricButtons = {};
 
             // ══════════════════════════════════════════════════════════════════
@@ -354,7 +359,7 @@ export const MeteoIndicator = GObject.registerClass(
             this.menu.addMenuItem(headerItem);
 
             // ══════════════════════════════════════════════════════════════════
-            // 2. CARD: HOURLY FORECAST WITH [🌡️] [💧 Опади] [💨 Вітер] SWITCHER
+            // 2. CARD: HOURLY FORECAST (with Switcher)
             // ══════════════════════════════════════════════════════════════════
             if (hourly && Array.isArray(hourly.temp) && hourly.temp.length > 0) {
                 const hourlyCardItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
@@ -371,13 +376,13 @@ export const MeteoIndicator = GObject.registerClass(
                     y_align: Clutter.ActorAlign.CENTER,
                 });
 
-                const hourlyTitle = new St.Label({
+                this._hourlyTitleLabel = new St.Label({
                     text: 'ПОГОДИННИЙ ПРОГНОЗ',
-                    style: 'font-size: 11px; font-weight: 700; opacity: 0.55;',
+                    style: 'font-size: 11px; font-weight: 700; opacity: 0.6;',
                     x_expand: true,
                     y_align: Clutter.ActorAlign.CENTER,
                 });
-                hourlyHeaderRow.add_child(hourlyTitle);
+                hourlyHeaderRow.add_child(this._hourlyTitleLabel);
 
                 // Metric Switcher buttons: Temp, Precip (Опади), Wind (Вітер)
                 const switcherBox = new St.BoxLayout({
@@ -409,9 +414,7 @@ export const MeteoIndicator = GObject.registerClass(
 
                     btn.connect('clicked', () => {
                         this._tooltipHelper.hide();
-                        this._hourlyMetric = m.id;
-                        this._syncMetricButtons();
-                        this._updateHourlyRow();
+                        this._setMetric(m.id);
                     });
 
                     switcherBox.add_child(btn);
@@ -476,14 +479,10 @@ export const MeteoIndicator = GObject.registerClass(
                 hourlyCardBox.add_child(hourlyRow);
                 hourlyCardItem.add_child(hourlyCardBox);
                 this.menu.addMenuItem(hourlyCardItem);
-
-                // Initial sync for hourly row & buttons
-                this._syncMetricButtons();
-                this._updateHourlyRow();
             }
 
             // ══════════════════════════════════════════════════════════════════
-            // 3. CARD: 10-DAY FORECAST (Up to 10 days with gradient range bar)
+            // 3. CARD: 10-DAY FORECAST (Dynamic according to selected metric)
             // ══════════════════════════════════════════════════════════════════
             if (dailyArr.length > 0) {
                 const dailyCardItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
@@ -494,21 +493,13 @@ export const MeteoIndicator = GObject.registerClass(
                 });
 
                 const daysCount = Math.min(10, dailyArr.length);
-                const dailyTitle = new St.Label({
+                this._dailyTitleLabel = new St.Label({
                     text: `ПРОГНОЗ НА ${daysCount} ДНІВ`,
-                    style: 'font-size: 11px; font-weight: 700; opacity: 0.55; margin-bottom: 6px;',
+                    style: 'font-size: 11px; font-weight: 700; opacity: 0.6; margin-bottom: 6px;',
                 });
-                dailyCardBox.add_child(dailyTitle);
+                dailyCardBox.add_child(this._dailyTitleLabel);
 
-                // Compute global range for gradient bars
-                let globalMin = Infinity;
-                let globalMax = -Infinity;
-                for (let i = 0; i < daysCount; i++) {
-                    const item = dailyArr[i];
-                    if (item.tmin < globalMin) globalMin = item.tmin;
-                    if (item.tmax > globalMax) globalMax = item.tmax;
-                }
-                const rangeSpan = Math.max(1, globalMax - globalMin);
+                const BAR_WIDTH = 75;
 
                 for (let i = 0; i < daysCount; i++) {
                     const dayData = dailyArr[i];
@@ -526,55 +517,52 @@ export const MeteoIndicator = GObject.registerClass(
                     });
 
                     // Weather icon
-                    const dScene = deriveScene({
-                        code: dayData.code ?? 0,
-                        visibility: null,
-                        cape: 0,
-                        isDay: true,
-                    });
                     const dIcon = new St.Icon({
-                        icon_name: getSymbolicIcon(dScene.scene, true),
+                        icon_name: 'weather-clear-symbolic',
                         icon_size: 16,
                         style_class: 'system-status-icon',
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
-                    // Min temp
-                    const minLab = new St.Label({
-                        text: `${Math.round(dayData.tmin)}°`,
+                    // Left value / min temp
+                    const leftLab = new St.Label({
+                        text: '',
                         style: 'font-size: 13px; opacity: 0.7; min-width: 26px; text-align: right;',
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
                     // Range Bar container (fixed width 75px)
-                    const BAR_WIDTH = 75;
                     const barBox = new St.Widget({
                         style: `width: ${BAR_WIDTH}px; height: 4px; background-color: rgba(255, 255, 255, 0.15); border-radius: 2px;`,
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
-                    const fillLeft = Math.max(0, Math.min(BAR_WIDTH - 10, Math.round(((dayData.tmin - globalMin) / rangeSpan) * BAR_WIDTH)));
-                    const fillRight = Math.max(fillLeft + 8, Math.min(BAR_WIDTH, Math.round(((dayData.tmax - globalMin) / rangeSpan) * BAR_WIDTH)));
-                    const fillWidth = Math.max(8, fillRight - fillLeft);
-
                     const barFill = new St.Widget({
-                        style: `margin-left: ${fillLeft}px; width: ${fillWidth}px; height: 4px; background: linear-gradient(to right, #59c0fa, #fba626); border-radius: 2px;`,
+                        style: 'height: 4px; border-radius: 2px;',
                     });
                     barBox.add_child(barFill);
 
-                    // Max temp
-                    const maxLab = new St.Label({
-                        text: `${Math.round(dayData.tmax)}°`,
-                        style: 'font-size: 13px; font-weight: 600; min-width: 26px; text-align: right;',
+                    // Right value / max temp
+                    const rightLab = new St.Label({
+                        text: '',
+                        style: 'font-size: 13px; font-weight: 600; min-width: 32px; text-align: right;',
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
                     dayRow.add_child(nameLab);
                     dayRow.add_child(dIcon);
-                    dayRow.add_child(minLab);
+                    dayRow.add_child(leftLab);
                     dayRow.add_child(barBox);
-                    dayRow.add_child(maxLab);
+                    dayRow.add_child(rightLab);
                     dailyCardBox.add_child(dayRow);
+
+                    this._dailySlots.push({
+                        data: dayData,
+                        icon: dIcon,
+                        leftLab,
+                        barFill,
+                        rightLab,
+                    });
                 }
 
                 dailyCardItem.add_child(dailyCardBox);
@@ -615,7 +603,6 @@ export const MeteoIndicator = GObject.registerClass(
                 return tile;
             };
 
-            // Row 1: Feels like & UV Index
             const row1 = new St.BoxLayout({ x_expand: true, style: 'spacing: 8px;' });
             const feelsVal = current.feels !== undefined ? `${Math.round(current.feels)}°` : `${Math.round(current.temp)}°`;
             const uvVal = current.uv !== null && current.uv !== undefined ? `${Math.round(current.uv)}` : '0';
@@ -625,7 +612,6 @@ export const MeteoIndicator = GObject.registerClass(
             row1.add_child(makeTile('УФ-ІНДЕКС', uvVal, uvDesc));
             detailsContainer.add_child(row1);
 
-            // Row 2: Humidity & Pressure
             const row2 = new St.BoxLayout({ x_expand: true, style: 'spacing: 8px;' });
             const humVal = current.humidity !== undefined ? `${Math.round(current.humidity)}%` : '—';
             const pressMm = current.pressure ? Math.round(current.pressure * 0.750062) : 750;
@@ -636,9 +622,18 @@ export const MeteoIndicator = GObject.registerClass(
 
             detailsItem.add_child(detailsContainer);
             this.menu.addMenuItem(detailsItem);
+
+            // Initial sync for titles, buttons, and rows
+            this._applyMetricUpdates();
         }
 
-        _syncMetricButtons() {
+        _setMetric(metricId) {
+            this._hourlyMetric = metricId;
+            this._applyMetricUpdates();
+        }
+
+        _applyMetricUpdates() {
+            // 1. Sync switcher buttons
             for (const [key, btn] of Object.entries(this._metricButtons)) {
                 if (key === this._hourlyMetric) {
                     btn.style = 'padding: 3px 8px; border-radius: 6px; background-color: rgba(255, 255, 255, 0.25);';
@@ -648,6 +643,25 @@ export const MeteoIndicator = GObject.registerClass(
                     btn.opacity = 140;
                 }
             }
+
+            // 2. Sync Titles according to selected metric
+            const daysCount = this._dailySlots.length;
+            if (this._hourlyMetric === 'precip') {
+                if (this._hourlyTitleLabel) this._hourlyTitleLabel.text = 'ПОГОДИННИЙ ПРОГНОЗ: ОПАДИ';
+                if (this._dailyTitleLabel) this._dailyTitleLabel.text = `ПРОГНОЗ НА ${daysCount} ДНІВ: ОПАДИ`;
+            } else if (this._hourlyMetric === 'wind') {
+                if (this._hourlyTitleLabel) this._hourlyTitleLabel.text = 'ПОГОДИННИЙ ПРОГНОЗ: ВІТЕР';
+                if (this._dailyTitleLabel) this._dailyTitleLabel.text = `ПРОГНОЗ НА ${daysCount} ДНІВ: ВІТЕР`;
+            } else {
+                if (this._hourlyTitleLabel) this._hourlyTitleLabel.text = 'ПОГОДИННИЙ ПРОГНОЗ: ТЕМПЕРАТУРА';
+                if (this._dailyTitleLabel) this._dailyTitleLabel.text = `ПРОГНОЗ НА ${daysCount} ДНІВ: ТЕМПЕРАТУРА`;
+            }
+
+            // 3. Update Hourly Row
+            this._updateHourlyRow();
+
+            // 4. Update Daily Rows
+            this._updateDailyRows();
         }
 
         _updateHourlyRow() {
@@ -682,6 +696,62 @@ export const MeteoIndicator = GObject.registerClass(
                     });
                     slot.icon.icon_name = getSymbolicIcon(hScene.scene, hourly.isDay ? hourly.isDay[i] : current.isDay);
                     slot.val.text = `${Math.round(hourly.temp[i])}°`;
+                }
+            }
+        }
+
+        _updateDailyRows() {
+            if (!this._dailySlots || this._dailySlots.length === 0) return;
+            const BAR_WIDTH = 75;
+
+            // Global min/max for temperature
+            let globalMin = Infinity;
+            let globalMax = -Infinity;
+            let maxWind = 1;
+            for (const slot of this._dailySlots) {
+                const d = slot.data;
+                if (d.tmin < globalMin) globalMin = d.tmin;
+                if (d.tmax > globalMax) globalMax = d.tmax;
+                if ((d.windMax ?? 0) > maxWind) maxWind = d.windMax;
+            }
+            const rangeSpan = Math.max(1, globalMax - globalMin);
+
+            for (const slot of this._dailySlots) {
+                const d = slot.data;
+
+                if (this._hourlyMetric === 'precip') {
+                    // Precipitation mode: blue progress bar for rain probability
+                    slot.icon.icon_name = 'weather-showers-symbolic';
+                    const prob = Math.round(d.precipProb ?? 0);
+                    slot.leftLab.text = '';
+                    const fillW = Math.max(0, Math.min(BAR_WIDTH, Math.round((prob / 100) * BAR_WIDTH)));
+                    slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 4px; background-color: #3898ec; border-radius: 2px;`;
+                    slot.rightLab.text = `${prob}%`;
+                } else if (this._hourlyMetric === 'wind') {
+                    // Wind mode: teal progress bar for max wind speed
+                    slot.icon.icon_name = 'weather-windy-symbolic';
+                    const windVal = Math.round(d.windMax ?? 0);
+                    slot.leftLab.text = '';
+                    const fillW = Math.max(0, Math.min(BAR_WIDTH, Math.round((windVal / Math.max(1, maxWind)) * BAR_WIDTH)));
+                    slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 4px; background-color: #30b0c7; border-radius: 2px;`;
+                    slot.rightLab.text = `${windVal}`;
+                } else {
+                    // Temperature mode: gradient bar from min to max
+                    const dScene = deriveScene({
+                        code: d.code ?? 0,
+                        visibility: null,
+                        cape: 0,
+                        isDay: true,
+                    });
+                    slot.icon.icon_name = getSymbolicIcon(dScene.scene, true);
+                    slot.leftLab.text = `${Math.round(d.tmin)}°`;
+
+                    const fillLeft = Math.max(0, Math.min(BAR_WIDTH - 10, Math.round(((d.tmin - globalMin) / rangeSpan) * BAR_WIDTH)));
+                    const fillRight = Math.max(fillLeft + 8, Math.min(BAR_WIDTH, Math.round(((d.tmax - globalMin) / rangeSpan) * BAR_WIDTH)));
+                    const fillWidth = Math.max(8, fillRight - fillLeft);
+
+                    slot.barFill.style = `margin-left: ${fillLeft}px; width: ${fillWidth}px; height: 4px; background: linear-gradient(to right, #59c0fa, #fba626); border-radius: 2px;`;
+                    slot.rightLab.text = `${Math.round(d.tmax)}°`;
                 }
             }
         }
