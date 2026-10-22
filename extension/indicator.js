@@ -1,8 +1,9 @@
-// Meteo Indicator (Apple-inspired smartphone card layout, full i18n with settings switch)
+// Meteo Indicator (Apple-inspired smartphone card layout, full i18n, accurate hourly clock times)
 
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 import GLib from 'gi://GLib';
+import Gio from 'gi://Gio';
 import Clutter from 'gi://Clutter';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
@@ -28,7 +29,6 @@ const MESSAGES = {
         },
         dailyTitle: 'ПРОГНОЗ НА {n} ДНІВ',
         now: 'Зараз',
-        hPrefix: '+{n}г',
         max: 'Макс.',
         min: 'мін.',
         updatedAt: 'Оновлено о',
@@ -116,7 +116,6 @@ const MESSAGES = {
         },
         dailyTitle: 'ПРОГНОЗ НА {n} ДНЕЙ',
         now: 'Сейчас',
-        hPrefix: '+{n}ч',
         max: 'Макс.',
         min: 'мин.',
         updatedAt: 'Обновлено в',
@@ -142,7 +141,7 @@ const MESSAGES = {
             cleanAir: 'Чистый воздух',
             haze: 'Лёгкая дымка',
             humidity: '💧 ВЛАЖНОСТЬ',
-            dewPoint: 'Точка росы: {n}°',
+            dewPoint: 'Точка роси: {n}°',
             pressure: '🧭 ДАВЛЕНИЕ',
             mm: 'мм',
             normal: 'Нормальное',
@@ -204,7 +203,6 @@ const MESSAGES = {
         },
         dailyTitle: '{n}-DAY FORECAST',
         now: 'Now',
-        hPrefix: '+{n}h',
         max: 'H:',
         min: 'L:',
         updatedAt: 'Updated at',
@@ -285,6 +283,37 @@ function resolveLang(settings) {
     if (sys.startsWith('uk')) return 'uk';
     if (sys.startsWith('ru')) return 'ru';
     return 'uk';
+}
+
+function is12HourFormat(settings) {
+    const fmt = settings.get_string('hour-format');
+    if (fmt === '12h') return true;
+    if (fmt === '24h') return false;
+    try {
+        const iface = new Gio.Settings({ schema_id: 'org.gnome.desktop.interface' });
+        const clockFmt = iface.get_string('clock-format');
+        if (clockFmt) return clockFmt.includes('12');
+    } catch { }
+    try {
+        return new Intl.DateTimeFormat().resolvedOptions().hour12 === true;
+    } catch {
+        return false;
+    }
+}
+
+function formatHour(timeStr, is12h) {
+    try {
+        const d = new Date(timeStr);
+        const hours = d.getHours();
+        if (is12h) {
+            const period = hours >= 12 ? 'PM' : 'AM';
+            const h12 = hours % 12 || 12;
+            return `${h12} ${period}`;
+        }
+        return `${String(hours).padStart(2, '0')}:00`;
+    } catch {
+        return timeStr;
+    }
 }
 
 function getSymbolicIcon(scene, isDay = true) {
@@ -442,6 +471,7 @@ export const MeteoIndicator = GObject.registerClass(
             this._lastUpdateStr = '';
             this._weatherData = null;
             this._hourlyMetric = 'temp';
+            this._hourlyStartIndex = 0;
 
             this._hourlyTitleLabel = null;
             this._dailyTitleLabel = null;
@@ -483,7 +513,7 @@ export const MeteoIndicator = GObject.registerClass(
 
             // 4. Settings listener
             this._settingsChangedId = this._settings.connect('changed', (settings, key) => {
-                if (key === 'language') {
+                if (key === 'language' || key === 'hour-format') {
                     if (this._weatherData) {
                         const isAuto = settings.get_boolean('auto-location');
                         this._onWeatherReceived(this._weatherData, isAuto);
@@ -517,6 +547,23 @@ export const MeteoIndicator = GObject.registerClass(
             const sceneInfo = deriveScene(current);
             const iconName = getSymbolicIcon(sceneInfo.scene, current.isDay);
 
+            // Find accurate start hour index
+            let startIdx = 0;
+            if (hourly && Array.isArray(hourly.time)) {
+                const nowIso = current?.timeIso || '';
+                const hourPrefix = nowIso.slice(0, 13);
+                const found = hourly.time.findIndex(t => t.startsWith(hourPrefix));
+                if (found >= 0) {
+                    startIdx = found;
+                } else {
+                    const localHour = new Date().getHours();
+                    const datePrefix = new Date().toISOString().slice(0, 10);
+                    const fb = hourly.time.findIndex(t => t.startsWith(datePrefix) && t.includes(`T${String(localHour).padStart(2, '0')}`));
+                    startIdx = Math.max(0, fb);
+                }
+            }
+            this._hourlyStartIndex = startIdx;
+
             // Update panel indicator
             const roundedTemp = Math.round(current.temp);
             this._icon.icon_name = iconName;
@@ -531,7 +578,7 @@ export const MeteoIndicator = GObject.registerClass(
                 ? detectedName
                 : (this._settings.get_string('location-name') || t.myLocation);
 
-            console.log(`[Meteo] Weather updated: city=${cityName}, temp=${roundedTemp}°, lang=${lang}`);
+            console.log(`[Meteo] Weather updated: city=${cityName}, temp=${roundedTemp}°, hourIdx=${startIdx}, lang=${lang}`);
 
             this._buildFullMenu(cityName, current, daily, hourly, sceneInfo, lang);
         }
@@ -558,6 +605,7 @@ export const MeteoIndicator = GObject.registerClass(
             this._metricButtons = {};
 
             const t = MESSAGES[lang] || MESSAGES.uk;
+            const is12h = is12HourFormat(this._settings);
             const dailyArr = Array.isArray(daily) ? daily : [];
 
             // ══════════════════════════════════════════════════════════════════
@@ -635,7 +683,7 @@ export const MeteoIndicator = GObject.registerClass(
             });
             headerContainer.add_child(tempLabel);
 
-            // Translated Condition Description (via WMO code)
+            // Translated Condition Description
             const condText = t.wmo[current.code] || sceneInfo.desc || 'Ясно';
             const condLabel = new St.Label({
                 text: condText,
@@ -659,7 +707,7 @@ export const MeteoIndicator = GObject.registerClass(
             // Summary text
             let summaryText = t.summaryNoPrecip;
             if (hourly && Array.isArray(hourly.precipProb)) {
-                const nextHoursPrecip = hourly.precipProb.slice(0, 6);
+                const nextHoursPrecip = hourly.precipProb.slice(this._hourlyStartIndex, this._hourlyStartIndex + 6);
                 const maxPrecip = Math.max(...nextHoursPrecip, 0);
                 if (maxPrecip >= 45) {
                     summaryText = t.summaryPrecip;
@@ -695,7 +743,7 @@ export const MeteoIndicator = GObject.registerClass(
             });
 
             // ──────────────────────────────────────────────────────────────────
-            // 2. CARD: HOURLY FORECAST (with Switcher & Horizontal Scroll)
+            // 2. CARD: HOURLY FORECAST (Accurate future clock hours, 24h scroll)
             // ──────────────────────────────────────────────────────────────────
             if (hourly && Array.isArray(hourly.temp) && hourly.temp.length > 0) {
                 const hourlyCardBox = new St.BoxLayout({
@@ -769,23 +817,19 @@ export const MeteoIndicator = GObject.registerClass(
                     style: 'spacing: 14px; padding: 2px 0;',
                 });
 
-                const hoursLimit = Math.min(24, hourly.temp.length);
-                for (let i = 0; i < hoursLimit; i++) {
+                const availableSlots = Math.min(24, hourly.temp.length - this._hourlyStartIndex);
+                for (let i = 0; i < availableSlots; i++) {
+                    const dataIdx = this._hourlyStartIndex + i;
                     const col = new St.BoxLayout({
                         vertical: true,
                         style: 'spacing: 4px; min-width: 44px;',
                         x_align: Clutter.ActorAlign.CENTER,
                     });
 
-                    let timeStr = t.now;
-                    if (i > 0 && hourly.time && hourly.time[i]) {
-                        try {
-                            const d = new Date(hourly.time[i]);
-                            timeStr = `${String(d.getHours()).padStart(2, '0')}:00`;
-                        } catch {
-                            timeStr = t.hPrefix.replace('{n}', i);
-                        }
-                    }
+                    // Slot 0 is "Now" / "Зараз" / "Сейчас"; subsequent slots are actual clock times (e.g. 23:00, 00:00)
+                    let timeStr = (i === 0)
+                        ? t.now
+                        : formatHour(hourly.time[dataIdx], is12h);
 
                     const tLab = new St.Label({
                         text: timeStr,
@@ -811,7 +855,7 @@ export const MeteoIndicator = GObject.registerClass(
                     col.add_child(valLab);
                     hourlyRow.add_child(col);
 
-                    this._hourlySlots.push({ icon: hIcon, val: valLab });
+                    this._hourlySlots.push({ dataIdx, icon: hIcon, val: valLab });
                 }
 
                 hScroll.add_child(hourlyRow);
@@ -1034,32 +1078,32 @@ export const MeteoIndicator = GObject.registerClass(
             const { hourly, current } = this._weatherData;
             if (!Array.isArray(hourly.temp)) return;
 
-            const count = Math.min(this._hourlySlots.length, hourly.temp.length);
-            for (let i = 0; i < count; i++) {
-                const slot = this._hourlySlots[i];
-                if (!slot) continue;
+            for (const slot of this._hourlySlots) {
+                const dataIdx = slot.dataIdx;
+                if (dataIdx === undefined || dataIdx >= hourly.temp.length) continue;
 
                 if (this._hourlyMetric === 'precip') {
                     slot.icon.icon_name = 'weather-showers-symbolic';
-                    const prob = (hourly.precipProb && hourly.precipProb[i] !== undefined)
-                        ? Math.round(hourly.precipProb[i])
+                    const prob = (hourly.precipProb && hourly.precipProb[dataIdx] !== undefined)
+                        ? Math.round(hourly.precipProb[dataIdx])
                         : 0;
                     slot.val.text = `${prob}%`;
                 } else if (this._hourlyMetric === 'wind') {
                     slot.icon.icon_name = 'weather-windy-symbolic';
-                    const windSpeed = (hourly.wind && hourly.wind[i] !== undefined)
-                        ? Math.round(hourly.wind[i])
+                    const windSpeed = (hourly.wind && hourly.wind[dataIdx] !== undefined)
+                        ? Math.round(hourly.wind[dataIdx])
                         : 0;
                     slot.val.text = `${windSpeed}`;
                 } else {
+                    const isDay = hourly.isDay ? hourly.isDay[dataIdx] : current.isDay;
                     const hScene = deriveScene({
-                        code: hourly.code ? hourly.code[i] : current.code,
+                        code: hourly.code ? hourly.code[dataIdx] : current.code,
                         visibility: null,
                         cape: 0,
-                        isDay: hourly.isDay ? hourly.isDay[i] : current.isDay,
+                        isDay,
                     });
-                    slot.icon.icon_name = getSymbolicIcon(hScene.scene, hourly.isDay ? hourly.isDay[i] : current.isDay);
-                    slot.val.text = `${Math.round(hourly.temp[i])}°`;
+                    slot.icon.icon_name = getSymbolicIcon(hScene.scene, isDay);
+                    slot.val.text = `${Math.round(hourly.temp[dataIdx])}°`;
                 }
             }
         }
