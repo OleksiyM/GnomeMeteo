@@ -248,10 +248,10 @@ function get(url) {
         const session = new Soup.Session({
             // MET Norway rejects generic agents (403); include identification
             // and a contact per their usage policies
-            user_agent: 'gnome-shell-weatherglass/5 ' +
+            user_agent: 'gnome-shell-meteo/1 ' +
                         '(GNOME Shell extension; ' +
-                        'contact: https://github.com/vijaybala-lang/' +
-                        'weatherglass/issues)',
+                        'contact: https://github.com/OleksiyM/' +
+                        'meteo/issues)',
             timeout: 15,
         });
         const msg = Soup.Message.new('GET', url);
@@ -836,7 +836,7 @@ function providerFor(id) {
  * GeoClue keeps working no IP endpoint is contacted at all.
  */
 
-const GEOCLUE_DESKTOP_ID = 'dev.vijaybala.weatherglass';
+const GEOCLUE_DESKTOP_ID = 'io.github.oleksiym.meteo';
 const GEOCLUE_TIMEOUT_SEC = 5;
 const GEOCLUE_RETRY_SEC = 1800;       // first retry after 30 min, ...
 const GEOCLUE_RETRY_MAX_SEC = 86400;  // ... backing off to once a day

@@ -2,7 +2,7 @@
 # Install/upgrade the Animated Weather extension for the current user.
 set -euo pipefail
 
-UUID="weatherglass@vijaybala.dev"
+UUID="meteo@oleksiym.github.io"
 SRC="$(cd "$(dirname "$0")" && pwd)"
 DEST="${XDG_DATA_HOME:-$HOME/.local/share}/gnome-shell/extensions/$UUID"
 

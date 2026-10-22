@@ -808,7 +808,7 @@ export default class AnimatedWeatherPrefs extends ExtensionPreferences {
         }));
         infoGroup.add(new Adw.ActionRow({
             title: _('Contact'),
-            subtitle: 'https://github.com/vijaybala-lang/weatherglass/issues',
+            subtitle: 'https://github.com/OleksiyM/meteo/issues',
         }));
         infoGroup.add(new Adw.ActionRow({
             title: _('Free and open source'),

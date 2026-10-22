@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-  <schema id="org.gnome.shell.extensions.weatherglass"
-          path="/org/gnome/shell/extensions/weatherglass/">
+  <schema id="org.gnome.shell.extensions.meteo"
+          path="/org/gnome/shell/extensions/meteo/">
 
     <key name="auto-location" type="b">
       <default>true</default>
