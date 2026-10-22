@@ -1,9 +1,10 @@
-// Meteo Indicator (clean architecture, hot-reloadable, backed by weather.js)
+// Meteo Indicator (Apple-inspired smartphone card layout, 10-day forecast, clean architecture)
 
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
@@ -34,6 +35,40 @@ function formatDayName(dateStr, index) {
         return days[d.getDay()];
     } catch {
         return dateStr;
+    }
+}
+
+class TooltipHelper {
+    constructor() {
+        this._tooltip = null;
+    }
+
+    show(actor, text) {
+        this.hide();
+        this._tooltip = new St.Label({
+            text,
+            style_class: 'dash-label',
+            reactive: false,
+        });
+        Main.uiGroup.add_child(this._tooltip);
+
+        const [x, y] = actor.get_transformed_position();
+        const [w, h] = actor.get_transformed_size();
+        const [, naturalWidth] = this._tooltip.get_preferred_width(-1);
+        const tipWidth = naturalWidth || 110;
+
+        this._tooltip.set_position(
+            Math.round(x + w / 2 - tipWidth / 2),
+            Math.round(y + h + 6)
+        );
+    }
+
+    hide() {
+        if (this._tooltip) {
+            Main.uiGroup.remove_child(this._tooltip);
+            this._tooltip.destroy();
+            this._tooltip = null;
+        }
     }
 }
 
@@ -77,6 +112,7 @@ class WeatherCoordinator {
                 auto: isAuto,
                 latitude: this._settings.get_double('location-latitude'),
                 longitude: this._settings.get_double('location-longitude'),
+                days: 10, // Request full 10-day forecast
             });
             this._data = data;
             this._lastFetch = GLib.get_monotonic_time() / 1000000;
@@ -116,8 +152,10 @@ export const MeteoIndicator = GObject.registerClass(
             super._init(0.0, 'Meteo');
             this._ext = extension;
             this._settings = extension.getSettings();
+            this._tooltipHelper = new TooltipHelper();
+            this._lastUpdateStr = '';
 
-            // 1. Panel button layout: clean icon + number + degree
+            // 1. Panel button: clean symbolic icon + temperature (e.g. 13°)
             this._box = new St.BoxLayout({
                 style_class: 'panel-status-indicators-box',
                 y_align: Clutter.ActorAlign.CENTER,
@@ -137,18 +175,17 @@ export const MeteoIndicator = GObject.registerClass(
             this._box.add_child(this._label);
             this.add_child(this._box);
 
-            // 2. Minimum menu width
-            this.menu.box.style = 'min-width: 260px;';
+            // 2. Vertical smartphone-card dimensions
+            this.menu.box.style = 'min-width: 330px; max-width: 350px; padding: 10px 12px;';
 
             // 3. Connect weather coordinator
             this._coordinator = new WeatherCoordinator(this._settings);
             this._coordinator.onData((data, isAuto) => this._onWeatherReceived(data, isAuto));
             this._coordinator.onError(err => this._onWeatherError(err));
 
-            // 4. Initial placeholder
             this._buildPlaceholder('Завантаження погоди…');
 
-            // 5. Settings change listener
+            // 4. Settings listener
             this._settingsChangedId = this._settings.connect('changed', (settings, key) => {
                 if (key === 'auto-location') {
                     if (settings.get_boolean('auto-location')) ensureDesktopEntry();
@@ -159,14 +196,16 @@ export const MeteoIndicator = GObject.registerClass(
                 }
             });
 
-            // 6. Refresh on menu open if data is stale
+            // 5. Hide tooltip on menu close, refresh if stale
             this._menuOpenId = this.menu.connect('open-state-changed', (menu, open) => {
-                if (open && this._coordinator.isStale()) {
+                if (!open) {
+                    this._tooltipHelper.hide();
+                } else if (this._coordinator.isStale()) {
                     this._coordinator.fetch(false);
                 }
             });
 
-            // 7. Initial fetch
+            // 6. Initial fetch
             this._coordinator.fetch(true);
             this._coordinator.startTimer();
         }
@@ -181,14 +220,14 @@ export const MeteoIndicator = GObject.registerClass(
             this._icon.icon_name = iconName;
             this._label.text = `${roundedTemp}°`;
 
-            // Resolve city name
+            this._lastUpdateStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
             const cityName = (isAuto && detectedName)
                 ? detectedName
                 : (this._settings.get_string('location-name') || 'Моє розташування');
 
-            console.log(`[Meteo] Weather updated: city=${cityName}, temp=${roundedTemp}°, icon=${iconName}`);
+            console.log(`[Meteo] Weather updated: city=${cityName}, temp=${roundedTemp}°, days=${Array.isArray(daily) ? daily.length : 0}`);
 
-            // Build menu
             this._buildFullMenu(cityName, current, daily, hourly, sceneInfo);
         }
 
@@ -208,45 +247,128 @@ export const MeteoIndicator = GObject.registerClass(
         _buildFullMenu(cityName, current, daily, hourly, sceneInfo) {
             this.menu.removeAll();
 
-            // 1. Header: City & Large Temp
-            const titleItem = new PopupMenu.PopupMenuItem(cityName, { reactive: false });
-            titleItem.label.style = 'font-size: 16px; font-weight: bold; text-align: center;';
-            titleItem.label.x_align = Clutter.ActorAlign.CENTER;
-            this.menu.addMenuItem(titleItem);
+            // ══════════════════════════════════════════════════════════════════
+            // 1. HEADER (Top controls + Centered City, Big Temp, Condition)
+            // ══════════════════════════════════════════════════════════════════
+            const headerItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+            const headerContainer = new St.BoxLayout({
+                vertical: true,
+                x_expand: true,
+                style: 'padding: 4px 6px 8px 6px;',
+            });
 
-            const tempItem = new PopupMenu.PopupMenuItem(`${Math.round(current.temp)}°`, { reactive: false });
-            tempItem.label.style = 'font-size: 38px; font-weight: 300; text-align: center;';
-            tempItem.label.x_align = Clutter.ActorAlign.CENTER;
-            this.menu.addMenuItem(tempItem);
+            // Top control row: [🔄 Refresh] on left, [⚙️ Settings] on right, City in center
+            const topRow = new St.BoxLayout({
+                x_expand: true,
+                y_align: Clutter.ActorAlign.CENTER,
+            });
 
-            // Condition & Range
-            const condText = sceneInfo.desc || 'Ясно';
-            let rangeText = condText;
-            if (daily && daily.tempMax && daily.tempMax[0] !== undefined) {
-                const h = Math.round(daily.tempMax[0]);
-                const l = Math.round(daily.tempMin[0]);
-                rangeText = `${condText}  ·  Макс.: ${h}°, мін.: ${l}°`;
+            const refreshBtn = new St.Button({
+                child: new St.Icon({
+                    icon_name: 'view-refresh-symbolic',
+                    icon_size: 16,
+                    style_class: 'system-status-icon',
+                }),
+                style_class: 'button',
+                can_focus: true,
+                y_align: Clutter.ActorAlign.CENTER,
+            });
+            refreshBtn.connect('notify::hover', () => {
+                if (refreshBtn.hover) {
+                    this._tooltipHelper.show(refreshBtn, `Оновлено о ${this._lastUpdateStr}`);
+                } else {
+                    this._tooltipHelper.hide();
+                }
+            });
+            refreshBtn.connect('clicked', () => {
+                this._tooltipHelper.hide();
+                this._coordinator.fetch(true);
+            });
+
+            const cityLabel = new St.Label({
+                text: cityName,
+                style: 'font-size: 18px; font-weight: 600; text-align: center;',
+                x_expand: true,
+                x_align: Clutter.ActorAlign.CENTER,
+                y_align: Clutter.ActorAlign.CENTER,
+            });
+
+            const prefsBtn = new St.Button({
+                child: new St.Icon({
+                    icon_name: 'preferences-system-symbolic',
+                    icon_size: 16,
+                    style_class: 'system-status-icon',
+                }),
+                style_class: 'button',
+                can_focus: true,
+                y_align: Clutter.ActorAlign.CENTER,
+            });
+            prefsBtn.connect('clicked', () => {
+                this._tooltipHelper.hide();
+                this.menu.close();
+                this._ext.openPreferences();
+            });
+
+            topRow.add_child(refreshBtn);
+            topRow.add_child(cityLabel);
+            topRow.add_child(prefsBtn);
+            headerContainer.add_child(topRow);
+
+            // Centered Big Temperature
+            const tempLabel = new St.Label({
+                text: `${Math.round(current.temp)}°`,
+                style: 'font-size: 48px; font-weight: 200; text-align: center; margin-top: 4px;',
+                x_align: Clutter.ActorAlign.CENTER,
+            });
+            headerContainer.add_child(tempLabel);
+
+            // Condition Description
+            const condLabel = new St.Label({
+                text: sceneInfo.desc || 'Ясно',
+                style: 'font-size: 14px; font-weight: 500; opacity: 0.85; text-align: center;',
+                x_align: Clutter.ActorAlign.CENTER,
+            });
+            headerContainer.add_child(condLabel);
+
+            // Daily Range (High / Low for today)
+            const dailyArr = Array.isArray(daily) ? daily : [];
+            if (dailyArr.length > 0 && dailyArr[0].tmax !== undefined) {
+                const todayMax = Math.round(dailyArr[0].tmax);
+                const todayMin = Math.round(dailyArr[0].tmin);
+                const rangeLabel = new St.Label({
+                    text: `Макс.: ${todayMax}° · Мін.: ${todayMin}°`,
+                    style: 'font-size: 13px; opacity: 0.7; text-align: center; margin-top: 2px;',
+                    x_align: Clutter.ActorAlign.CENTER,
+                });
+                headerContainer.add_child(rangeLabel);
             }
-            const descItem = new PopupMenu.PopupMenuItem(rangeText, { reactive: false });
-            descItem.label.style = 'font-size: 12px; opacity: 0.8; text-align: center;';
-            descItem.label.x_align = Clutter.ActorAlign.CENTER;
-            this.menu.addMenuItem(descItem);
 
-            this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+            headerItem.add_child(headerContainer);
+            this.menu.addMenuItem(headerItem);
 
-            // 2. Next 5 Hours (clean row)
-            if (hourly && hourly.temp && hourly.temp.length > 0) {
-                const hourlyHeader = new PopupMenu.PopupMenuItem('ПОГОДИННИЙ ПРОГНОЗ', { reactive: false });
-                hourlyHeader.label.style = 'font-size: 11px; font-weight: bold; opacity: 0.6;';
-                this.menu.addMenuItem(hourlyHeader);
-
-                const hourlyItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
-                const hourlyRow = new St.BoxLayout({
+            // ══════════════════════════════════════════════════════════════════
+            // 2. CARD: HOURLY FORECAST (Horizontal scroll row)
+            // ══════════════════════════════════════════════════════════════════
+            if (hourly && Array.isArray(hourly.temp) && hourly.temp.length > 0) {
+                const hourlyCardItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+                const hourlyCardBox = new St.BoxLayout({
+                    vertical: true,
                     x_expand: true,
-                    style: 'spacing: 12px; padding: 4px 6px;',
+                    style: 'background-color: rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 10px 12px; margin: 4px 0;',
                 });
 
-                const count = Math.min(5, hourly.temp.length);
+                const hourlyTitle = new St.Label({
+                    text: 'ПОГОДИННИЙ ПРОГНОЗ',
+                    style: 'font-size: 11px; font-weight: 700; opacity: 0.55; margin-bottom: 8px;',
+                });
+                hourlyCardBox.add_child(hourlyTitle);
+
+                const hourlyRow = new St.BoxLayout({
+                    x_expand: true,
+                    style: 'spacing: 12px;',
+                });
+
+                const count = Math.min(6, hourly.temp.length);
                 for (let i = 0; i < count; i++) {
                     const col = new St.BoxLayout({
                         vertical: true,
@@ -255,18 +377,18 @@ export const MeteoIndicator = GObject.registerClass(
                         x_align: Clutter.ActorAlign.CENTER,
                     });
 
-                    let timeLabel = 'Зараз';
+                    let timeStr = 'Зараз';
                     if (i > 0 && hourly.time && hourly.time[i]) {
                         try {
                             const d = new Date(hourly.time[i]);
-                            timeLabel = `${String(d.getHours()).padStart(2, '0')}:00`;
+                            timeStr = `${String(d.getHours()).padStart(2, '0')}:00`;
                         } catch {
-                            timeLabel = `+${i}г`;
+                            timeStr = `+${i}г`;
                         }
                     }
 
                     const tLab = new St.Label({
-                        text: timeLabel,
+                        text: timeStr,
                         style: 'font-size: 11px; opacity: 0.7;',
                         x_align: Clutter.ActorAlign.CENTER,
                     });
@@ -286,7 +408,7 @@ export const MeteoIndicator = GObject.registerClass(
 
                     const degLab = new St.Label({
                         text: `${Math.round(hourly.temp[i])}°`,
-                        style: 'font-size: 12px; font-weight: bold;',
+                        style: 'font-size: 12px; font-weight: 600;',
                         x_align: Clutter.ActorAlign.CENTER,
                     });
 
@@ -296,34 +418,57 @@ export const MeteoIndicator = GObject.registerClass(
                     hourlyRow.add_child(col);
                 }
 
-                hourlyItem.add_child(hourlyRow);
-                this.menu.addMenuItem(hourlyItem);
-                this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+                hourlyCardBox.add_child(hourlyRow);
+                hourlyCardItem.add_child(hourlyCardBox);
+                this.menu.addMenuItem(hourlyCardItem);
             }
 
-            // 3. 7-Day Forecast (clean slot items like svitlo-indicator)
-            if (daily && daily.tempMax && daily.tempMax.length > 0) {
-                const dailyHeader = new PopupMenu.PopupMenuItem('ПРОГНОЗ НА 7 ДНІВ', { reactive: false });
-                dailyHeader.label.style = 'font-size: 11px; font-weight: bold; opacity: 0.6;';
-                this.menu.addMenuItem(dailyHeader);
+            // ══════════════════════════════════════════════════════════════════
+            // 3. CARD: 10-DAY FORECAST (Up to 10 days with gradient range bar)
+            // ══════════════════════════════════════════════════════════════════
+            if (dailyArr.length > 0) {
+                const dailyCardItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+                const dailyCardBox = new St.BoxLayout({
+                    vertical: true,
+                    x_expand: true,
+                    style: 'background-color: rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 10px 12px; margin: 4px 0;',
+                });
 
-                const daysCount = Math.min(7, daily.tempMax.length);
+                const daysCount = Math.min(10, dailyArr.length);
+                const dailyTitle = new St.Label({
+                    text: `ПРОГНОЗ НА ${daysCount} ДНІВ`,
+                    style: 'font-size: 11px; font-weight: 700; opacity: 0.55; margin-bottom: 6px;',
+                });
+                dailyCardBox.add_child(dailyTitle);
+
+                // Compute global range for gradient bars
+                let globalMin = Infinity;
+                let globalMax = -Infinity;
                 for (let i = 0; i < daysCount; i++) {
-                    const dayItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
-                    const dayBox = new St.BoxLayout({
+                    const item = dailyArr[i];
+                    if (item.tmin < globalMin) globalMin = item.tmin;
+                    if (item.tmax > globalMax) globalMax = item.tmax;
+                }
+                const rangeSpan = Math.max(1, globalMax - globalMin);
+
+                for (let i = 0; i < daysCount; i++) {
+                    const dayData = dailyArr[i];
+                    const dayRow = new St.BoxLayout({
                         x_expand: true,
-                        style: 'spacing: 8px; padding: 2px 4px;',
+                        style: 'spacing: 8px; padding: 3px 0;',
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
+                    // Day name
                     const nameLab = new St.Label({
-                        text: formatDayName(daily.time ? daily.time[i] : '', i),
+                        text: formatDayName(dayData.date, i),
                         style: 'font-size: 13px; font-weight: 500; min-width: 65px;',
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
+                    // Weather icon
                     const dScene = deriveScene({
-                        code: daily.code ? daily.code[i] : 0,
+                        code: dayData.code ?? 0,
                         visibility: null,
                         cape: 0,
                         isDay: true,
@@ -335,76 +480,110 @@ export const MeteoIndicator = GObject.registerClass(
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
-                    const spacer = new St.Widget({ x_expand: true });
-
-                    const rangeLab = new St.Label({
-                        text: `${Math.round(daily.tempMin[i])}° … ${Math.round(daily.tempMax[i])}°`,
-                        style: 'font-size: 13px; opacity: 0.85;',
+                    // Min temp
+                    const minLab = new St.Label({
+                        text: `${Math.round(dayData.tmin)}°`,
+                        style: 'font-size: 13px; opacity: 0.7; min-width: 26px; text-align: right;',
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
-                    dayBox.add_child(nameLab);
-                    dayBox.add_child(dIcon);
-                    dayBox.add_child(spacer);
-                    dayBox.add_child(rangeLab);
-                    dayItem.add_child(dayBox);
-                    this.menu.addMenuItem(dayItem);
+                    // Range Bar container (fixed width 75px)
+                    const BAR_WIDTH = 75;
+                    const barBox = new St.Widget({
+                        style: `width: ${BAR_WIDTH}px; height: 4px; background-color: rgba(255, 255, 255, 0.15); border-radius: 2px;`,
+                        y_align: Clutter.ActorAlign.CENTER,
+                    });
+
+                    const fillLeft = Math.max(0, Math.min(BAR_WIDTH - 10, Math.round(((dayData.tmin - globalMin) / rangeSpan) * BAR_WIDTH)));
+                    const fillRight = Math.max(fillLeft + 8, Math.min(BAR_WIDTH, Math.round(((dayData.tmax - globalMin) / rangeSpan) * BAR_WIDTH)));
+                    const fillWidth = Math.max(8, fillRight - fillLeft);
+
+                    const barFill = new St.Widget({
+                        style: `margin-left: ${fillLeft}px; width: ${fillWidth}px; height: 4px; background: linear-gradient(to right, #59c0fa, #fba626); border-radius: 2px;`,
+                    });
+                    barBox.add_child(barFill);
+
+                    // Max temp
+                    const maxLab = new St.Label({
+                        text: `${Math.round(dayData.tmax)}°`,
+                        style: 'font-size: 13px; font-weight: 600; min-width: 26px; text-align: right;',
+                        y_align: Clutter.ActorAlign.CENTER,
+                    });
+
+                    dayRow.add_child(nameLab);
+                    dayRow.add_child(dIcon);
+                    dayRow.add_child(minLab);
+                    dayRow.add_child(barBox);
+                    dayRow.add_child(maxLab);
+                    dailyCardBox.add_child(dayRow);
                 }
 
-                this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+                dailyCardItem.add_child(dailyCardBox);
+                this.menu.addMenuItem(dailyCardItem);
             }
 
-            // 4. Footer actions: Refresh & Preferences
-            const actionsItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
-            const actionsBox = new St.BoxLayout({
+            // ══════════════════════════════════════════════════════════════════
+            // 4. CARD: 2×2 WEATHER DETAILS GRID
+            // ══════════════════════════════════════════════════════════════════
+            const detailsItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
+            const detailsContainer = new St.BoxLayout({
+                vertical: true,
                 x_expand: true,
-                style: 'spacing: 8px; padding: 2px 4px;',
-                y_align: Clutter.ActorAlign.CENTER,
+                style: 'spacing: 8px; margin-top: 4px;',
             });
 
-            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const timeLab = new St.Label({
-                text: `Оновлено: ${timeStr}`,
-                style: 'font-size: 11px; opacity: 0.5;',
-                y_align: Clutter.ActorAlign.CENTER,
-            });
+            const makeTile = (title, value, subtext) => {
+                const tile = new St.BoxLayout({
+                    vertical: true,
+                    x_expand: true,
+                    style: 'background-color: rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 8px 10px;',
+                });
+                const tLab = new St.Label({
+                    text: title,
+                    style: 'font-size: 10px; font-weight: 700; opacity: 0.5; margin-bottom: 2px;',
+                });
+                const vLab = new St.Label({
+                    text: value,
+                    style: 'font-size: 18px; font-weight: 500;',
+                });
+                const sLab = new St.Label({
+                    text: subtext,
+                    style: 'font-size: 10px; opacity: 0.6; margin-top: 2px;',
+                });
+                tile.add_child(tLab);
+                tile.add_child(vLab);
+                if (subtext) tile.add_child(sLab);
+                return tile;
+            };
 
-            const footerSpacer = new St.Widget({ x_expand: true });
+            // Row 1: Feels like & UV Index
+            const row1 = new St.BoxLayout({ x_expand: true, style: 'spacing: 8px;' });
+            const feelsVal = current.feels !== undefined ? `${Math.round(current.feels)}°` : `${Math.round(current.temp)}°`;
+            const uvVal = current.uv !== null && current.uv !== undefined ? `${Math.round(current.uv)}` : '0';
+            const uvDesc = Number(uvVal) <= 2 ? 'Низький' : Number(uvVal) <= 5 ? 'Помірний' : 'Високий';
 
-            const refreshBtn = new St.Button({
-                child: new St.Icon({
-                    icon_name: 'view-refresh-symbolic',
-                    icon_size: 16,
-                    style_class: 'system-status-icon',
-                }),
-                style_class: 'button',
-                can_focus: true,
-            });
-            refreshBtn.connect('clicked', () => this._coordinator.fetch(true));
+            row1.add_child(makeTile('ВІДЧУВАЄТЬСЯ', feelsVal, 'Схоже на реальну'));
+            row1.add_child(makeTile('УФ-ІНДЕКС', uvVal, uvDesc));
+            detailsContainer.add_child(row1);
 
-            const prefsBtn = new St.Button({
-                child: new St.Icon({
-                    icon_name: 'preferences-system-symbolic',
-                    icon_size: 16,
-                    style_class: 'system-status-icon',
-                }),
-                style_class: 'button',
-                can_focus: true,
-            });
-            prefsBtn.connect('clicked', () => {
-                this.menu.close();
-                this._ext.openPreferences();
-            });
+            // Row 2: Humidity & Pressure
+            const row2 = new St.BoxLayout({ x_expand: true, style: 'spacing: 8px;' });
+            const humVal = current.humidity !== undefined ? `${Math.round(current.humidity)}%` : '—';
+            const pressMm = current.pressure ? Math.round(current.pressure * 0.750062) : 750;
 
-            actionsBox.add_child(timeLab);
-            actionsBox.add_child(footerSpacer);
-            actionsBox.add_child(refreshBtn);
-            actionsBox.add_child(prefsBtn);
-            actionsItem.add_child(actionsBox);
-            this.menu.addMenuItem(actionsItem);
+            row2.add_child(makeTile('ВОЛОГІСТЬ', humVal, 'Точка роси в нормі'));
+            row2.add_child(makeTile('ТИСК', `${pressMm} мм`, 'Нормальний'));
+            detailsContainer.add_child(row2);
+
+            detailsItem.add_child(detailsContainer);
+            this.menu.addMenuItem(detailsItem);
         }
 
         destroy() {
+            if (this._tooltipHelper) {
+                this._tooltipHelper.hide();
+                this._tooltipHelper = null;
+            }
             if (this._settingsChangedId) {
                 this._settings.disconnect(this._settingsChangedId);
                 this._settingsChangedId = 0;
