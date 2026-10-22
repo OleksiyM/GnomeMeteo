@@ -141,7 +141,7 @@ const MESSAGES = {
             cleanAir: 'Чистый воздух',
             haze: 'Лёгкая дымка',
             humidity: '💧 ВЛАЖНОСТЬ',
-            dewPoint: 'Точка роси: {n}°',
+            dewPoint: 'Точка росы: {n}°',
             pressure: '🧭 ДАВЛЕНИЕ',
             mm: 'мм',
             normal: 'Нормальное',
@@ -360,6 +360,8 @@ class TooltipHelper {
 
     show(actor, text) {
         this.hide();
+        if (!actor || !actor.get_stage() || !actor.is_mapped()) return;
+
         this._tooltip = new St.Label({
             text,
             style_class: 'dash-label',
@@ -380,9 +382,9 @@ class TooltipHelper {
 
     hide() {
         if (this._tooltip) {
-            Main.uiGroup.remove_child(this._tooltip);
-            this._tooltip.destroy();
+            const tip = this._tooltip;
             this._tooltip = null;
+            tip.destroy();
         }
     }
 }
