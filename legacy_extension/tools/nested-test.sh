@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# Boot a nested headless gnome-shell with only our extension enabled.
+# Exercises: imperial units + manual city (cold start), a rapid city change
+# while a fetch may be in flight, and opening the prefs window.
+set -u
+PROJ="$(cd "$(dirname "$0")/.." && pwd)"   # run from tools/../ -> project root
+H=/tmp/opencode/nested-home
+LOG=/tmp/opencode/nested.log
+SCHEMA=org.gnome.shell.extensions.weatherglass
+
+rm -rf "$H"; mkdir -p "$H/.local/share/gnome-shell"
+# real dir: our extension is symlinked in, the menu-opening test copied in
+mkdir -p "$H/.local/share/gnome-shell/extensions"
+ln -s ~/.local/share/gnome-shell/extensions/weatherglass@vijaybala.dev \
+      "$H/.local/share/gnome-shell/extensions/weatherglass@vijaybala.dev"
+cp -r "$PROJ/tools/menutest@vijaybala.dev" "$H/.local/share/gnome-shell/extensions/"
+mkdir -p "$H/.local/share/glib-2.0/schemas"
+cp "$PROJ/schemas/"*.xml "$H/.local/share/glib-2.0/schemas/"
+glib-compile-schemas "$H/.local/share/glib-2.0/schemas"
+
+export HOME="$H" XDG_DATA_DIRS=/usr/share
+unset WAYLAND_DISPLAY DISPLAY
+export G_MESSAGES_DEBUG=all
+
+timeout 180 dbus-run-session -- bash -c "
+  gsettings set org.gnome.shell enabled-extensions '[\"weatherglass@vijaybala.dev\", \"menutest@vijaybala.dev\"]'
+  gsettings set $SCHEMA units 'imperial'
+  gsettings set $SCHEMA auto-location false
+  gsettings set $SCHEMA location-latitude 47.6062
+  gsettings set $SCHEMA location-longitude -122.3321
+  gsettings set $SCHEMA location-name 'Seattle'
+  gnome-shell --headless --virtual-monitor 1280x800 --no-x11 &
+  GPID=\$!
+  for i in \$(seq 1 40); do
+    sleep 2
+    busctl --user --no-pager tree org.gnome.Shell >/dev/null 2>&1 || { kill -0 \$GPID || exit 1; continue; }
+    sleep 8
+    echo '=== scenario 2: rapid city change ==='
+    gsettings set $SCHEMA location-latitude 37.7749
+    gsettings set $SCHEMA location-longitude -122.4194
+    gsettings set $SCHEMA location-name 'San Francisco'
+    sleep 10
+    echo '=== scenario 3: prefs ==='
+    busctl --user call org.gnome.Shell.Extensions /org/gnome/Shell/Extensions org.gnome.Shell.Extensions OpenExtensionPrefs ssa{sv} weatherglass@vijaybala.dev '' 0
+    sleep 6
+    echo '=== scenario 4: preview-scene round trip (shell must revert key) ==='
+    gsettings set $SCHEMA preview-scene 'hail'
+    sleep 16
+    echo 'preview-scene after preview window (want empty string):'
+    gsettings get $SCHEMA preview-scene
+    echo '=== scenario 4b: menu-style accent/solid (background modes) ==='
+    gsettings set $SCHEMA menu-style 'accent'
+    sleep 3
+    gsettings set $SCHEMA menu-style 'solid'
+    sleep 3
+    gsettings set $SCHEMA menu-style 'accent'
+    sleep 2
+    # re-run the popup toggler so its opens/closes paint the accent bg
+    gnome-extensions disable menutest@vijaybala.dev
+    sleep 2
+    gnome-extensions enable menutest@vijaybala.dev
+    sleep 12
+    echo '=== scenario 4b2: condition strip pills/off (grouped icons, light bg) ==='
+    gsettings set $SCHEMA condition-strip 'pills'
+    sleep 3
+    gnome-extensions disable menutest@vijaybala.dev
+    sleep 2
+    gnome-extensions enable menutest@vijaybala.dev
+    sleep 10
+    gsettings set $SCHEMA condition-strip 'off'
+    sleep 2
+    gsettings set $SCHEMA condition-strip 'icons'
+    gsettings set $SCHEMA condition-pos 'bottom'
+    sleep 2
+    gnome-extensions disable menutest@vijaybala.dev
+    sleep 2
+    gnome-extensions enable menutest@vijaybala.dev
+    sleep 8
+    gsettings set $SCHEMA condition-pos 'top'
+    sleep 2
+    gsettings set $SCHEMA menu-style 'animated'
+    sleep 2
+    echo '=== scenario 4c: provider switch → MET Norway (live api.met.no) ==='
+    gsettings set $SCHEMA provider 'met-norway'
+    sleep 10
+    gsettings set $SCHEMA provider 'open-meteo'
+    sleep 6
+    echo '=== scenario 5: popup open/close paint (crash regression) ==='
+    sleep 4
+    kill -0 \$GPID 2>/dev/null || { echo 'FAIL: shell died during menu toggles'; exit 1; }
+    echo '=== scenario 6: disable/enable teardown (disposed-timer regression) ==='
+    gnome-extensions disable weatherglass@vijaybala.dev
+    sleep 8
+    gnome-extensions enable weatherglass@vijaybala.dev
+    sleep 8
+    kill -0 \$GPID 2>/dev/null || { echo 'FAIL: shell died across disable/enable'; exit 1; }
+    kill \$GPID; exit 0
+  done
+  kill \$GPID
+" >"$LOG" 2>&1
+echo "exit: $?"
+echo "--- menutest lines ---"
+grep "menutest" "$LOG" | tail -3
+grep -q "menutest: DONE" "$LOG" && echo "popup paint: PASS" || echo "popup paint: FAIL (menutest never finished)"
+# our disposed-object storm used to fire every clock tick after a disable:
+echo "--- disposed warnings implicating our extension ---"
+grep -A4 "has been already disposed" "$LOG" | grep -c "weatherglass" || true

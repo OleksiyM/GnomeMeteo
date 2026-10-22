@@ -1,0 +1,611 @@
+/* weatherglass */
+
+.aw-panel-box {
+    spacing: 5px;
+    padding: 0 2px;
+}
+
+.aw-temp {
+    font-weight: bold;
+}
+
+/* -- dropdown card --------------------------------------------------------
+ * The narrow card layout:
+ * flat text tabs over a hairline, huge thin temperature, plain degF | degC text
+ * toggle, transparent day tiles that only glass up when selected, and a
+ * chart that bleeds to the card edges. The sky itself is painted by sky.js
+ * underneath; this file only styles the St content riding on top.
+ */
+
+/* Own the popup chrome: the theme's .popup-menu-content padding would shrink
+ * the 330px card and frame the full-bleed sky in grey. The compound selector
+ * outranks the theme rule; extension.js also zeroes these inline. */
+.aw-menu,
+.aw-menu.popup-menu-content,
+.aw-menu .popup-menu-content {
+    padding: 0;
+}
+
+.aw-content {
+    width: 324px;
+    min-height: 480px;
+    padding: 8px 0 12px 0;
+    border-radius: 24px;
+    text-shadow: 0 1px 4px rgba(0, 0, 10, 0.65);
+}
+
+.aw-main {
+    spacing: 6px;
+}
+
+/* -- Meteo Header (Apple Weather style, centered hero + corner buttons) -- */
+
+.meteo-header {
+    spacing: 1px;
+    padding: 4px 14px 10px 14px;
+}
+
+.meteo-top-bar {
+    margin-bottom: 2px;
+}
+
+.meteo-city {
+    font-size: 1.25em;
+    font-weight: 600;
+    text-align: center;
+    color: #ffffff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.meteo-temp {
+    font-size: 3.8em;
+    font-weight: 200;
+    text-align: center;
+    margin: -6px 0 -2px 0;
+    color: #ffffff;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.meteo-desc {
+    font-size: 1.05em;
+    font-weight: 500;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.95);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.meteo-hilo {
+    font-size: 0.88em;
+    font-weight: 400;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.8);
+    margin-top: 2px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.meteo-summary {
+    font-size: 0.82em;
+    font-weight: 400;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 6px;
+}
+
+/* -- Rounded Card Sections (iOS style panels) -- */
+
+.meteo-scroll-box {
+    spacing: 7px;
+    padding-bottom: 8px;
+}
+
+.meteo-card {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 10px 12px;
+    margin: 4px 12px;
+}
+
+.meteo-card-header {
+    spacing: 6px;
+    margin-bottom: 8px;
+}
+
+.meteo-card-title {
+    font-size: 0.72em;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+/* Metric Toggle Pills */
+.meteo-metric-toggle-row {
+    spacing: 4px;
+}
+
+.meteo-metric-btn {
+    padding: 3px 8px;
+    border-radius: 12px;
+    background-color: rgba(255, 255, 255, 0.08);
+    transition-duration: 150ms;
+}
+
+.meteo-metric-btn:hover {
+    background-color: rgba(255, 255, 255, 0.16);
+}
+
+.meteo-metric-btn-active {
+    background-color: rgba(255, 255, 255, 0.28);
+}
+
+/* Hourly Columns */
+.meteo-hourly-columns {
+    spacing: 4px;
+    padding: 4px 0 2px 0;
+}
+
+.meteo-hourly-col {
+    spacing: 6px;
+}
+
+.meteo-hourly-time {
+    font-size: 0.75em;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+}
+
+.meteo-hourly-val {
+    font-size: 0.85em;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* Daily Rows */
+.meteo-daily-rows {
+    spacing: 7px;
+    padding: 2px 0;
+}
+
+.meteo-daily-row {
+    spacing: 8px;
+    height: 26px;
+}
+
+.meteo-daily-day {
+    font-size: 0.88em;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.meteo-daily-temp-low {
+    font-size: 0.85em;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.55);
+    text-align: right;
+}
+
+.meteo-daily-temp-hi {
+    font-size: 0.85em;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.95);
+    text-align: left;
+}
+
+.meteo-daily-metric-val {
+    font-size: 0.82em;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.85);
+    text-align: right;
+}
+
+/* RangeBar and FillBar */
+.meteo-range-bar,
+.meteo-fill-bar {
+    height: 6px;
+    background-color: rgba(255, 255, 255, 0.14);
+    border-radius: 3px;
+}
+
+.meteo-range-fill {
+    border-radius: 3px;
+    background-gradient-direction: horizontal;
+    background-gradient-start: #59c0fa;
+    background-gradient-end: #fba626;
+}
+
+.meteo-range-dot {
+    border-radius: 4px;
+    background-color: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.35);
+}
+
+.meteo-fill-progress {
+    border-radius: 3px;
+}
+
+/* Details 2x3 Grid */
+.meteo-details-container {
+    spacing: 6px;
+    margin: 2px 6px 6px 6px;
+}
+
+.meteo-detail-row {
+    spacing: 6px;
+}
+
+.meteo-detail-card {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 8px 10px;
+    spacing: 3px;
+    x-expand: true;
+    margin: 2px 3px;
+}
+
+.meteo-detail-top {
+    spacing: 5px;
+}
+
+.meteo-detail-icon {
+    font-size: 0.85em;
+}
+
+.meteo-detail-title {
+    font-size: 0.68em;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.meteo-detail-val {
+    font-size: 1.15em;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+.meteo-detail-sub {
+    font-size: 0.72em;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 2px;
+}
+
+.aw-hidden-clock {
+    height: 0;
+    width: 0;
+    opacity: 0;
+}
+
+/* -- header --------------------------------------------------------------- */
+
+.aw-header {
+    spacing: 10px;
+    /* bottom pad + .aw-desc margin = the breathing room between the
+     * condition text and the Precipitation/Wind tabs */
+    padding: 2px 14px 6px 14px;
+}
+
+.aw-temp-line {
+    spacing: 6px;
+}
+
+.aw-current-temp {
+    font-size: 3em;               /* oversized thin numeral */
+    font-weight: 200;
+}
+
+/* condition text under the big temp : sits close to the
+ * numeral, keeps real air before the metric tabs */
+.aw-desc {
+    font-size: 0.85em;
+    margin: 2px 0 4px 0;
+}
+
+.aw-city-col {
+    spacing: 3px;
+}
+
+.aw-city {
+    font-size: 1.15em;
+    font-weight: bold;
+}
+
+.aw-info-row {
+    spacing: 4px;
+}
+
+/* refresh/preferences row under the clock: right-aligned, tight */
+.aw-btn-row {
+    spacing: 2px;
+    margin-top: 1px;
+}
+
+.aw-clockline {
+    font-size: 0.85em;
+}
+
+/* -- metric tabs (pill style, like the day tiles) -------------------------
+ * Each tab is a full pill (transparent border keeps size stable); the active
+ * one lights up with the day-tile glass. No underline, no hairline rule. */
+
+.aw-tabs {
+    spacing: 8px;
+    padding: 2px 14px 4px 14px;
+}
+
+.aw-tab {
+    border: 1px solid transparent;
+    border-radius: 99px;
+    background-color: transparent;
+    box-shadow: none;
+    padding: 3px 10px;
+    min-height: 0;
+}
+
+.aw-tab-label {
+    font-size: 0.9em;
+    font-weight: bold;
+}
+
+/* dark glass pill behind the active tab -- same recipe as .aw-day-sel */
+.aw-dark .aw-tab.aw-tab-active {
+    background-color: rgba(16, 20, 28, 0.45);
+    border-color: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+}
+
+/* light glass pill (mirrors the light-mode selected day tile) */
+.aw-light .aw-tab.aw-tab-active {
+    background-color: rgba(255, 255, 255, 0.68);
+    border-color: rgba(16, 24, 35, 0.35);
+    color: #0b1220;
+}
+
+/* -- day tiles: narrow grid = two rows of four --------------------------- */
+
+.aw-days-grid {
+    spacing: 4px;
+    /* extra breathing room between the chart's hour labels and the tiles */
+    margin-top: 7px;
+}
+
+.aw-days {
+    spacing: 5px;
+    padding: 0 14px;
+}
+
+.aw-day {
+    border-radius: 12px;
+    padding: 6px 2px 5px 2px;
+    border: 1px solid transparent;
+    min-height: 0;
+}
+
+.aw-day-col {
+    spacing: 2px;
+}
+
+.aw-day-name {
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.aw-day-hl {
+    spacing: 5px;
+}
+
+.aw-day-hi,
+.aw-day-lo {
+    font-size: 0.8em;
+}
+
+/* hierarchy by weight, never opacity -- lows must survive sun-bright skies */
+.aw-day-hi {
+    font-weight: 600;
+}
+
+.aw-day-lo {
+    font-weight: 400;
+}
+
+/* -- ghost icon buttons (refresh / preferences, clock row) ---------------- */
+
+.aw-icon-btn {
+    border-radius: 99px;
+    padding: 3px;
+    /* fixed pill: a 16 px refresh glyph and an 18 px gear (optically even)
+     * still get identical hover circles */
+    min-width: 24px;
+    min-height: 24px;
+    background-color: transparent;
+    box-shadow: none;
+    border: none;
+}
+
+/* -- placeholder (loading / error) ---------------------------------------- */
+
+.aw-placeholder {
+    spacing: 12px;
+    padding: 60px 0;
+}
+
+.aw-placeholder-text {
+    font-size: 1.05em;
+    y_align: center;
+}
+
+/* -- dark theme (OS prefers-dark) ----------------------------------------- */
+
+.aw-dark {
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.aw-dark .aw-clockline,
+.aw-dark .aw-desc,
+.aw-dark .aw-placeholder-text {
+    color: rgba(255, 255, 255, 0.62);
+}
+
+/* lows dim only to .85 + weight -- .62 was unreadable */
+.aw-dark .aw-day-lo {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.aw-dark .aw-tab {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.aw-dark .aw-tab:hover {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.aw-dark .aw-icon-btn {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* StIcon reads icon-shadow from its own theme node (color inherits, shadows
+ * do not): the same emboss the card text uses, so the ghost buttons survive
+ * drifting over the moon. icon-shadow = real silhouette blur in GNOME 50. */
+.aw-dark .aw-icon-btn StIcon {
+    color: #ffffff;
+    icon-shadow: 0 1px 4px rgba(0, 0, 10, 0.85);
+}
+
+.aw-dark .aw-icon-btn:hover {
+    background-color: rgba(255, 255, 255, 0.16);
+}
+
+/* tiles are transparent until hovered/selected; the glass is DARK-tinted
+ * (rgba(16,20,28,-)) -- white ink on white-tinted glass vanishes
+ * over bright skies, dark glass is what makes it pop */
+.aw-dark .aw-day {
+    background-color: transparent;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.aw-dark .aw-day:hover {
+    background-color: rgba(16, 20, 28, 0.28);
+}
+
+.aw-dark .aw-day-sel {
+    background-color: rgba(16, 20, 28, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+}
+
+/* -- light theme (OS light mode) ------------------------------------------ */
+
+.aw-light {
+    color: #101823;
+    /* dark ink gets the mirror treatment: a light halo instead of a shadow */
+    text-shadow: 0 1px 3px rgba(255, 255, 255, 0.6);
+}
+
+.aw-light .aw-clockline,
+.aw-light .aw-desc,
+.aw-light .aw-placeholder-text {
+    color: rgba(16, 24, 35, 0.66);
+}
+
+.aw-light .aw-day-lo {
+    color: rgba(16, 24, 35, 0.8);
+}
+
+.aw-light .aw-tab {
+    color: rgba(16, 24, 35, 0.55);
+}
+
+.aw-light .aw-tab:hover {
+    color: rgba(16, 24, 35, 0.8);
+}
+
+.aw-light .aw-icon-btn {
+    color: rgba(16, 24, 35, 0.75);
+}
+
+/* light theme: dark ink icons get the mirror treatment -- white halo */
+.aw-light .aw-icon-btn StIcon {
+    color: rgba(11, 18, 32, 0.95);
+    icon-shadow: 0 1px 3px rgba(255, 255, 255, 0.9);
+}
+
+.aw-light .aw-icon-btn:hover {
+    background-color: rgba(16, 24, 35, 0.1);
+}
+
+.aw-light .aw-day {
+    background-color: transparent;
+    color: #101823;
+}
+
+.aw-light .aw-day:hover {
+    background-color: rgba(255, 255, 255, 0.4);
+}
+
+.aw-light .aw-day-sel {
+    background-color: rgba(255, 255, 255, 0.68);
+    border: 1px solid rgba(16, 24, 35, 0.35);
+    color: #0b1220;
+}
+
+/* -- emboss off (preference) -----------------------------------------------
+ * Same node as the theme classes, so .aw-content.aw-flat outranks both the
+ * base and light text-shadow rules; the icon rule trails the theme blocks
+ * and adds a class, winning its tie by order + specificity. */
+.aw-content.aw-flat {
+    text-shadow: none;
+}
+
+.aw-content.aw-flat .aw-icon-btn StIcon {
+    icon-shadow: none;
+}
+
+/* -- theme (menu-style: theme) interaction states -------------------------
+ * With no sky behind the card there is no sampled ink to contrast against,
+ * so the fixed rgba washes above read poorly on an arbitrary theme surface
+ * (a white tile glass over a white menu is invisible). These rules use the
+ * system's own interaction colour, -st-accent-color, which every GNOME 50
+ * theme tints to the user's accent -- so hover/selected/focus land on any
+ * theme, light or dark, without us guessing a background.
+ *
+ * -st-accent-color needs a fallback: themes that predate the token would
+ * drop a declaration outright, so each wash is declared twice -- the plain
+ * rgba first, the accent one after for parsers that understand it. */
+
+.aw-theme .aw-tab:hover,
+.aw-theme .aw-day:hover {
+    background-color: rgba(128, 128, 128, 0.18);
+    background-color: st-mix(-st-accent-color, transparent, 14%);
+}
+
+.aw-theme .aw-icon-btn:hover {
+    background-color: rgba(128, 128, 128, 0.22);
+    background-color: st-mix(-st-accent-color, transparent, 18%);
+}
+
+/* press state (St.Button presses paint :active) */
+.aw-theme .aw-tab:active,
+.aw-theme .aw-day:active {
+    background-color: rgba(128, 128, 128, 0.28);
+    background-color: st-mix(-st-accent-color, transparent, 26%);
+}
+
+/* selection: the accent itself, exactly as quick-toggle's :checked does.
+ * (.aw-light .aw-tab.aw-tab-active is 3-deep -- match that depth to win) */
+.aw-theme .aw-tab.aw-tab-active {
+    background-color: rgba(50, 128, 220, 0.16);
+    background-color: st-mix(-st-accent-color, transparent, 18%);
+}
+
+.aw-theme .aw-day-sel {
+    background-color: rgba(50, 128, 220, 0.20);
+    background-color: st-mix(-st-accent-color, transparent, 22%);
+}
+
+/* keyboard focus: theme's own ring recipe -- accent at 20% */
+.aw-theme .aw-tab:focus,
+.aw-theme .aw-day:focus,
+.aw-theme .aw-icon-btn:focus {
+    box-shadow: inset 0 0 0 2px rgba(50, 128, 220, 0.8);
+    box-shadow: inset 0 0 0 2px st-mix(-st-accent-color, transparent, 80%);
+}
