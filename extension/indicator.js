@@ -830,27 +830,31 @@ export const MeteoIndicator = GObject.registerClass(
                     reactive: false,
                 });
 
-                // Left button (hidden initially, appears when scrolled right)
+                // Left gradient fade button (hidden initially, appears when scrolled right)
                 const prevBtn = new St.Button({
                     child: new St.Icon({
                         icon_name: 'go-previous-symbolic',
-                        icon_size: 13,
+                        icon_size: 14,
                         style_class: 'system-status-icon',
+                        x_align: Clutter.ActorAlign.START,
+                        y_align: Clutter.ActorAlign.CENTER,
+                        style: 'margin-left: 6px;',
                     }),
-                    style: 'width: 22px; height: 46px; border-radius: 8px; background-color: rgba(16, 20, 28, 0.82); border: 1px solid rgba(255, 255, 255, 0.22); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45); padding: 0; margin-left: 2px;',
+                    style: 'width: 38px; height: 72px; border-radius: 14px 0 0 14px; background: linear-gradient(to right, rgba(46, 49, 58, 0.98) 0%, rgba(46, 49, 58, 0.85) 45%, transparent 100%); border: none; padding: 0;',
                     can_focus: false,
                     reactive: false,
                     visible: false,
-                    y_align: Clutter.ActorAlign.CENTER,
+                    x_align: Clutter.ActorAlign.START,
+                    y_align: Clutter.ActorAlign.FILL,
                 });
-                prevBtn.opacity = 220;
+                prevBtn.opacity = 210;
                 prevBtn.connect('notify::hover', () => {
                     if (prevBtn.reactive && prevBtn.hover) {
-                        prevBtn.style = 'width: 22px; height: 46px; border-radius: 8px; background-color: rgba(28, 38, 52, 0.95); border: 1px solid rgba(255, 255, 255, 0.45); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55); padding: 0; margin-left: 2px;';
+                        prevBtn.style = 'width: 38px; height: 72px; border-radius: 14px 0 0 14px; background: linear-gradient(to right, rgba(58, 62, 74, 1) 0%, rgba(58, 62, 74, 0.9) 45%, transparent 100%); border: none; padding: 0;';
                         prevBtn.opacity = 255;
                     } else if (prevBtn.reactive) {
-                        prevBtn.style = 'width: 22px; height: 46px; border-radius: 8px; background-color: rgba(16, 20, 28, 0.82); border: 1px solid rgba(255, 255, 255, 0.22); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45); padding: 0; margin-left: 2px;';
-                        prevBtn.opacity = 220;
+                        prevBtn.style = 'width: 38px; height: 72px; border-radius: 14px 0 0 14px; background: linear-gradient(to right, rgba(46, 49, 58, 0.98) 0%, rgba(46, 49, 58, 0.85) 45%, transparent 100%); border: none; padding: 0;';
+                        prevBtn.opacity = 210;
                     }
                 });
 
@@ -860,27 +864,31 @@ export const MeteoIndicator = GObject.registerClass(
                     reactive: false,
                 });
 
-                // Right button (visible initially, hides when at end)
+                // Right gradient fade button (visible initially, hides when at end)
                 const nextBtn = new St.Button({
                     child: new St.Icon({
                         icon_name: 'go-next-symbolic',
-                        icon_size: 13,
+                        icon_size: 14,
                         style_class: 'system-status-icon',
+                        x_align: Clutter.ActorAlign.END,
+                        y_align: Clutter.ActorAlign.CENTER,
+                        style: 'margin-right: 6px;',
                     }),
-                    style: 'width: 22px; height: 46px; border-radius: 8px; background-color: rgba(16, 20, 28, 0.82); border: 1px solid rgba(255, 255, 255, 0.22); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45); padding: 0; margin-right: 2px;',
+                    style: 'width: 38px; height: 72px; border-radius: 0 14px 14px 0; background: linear-gradient(to left, rgba(46, 49, 58, 0.98) 0%, rgba(46, 49, 58, 0.85) 45%, transparent 100%); border: none; padding: 0;',
                     can_focus: true,
                     reactive: true,
                     visible: true,
-                    y_align: Clutter.ActorAlign.CENTER,
+                    x_align: Clutter.ActorAlign.END,
+                    y_align: Clutter.ActorAlign.FILL,
                 });
-                nextBtn.opacity = 220;
+                nextBtn.opacity = 210;
                 nextBtn.connect('notify::hover', () => {
                     if (nextBtn.reactive && nextBtn.hover) {
-                        nextBtn.style = 'width: 22px; height: 46px; border-radius: 8px; background-color: rgba(28, 38, 52, 0.95); border: 1px solid rgba(255, 255, 255, 0.45); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55); padding: 0; margin-right: 2px;';
+                        nextBtn.style = 'width: 38px; height: 72px; border-radius: 0 14px 14px 0; background: linear-gradient(to left, rgba(58, 62, 74, 1) 0%, rgba(58, 62, 74, 0.9) 45%, transparent 100%); border: none; padding: 0;';
                         nextBtn.opacity = 255;
                     } else if (nextBtn.reactive) {
-                        nextBtn.style = 'width: 22px; height: 46px; border-radius: 8px; background-color: rgba(16, 20, 28, 0.82); border: 1px solid rgba(255, 255, 255, 0.22); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45); padding: 0; margin-right: 2px;';
-                        nextBtn.opacity = 220;
+                        nextBtn.style = 'width: 38px; height: 72px; border-radius: 0 14px 14px 0; background: linear-gradient(to left, rgba(46, 49, 58, 0.98) 0%, rgba(46, 49, 58, 0.85) 45%, transparent 100%); border: none; padding: 0;';
+                        nextBtn.opacity = 210;
                     }
                 });
 
