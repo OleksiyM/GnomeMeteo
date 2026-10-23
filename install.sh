@@ -67,7 +67,10 @@ gm_install() (
         rm -rf "$dest_dir"
         mkdir -p "$dest_dir"
         cp -r "$script_dir/extension"/* "$dest_dir/"
-        [[ -f "$script_dir/uninstall.sh" ]] && cp "$script_dir/uninstall.sh" "$dest_dir/uninstall.sh"
+        if [[ -f "$script_dir/uninstall.sh" ]]; then
+            cp "$script_dir/uninstall.sh" "$dest_dir/uninstall.sh"
+            chmod +x "$dest_dir/uninstall.sh"
+        fi
     else
         # ── REMOTE MODE (one-liner via curl | bash) ──
         download=(curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 300)
@@ -113,6 +116,12 @@ gm_install() (
         rm -rf "$dest_dir"
         mkdir -p "$dest_dir"
         unzip -q "$temporary/$archive" -d "$dest_dir"
+
+        # Preserve local uninstaller inside extension directory
+        ref="${tag:-main}"
+        "${download[@]}" --output "$dest_dir/uninstall.sh" "https://raw.githubusercontent.com/$repo/$ref/uninstall.sh" 2>/dev/null || \
+            "${download[@]}" --output "$dest_dir/uninstall.sh" "https://raw.githubusercontent.com/$repo/main/uninstall.sh" 2>/dev/null || true
+        [[ -f "$dest_dir/uninstall.sh" ]] && chmod +x "$dest_dir/uninstall.sh" || true
     fi
 
     # Compile schemas if gschemas.compiled is missing
