@@ -40,26 +40,26 @@ const MESSAGES = {
         loading: 'Завантаження погоди…',
         error: 'Помилка',
         details: {
-            sunriseSunset: '🌅 СХІД І ЗАХІД',
+            sunriseSunset: 'СХІД І ЗАХІД',
             sunrise: 'Схід',
             sunset: 'Захід',
-            moon: '🌖 ФАЗА МІСЯЦЯ',
+            moon: 'ФАЗА МІСЯЦЯ',
             moonIllum: '{n}% освітленості',
-            humidity: '💧 ВОЛОГІСТЬ',
+            humidity: 'ВОЛОГІСТЬ',
             dewPoint: 'Точка роси: {n}°',
-            pressure: '🧭 ТИСК',
-            mm: 'мм',
+            pressure: 'ТИСК',
+            mm: 'мм рт. ст.',
             normal: 'Нормальний',
         },
         moonPhases: {
             'New Moon': 'Молодик',
-            'Waxing Crescent': 'Молодий місяць',
+            'Waxing Crescent': 'Молодий',
             'First Quarter': 'Перша чверть',
-            'Waxing Gibbous': 'Зростаючий місяць',
+            'Waxing Gibbous': 'Зростаючий',
             'Full Moon': 'Повня',
-            'Waning Gibbous': 'Спадаючий місяць',
+            'Waning Gibbous': 'Спадаючий',
             'Last Quarter': 'Остання чверть',
-            'Waning Crescent': 'Старий місяць',
+            'Waning Crescent': 'Старий',
         },
         wmo: {
             0: 'Ясно',
@@ -119,26 +119,26 @@ const MESSAGES = {
         loading: 'Загрузка погоды…',
         error: 'Ошибка',
         details: {
-            sunriseSunset: '🌅 ВОСХОД И ЗАКАТ',
+            sunriseSunset: 'ВОСХОД И ЗАКАТ',
             sunrise: 'Восход',
             sunset: 'Закат',
-            moon: '🌖 ФАЗА ЛУНЫ',
+            moon: 'ФАЗА ЛУНЫ',
             moonIllum: '{n}% освещенности',
-            humidity: '💧 ВЛАЖНОСТЬ',
+            humidity: 'ВЛАЖНОСТЬ',
             dewPoint: 'Точка росы: {n}°',
-            pressure: '🧭 ДАВЛЕНИЕ',
-            mm: 'мм',
+            pressure: 'ДАВЛЕНИЕ',
+            mm: 'мм рт. ст.',
             normal: 'Нормальное',
         },
         moonPhases: {
             'New Moon': 'Новолуние',
-            'Waxing Crescent': 'Молодая луна',
+            'Waxing Crescent': 'Молодая',
             'First Quarter': 'Первая четверть',
-            'Waxing Gibbous': 'Растущая луна',
+            'Waxing Gibbous': 'Растущая',
             'Full Moon': 'Полнолуние',
-            'Waning Gibbous': 'Убывающая луна',
+            'Waning Gibbous': 'Убывающая',
             'Last Quarter': 'Последняя четверть',
-            'Waning Crescent': 'Старая луна',
+            'Waning Crescent': 'Старая',
         },
         wmo: {
             0: 'Ясно',
@@ -198,14 +198,14 @@ const MESSAGES = {
         loading: 'Fetching weather…',
         error: 'Error',
         details: {
-            sunriseSunset: '🌅 SUNRISE & SUNSET',
+            sunriseSunset: 'SUNRISE & SUNSET',
             sunrise: 'Rise',
             sunset: 'Set',
-            moon: '🌖 MOON PHASE',
+            moon: 'MOON PHASE',
             moonIllum: '{n}% illumination',
-            humidity: '💧 HUMIDITY',
+            humidity: 'HUMIDITY',
             dewPoint: 'Dew point: {n}°',
-            pressure: '🧭 PRESSURE',
+            pressure: 'PRESSURE',
             mm: 'mmHg',
             normal: 'Normal',
         },
@@ -740,7 +740,7 @@ export const MeteoIndicator = GObject.registerClass(
                 });
 
                 const METRICS = [
-                    { id: 'temp', icon: 'weather-clear-symbolic', tip: t.metricTips.temp },
+                    { id: 'temp', icon: 'temperature-symbolic', tip: t.metricTips.temp },
                     { id: 'precip', icon: 'weather-showers-symbolic', tip: t.metricTips.precip },
                     { id: 'wind', icon: 'weather-windy-symbolic', tip: t.metricTips.wind },
                 ];
@@ -1019,28 +1019,60 @@ export const MeteoIndicator = GObject.registerClass(
                 style: 'spacing: 8px;',
             });
 
-            const makeTile = (title, value, subtext) => {
+            const makeTile = (iconName, title, value, subtext, tooltipText = null) => {
                 const tile = new St.BoxLayout({
                     vertical: true,
                     x_expand: true,
+                    reactive: !!tooltipText,
+                    can_focus: false,
                     style: 'background-color: rgba(255, 255, 255, 0.07); border-radius: 14px; padding: 9px 12px; min-height: 64px;',
                 });
+
+                const headRow = new St.BoxLayout({
+                    vertical: false,
+                    y_align: Clutter.ActorAlign.CENTER,
+                    style: 'spacing: 5px; margin-bottom: 3px;',
+                });
+                if (iconName) {
+                    headRow.add_child(new St.Icon({
+                        icon_name: iconName,
+                        icon_size: 11,
+                        style_class: 'system-status-icon',
+                        style: 'opacity: 0.6;',
+                    }));
+                }
                 const tLab = new St.Label({
                     text: title,
-                    style: 'font-size: 10.5px; font-weight: 700; color: rgba(255, 255, 255, 0.55); letter-spacing: 0.04em; margin-bottom: 3px;',
+                    style: 'font-size: 10px; font-weight: 700; color: rgba(255, 255, 255, 0.55); letter-spacing: 0.04em;',
+                    y_align: Clutter.ActorAlign.CENTER,
                 });
-                const valFontSize = (typeof value === 'string' && value.length > 9) ? 15 : 18;
+                headRow.add_child(tLab);
+                tile.add_child(headRow);
+
                 const vLab = new St.Label({
                     text: value,
-                    style: `font-size: ${valFontSize}px; font-weight: 600; color: #ffffff; margin: 1px 0;`,
+                    style: 'font-size: 18px; font-weight: 600; color: #ffffff; margin: 1px 0;',
                 });
-                const sLab = new St.Label({
-                    text: subtext || '',
-                    style: 'font-size: 11.5px; color: rgba(255, 255, 255, 0.72); margin-top: 2px;',
-                });
-                tile.add_child(tLab);
                 tile.add_child(vLab);
-                if (subtext) tile.add_child(sLab);
+
+                if (subtext) {
+                    const sLab = new St.Label({
+                        text: subtext,
+                        style: 'font-size: 11.5px; color: rgba(255, 255, 255, 0.72); margin-top: 2px;',
+                    });
+                    tile.add_child(sLab);
+                }
+
+                if (tooltipText) {
+                    tile.connect('notify::hover', () => {
+                        if (tile.hover) {
+                            this._tooltipHelper.show(tile, tooltipText);
+                        } else {
+                            this._tooltipHelper.hide();
+                        }
+                    });
+                }
+
                 return tile;
             };
 
@@ -1064,8 +1096,8 @@ export const MeteoIndicator = GObject.registerClass(
             }
             const moon = getMoonInfo(lang);
 
-            row1.add_child(makeTile(dt.sunriseSunset, `${dt.sunrise}: ${sunriseStr}`, `${dt.sunset}: ${sunsetStr}`));
-            row1.add_child(makeTile(dt.moon, moon.nameTrans, dt.moonIllum.replace('{n}', Math.round(moon.illum * 100))));
+            row1.add_child(makeTile('daytime-sunrise-symbolic', dt.sunriseSunset, `${dt.sunrise}: ${sunriseStr}`, `${dt.sunset}: ${sunsetStr}`));
+            row1.add_child(makeTile('weather-clear-night-symbolic', dt.moon, moon.nameTrans, dt.moonIllum.replace('{n}', Math.round(moon.illum * 100)), moon.nameTrans));
             detailsContainer.add_child(row1);
 
             const row2 = new St.Widget({
@@ -1080,8 +1112,8 @@ export const MeteoIndicator = GObject.registerClass(
             const dewPoint = current.humidity !== undefined ? Math.round(current.temp - ((100 - current.humidity) / 5)) : Math.round(current.temp - 4);
             const pressMm = current.pressure ? Math.round(current.pressure * 0.750062) : 750;
 
-            row2.add_child(makeTile(dt.humidity, humVal, dt.dewPoint.replace('{n}', dewPoint)));
-            row2.add_child(makeTile(dt.pressure, `${pressMm} ${dt.mm}`, dt.normal));
+            row2.add_child(makeTile('weather-showers-symbolic', dt.humidity, humVal, dt.dewPoint.replace('{n}', dewPoint)));
+            row2.add_child(makeTile('find-location-symbolic', dt.pressure, `${pressMm}`, `${dt.mm} · ${dt.normal}`));
             detailsContainer.add_child(row2);
 
             contentBox.add_child(detailsContainer);
