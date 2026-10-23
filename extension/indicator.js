@@ -329,6 +329,16 @@ function getMoonInfo(lang) {
     };
 }
 
+function toDisplayTemp(celsius, isImperial) {
+    if (celsius === null || celsius === undefined || Number.isNaN(celsius)) return 0;
+    return Math.round(isImperial ? (celsius * 9 / 5 + 32) : celsius);
+}
+
+function toDisplayWind(kmh, isImperial) {
+    if (kmh === null || kmh === undefined || Number.isNaN(kmh)) return 0;
+    return Math.round(isImperial ? (kmh * 0.621371) : kmh);
+}
+
 class TooltipHelper {
     constructor() {
         this._tooltip = null;
@@ -491,7 +501,7 @@ export const MeteoIndicator = GObject.registerClass(
             this._settingsChangedId = this._settings.connect('changed', (settings, key) => {
                 if (key === 'show-icon' || key === 'show-temperature') {
                     this._updatePanelIndicator();
-                } else if (key === 'language' || key === 'hour-format') {
+                } else if (key === 'language' || key === 'hour-format' || key === 'units') {
                     if (this._weatherData) {
                         const isAuto = settings.get_boolean('auto-location');
                         this._onWeatherReceived(this._weatherData, isAuto);
@@ -500,7 +510,7 @@ export const MeteoIndicator = GObject.registerClass(
                     if (settings.get_boolean('auto-location')) ensureDesktopEntry();
                     else removeDesktopEntry();
                     this._coordinator.fetch(true);
-                } else if (['location-latitude', 'location-longitude', 'units', 'provider', 'om-model'].includes(key)) {
+                } else if (['location-latitude', 'location-longitude', 'provider', 'om-model'].includes(key)) {
                     this._coordinator.fetch(true);
                 }
             });
@@ -549,7 +559,8 @@ export const MeteoIndicator = GObject.registerClass(
             }
             this._hourlyStartIndex = startIdx;
 
-            const roundedTemp = Math.round(current.temp);
+            const isImperial = this._settings.get_string('units') === 'imperial';
+            const roundedTemp = toDisplayTemp(current.temp, isImperial);
             this._icon.icon_name = iconName;
             this._label.text = `${roundedTemp}°`;
 
@@ -588,6 +599,7 @@ export const MeteoIndicator = GObject.registerClass(
 
             const t = MESSAGES[lang] || MESSAGES.uk;
             const is12h = is12HourFormat(this._settings);
+            const isImperial = this._settings.get_string('units') === 'imperial';
             const dailyArr = Array.isArray(daily) ? daily : [];
 
             // ══════════════════════════════════════════════════════════════════
@@ -664,7 +676,7 @@ export const MeteoIndicator = GObject.registerClass(
             headerContainer.add_child(topRow);
 
             const tempLabel = new St.Label({
-                text: `${Math.round(current.temp)}°`,
+                text: `${toDisplayTemp(current.temp, isImperial)}°`,
                 style: 'font-size: 56px; font-weight: 300; color: #ffffff; text-align: center; margin-top: 1px; margin-bottom: 1px;',
                 x_align: Clutter.ActorAlign.CENTER,
             });
@@ -679,8 +691,8 @@ export const MeteoIndicator = GObject.registerClass(
             headerContainer.add_child(condLabel);
 
             if (dailyArr.length > 0 && dailyArr[0].tmax !== undefined) {
-                const todayMax = Math.round(dailyArr[0].tmax);
-                const todayMin = Math.round(dailyArr[0].tmin);
+                const todayMax = toDisplayTemp(dailyArr[0].tmax, isImperial);
+                const todayMin = toDisplayTemp(dailyArr[0].tmin, isImperial);
                 const rangeLabel = new St.Label({
                     text: `${t.max} ${todayMax}° · ${t.min} ${todayMin}°`,
                     style: 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.82); text-align: center; margin-top: 3px;',
@@ -689,7 +701,8 @@ export const MeteoIndicator = GObject.registerClass(
                 headerContainer.add_child(rangeLabel);
             }
 
-            const feelsVal = current.feels !== undefined ? `${Math.round(current.feels)}°` : `${Math.round(current.temp)}°`;
+            const feelsRaw = current.feels !== undefined ? current.feels : current.temp;
+            const feelsVal = `${toDisplayTemp(feelsRaw, isImperial)}°`;
             const feelsLabel = new St.Label({
                 text: `${t.feelsLikeShort} ${feelsVal}`,
                 style: 'font-size: 12px; font-weight: 400; color: rgba(255, 255, 255, 0.72); text-align: center; margin-top: 2px;',
@@ -1123,7 +1136,8 @@ export const MeteoIndicator = GObject.registerClass(
                 x_expand: true,
             });
             const humVal = current.humidity !== undefined ? `${Math.round(current.humidity)}%` : '—';
-            const dewPoint = current.humidity !== undefined ? Math.round(current.temp - ((100 - current.humidity) / 5)) : Math.round(current.temp - 4);
+            const rawDewPoint = current.humidity !== undefined ? current.temp - ((100 - current.humidity) / 5) : current.temp - 4;
+            const dewPoint = toDisplayTemp(rawDewPoint, isImperial);
             const pressMm = current.pressure ? Math.round(current.pressure * 0.750062) : 750;
 
             row2.add_child(makeTile('weather-showers-symbolic', dt.humidity, humVal, dt.dewPoint.replace('{n}', dewPoint)));
@@ -1176,6 +1190,7 @@ export const MeteoIndicator = GObject.registerClass(
             if (!this._weatherData || !this._weatherData.hourly) return;
             const { hourly, current } = this._weatherData;
             if (!Array.isArray(hourly.temp)) return;
+            const isImperial = this._settings.get_string('units') === 'imperial';
 
             for (const slot of this._hourlySlots) {
                 const dataIdx = slot.dataIdx;
@@ -1194,9 +1209,10 @@ export const MeteoIndicator = GObject.registerClass(
                 } else if (this._hourlyMetric === 'wind') {
                     slot.icon.icon_name = 'weather-windy-symbolic';
                     slot.icon.opacity = 255;
-                    const windSpeed = (hourly.wind && hourly.wind[dataIdx] !== undefined)
-                        ? Math.round(hourly.wind[dataIdx])
+                    const rawWind = (hourly.wind && hourly.wind[dataIdx] !== undefined)
+                        ? hourly.wind[dataIdx]
                         : 0;
+                    const windSpeed = toDisplayWind(rawWind, isImperial);
                     slot.val.text = `${windSpeed}`;
                     slot.val.style = 'font-size: 13px; font-weight: 600; color: #ffffff;';
                 } else {
@@ -1209,7 +1225,8 @@ export const MeteoIndicator = GObject.registerClass(
                     });
                     slot.icon.opacity = 255;
                     slot.icon.icon_name = getSymbolicIcon(hScene.scene, isDay);
-                    slot.val.text = `${Math.round(hourly.temp[dataIdx])}°`;
+                    const hTemp = toDisplayTemp(hourly.temp[dataIdx], isImperial);
+                    slot.val.text = `${hTemp}°`;
                     slot.val.style = 'font-size: 13px; font-weight: 600; color: #ffffff;';
                 }
             }
@@ -1263,8 +1280,8 @@ export const MeteoIndicator = GObject.registerClass(
                         : 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 38px; text-align: right;';
                 } else if (this._hourlyMetric === 'wind') {
                     const rawSpeed = d.windMax ?? 0;
-                    const windVal = Math.round(isImperial ? rawSpeed * 0.621371 : rawSpeed);
-                    const maxDisplayWind = Math.round(isImperial ? maxWind * 0.621371 : maxWind);
+                    const windVal = toDisplayWind(rawSpeed, isImperial);
+                    const maxDisplayWind = toDisplayWind(maxWind, isImperial);
                     const fillW = Math.max(0, Math.min(BAR_WIDTH, Math.round((windVal / Math.max(1, maxDisplayWind)) * BAR_WIDTH)));
 
                     slot.leftLab.show();
@@ -1280,7 +1297,7 @@ export const MeteoIndicator = GObject.registerClass(
                     slot.barBox.style = `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`;
 
                     slot.leftLab.show();
-                    slot.leftLab.text = `${Math.round(d.tmin)}°`;
+                    slot.leftLab.text = `${toDisplayTemp(d.tmin, isImperial)}°`;
                     slot.leftLab.style = 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.6); min-width: 28px; text-align: right; opacity: 1;';
 
                     const fillLeft = Math.max(0, Math.min(BAR_WIDTH - 8, Math.round(((d.tmin - globalMin) / rangeSpan) * BAR_WIDTH)));
@@ -1290,7 +1307,7 @@ export const MeteoIndicator = GObject.registerClass(
                     // St native gradient syntax (background-gradient-direction / start / end)
                     slot.barFill.style = `margin-left: ${fillLeft}px; width: ${fillWidth}px; height: 5px; background-gradient-direction: horizontal; background-gradient-start: #59c0fa; background-gradient-end: #f59e0b; border-radius: 3px;`;
 
-                    slot.rightLab.text = `${Math.round(d.tmax)}°`;
+                    slot.rightLab.text = `${toDisplayTemp(d.tmax, isImperial)}°`;
                     slot.rightLab.style = 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 30px; text-align: right;';
                 }
             }
