@@ -1,7 +1,7 @@
 {
   "uuid": "meteo@oleksiym.github.io",
-  "name": "Meteo",
-  "description": "Apple Weather / iOS-inspired weather card extension for GNOME Shell.",
+  "name": "GnomeMeteo",
+  "description": "Clean, modern weather indicator and forecast for GNOME Shell 45+",
   "shell-version": [
     "45",
     "46",
@@ -12,6 +12,6 @@
   ],
   "settings-schema": "org.gnome.shell.extensions.meteo",
   "gettext-domain": "meteo@oleksiym.github.io",
-  "url": "https://github.com/OleksiyM/meteo",
+  "url": "https://github.com/OleksiyM/GnomeMeteo",
   "version": 1
 }

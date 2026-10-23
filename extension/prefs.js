@@ -368,10 +368,14 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
                     application_icon: 'org.gnome.Weather-symbolic',
                     version: String(this.metadata.version || '1.0.0'),
                     developer_name: 'OleksiyM',
-                    website: 'https://github.com/OleksiyM/meteo',
-                    issue_url: 'https://github.com/OleksiyM/meteo/issues',
-                    copyright: '© 2026 OleksiyM',
-                    license_type: Gtk.License.GPL_3_0,
+                    developers: [
+                        'OleksiyM',
+                        'Vijay Bala (original Weatherglass codebase)',
+                    ],
+                    website: 'https://github.com/OleksiyM/GnomeMeteo',
+                    issue_url: 'https://github.com/OleksiyM/GnomeMeteo/issues',
+                    copyright: '© 2026 OleksiyM\nBased on Weatherglass by Vijay Bala',
+                    license_type: Gtk.License.GPL_2_0,
                     comments: _('Clean, modern weather indicator and forecast for GNOME Shell'),
                 });
                 dialog.present(window);
