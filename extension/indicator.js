@@ -1150,15 +1150,23 @@ export const MeteoIndicator = GObject.registerClass(
 
             for (const slot of this._dailySlots) {
                 const d = slot.data;
+                const dScene = deriveScene({
+                    code: d.code ?? 0,
+                    visibility: null,
+                    cape: 0,
+                    isDay: true,
+                });
+                slot.icon.show();
+                slot.icon.icon_name = getSymbolicIcon(dScene.scene, true);
+
+                const BAR_WIDTH = 104;
 
                 if (this._hourlyMetric === 'precip') {
-                    slot.icon.hide();
                     const prob = Math.round(d.precipProb ?? 0);
-                    slot.leftLab.text = prob >= 20 ? '💧' : '';
-                    slot.leftLab.style = 'font-size: 11px; min-width: 22px; text-align: center;';
                     slot.leftLab.show();
+                    slot.leftLab.text = '💧';
+                    slot.leftLab.style = `font-size: 11px; min-width: 28px; text-align: right; opacity: ${prob >= 20 ? '0.95' : '0.35'};`;
 
-                    const BAR_WIDTH = 104;
                     slot.barBox.style = `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`;
                     const fillW = Math.max(0, Math.min(BAR_WIDTH, Math.round((prob / 100) * BAR_WIDTH)));
                     slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 5px; background-gradient-direction: none; background-color: #3898ec; border-radius: 3px;`;
@@ -1166,35 +1174,26 @@ export const MeteoIndicator = GObject.registerClass(
                     slot.rightLab.text = `${prob}%`;
                     slot.rightLab.style = 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 38px; text-align: right;';
                 } else if (this._hourlyMetric === 'wind') {
-                    slot.icon.hide();
-                    slot.leftLab.hide();
-
-                    const BAR_WIDTH = 104;
-                    slot.barBox.style = `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`;
                     const rawSpeed = d.windMax ?? 0;
                     const windVal = Math.round(isImperial ? rawSpeed * 0.621371 : rawSpeed);
                     const maxDisplayWind = Math.round(isImperial ? maxWind * 0.621371 : maxWind);
                     const fillW = Math.max(0, Math.min(BAR_WIDTH, Math.round((windVal / Math.max(1, maxDisplayWind)) * BAR_WIDTH)));
+
+                    slot.leftLab.show();
+                    slot.leftLab.text = '💨';
+                    slot.leftLab.style = 'font-size: 11px; min-width: 28px; text-align: right; opacity: 0.75;';
+
+                    slot.barBox.style = `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`;
                     slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 5px; background-gradient-direction: none; background-color: #30b0c7; border-radius: 3px;`;
 
                     slot.rightLab.text = `${windVal} ${windUnit}`;
-                    slot.rightLab.style = 'font-size: 12px; font-weight: 600; color: #ffffff; min-width: 62px; text-align: right;';
+                    slot.rightLab.style = 'font-size: 12px; font-weight: 600; color: #ffffff; min-width: 58px; text-align: right;';
                 } else {
-                    const dScene = deriveScene({
-                        code: d.code ?? 0,
-                        visibility: null,
-                        cape: 0,
-                        isDay: true,
-                    });
-                    slot.icon.show();
-                    slot.icon.icon_name = getSymbolicIcon(dScene.scene, true);
-
-                    const BAR_WIDTH = 104;
                     slot.barBox.style = `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`;
 
                     slot.leftLab.show();
                     slot.leftLab.text = `${Math.round(d.tmin)}°`;
-                    slot.leftLab.style = 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.6); min-width: 28px; text-align: right;';
+                    slot.leftLab.style = 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.6); min-width: 28px; text-align: right; opacity: 1;';
 
                     const fillLeft = Math.max(0, Math.min(BAR_WIDTH - 8, Math.round(((d.tmin - globalMin) / rangeSpan) * BAR_WIDTH)));
                     const fillRight = Math.max(fillLeft + 8, Math.min(BAR_WIDTH, Math.round(((d.tmax - globalMin) / rangeSpan) * BAR_WIDTH)));
