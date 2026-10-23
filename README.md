@@ -4,7 +4,28 @@
 
 GnomeMeteo is a lightweight, modern weather extension for the GNOME desktop, featuring an iOS Weather-inspired popup, native Libadwaita styling, multi-provider weather forecasts, and smooth segmented metric switching.
 
-![GnomeMeteo Preview](screenshots/screenshot-1.png)
+<p align="center">
+  <img src="screenshots/screenshot-1.png" alt="GnomeMeteo Forecast Popup" width="45%" />
+  &nbsp; &nbsp;
+  <img src="screenshots/05-preferences.png" alt="GnomeMeteo Preferences Window" width="48%" />
+</p>
+
+---
+
+## 🚀 Quick Install (One-Liner)
+
+Install or update GnomeMeteo with a single command (no `git clone`, no `sudo`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh | bash
+```
+
+The installer installs to your user directory (`~/.local/share/gnome-shell/extensions/meteo@oleksiym.github.io/`), compiles schemas and translations, and activates the extension live.
+
+To install a specific release version:
+```bash
+curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh | bash -s -- --version v1.0.0
+```
 
 ---
 
@@ -24,6 +45,7 @@ GnomeMeteo is a lightweight, modern weather extension for the GNOME desktop, fea
   * **MET Norway** (api.met.no, CC BY-SA 4.0)
   * **NOAA NWS** (United States official forecasts)
 * **Clean Single-Page Preferences:** Fast, scrollable Libadwaita settings dialog with instant top-bar indicator toggles and localized city search.
+* **Full Localization:** Native Ukrainian, English, and Russian translations.
 * **Privacy by Design:** No tracking, no accounts, no API keys. Direct requests to public meteorological APIs.
 
 ---
@@ -35,63 +57,22 @@ GnomeMeteo is a lightweight, modern weather extension for the GNOME desktop, fea
 
 ---
 
-## 🚀 Installation
-
-Clone the repository and run the installer:
-
-```bash
-git clone https://github.com/OleksiyM/GnomeMeteo.git
-cd GnomeMeteo
-bash install.sh
-```
-
-The script will compile the GSettings schemas, install the extension to `~/.local/share/gnome-shell/extensions/meteo@oleksiym.github.io/`, and enable it.
-
-> [!NOTE]
-> If you are installing for the first time, you may need to log out and log back in (or restart GNOME Shell) to register the new extension UUID.
-
----
-
 ## 🗑️ Uninstallation
 
 To remove GnomeMeteo:
 
 ```bash
-bash uninstall.sh
+curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/uninstall.sh | bash
 ```
 
-To also purge saved settings and GSettings configuration:
-
+Or from your local machine:
 ```bash
-bash uninstall.sh --purge
+~/.local/share/gnome-shell/extensions/meteo@oleksiym.github.io/uninstall.sh
 ```
 
 ---
 
-## ⚙️ Configuration
+## 📜 Acknowledgements & Lineage
 
-Open settings either from the popup menu (top-right cog button) or via terminal:
-
-```bash
-gnome-extensions prefs meteo@oleksiym.github.io
-```
-
-Available options:
-* **Location:** Automatic (GeoClue / IP geolocation) or manual search by city name with localized results.
-* **Panel Indicator:** Show/hide temperature number and weather icon in the top panel.
-* **Units & Format:** Metric (°C, km/h) / Imperial (°F, mph), language selection (Auto, Ukrainian, Russian, English), 12h/24h time format.
-* **Provider & Models:** Open-Meteo model fine-tuning (ECMWF, ICON, GFS, GEM, JMA, UKMO) and background refresh intervals (5–120 minutes).
-
----
-
-## 🤝 Acknowledgements & Lineage
-
-**GnomeMeteo** is a redesigned, modernized evolution based on [Weatherglass](https://github.com/vijaybala-lang/weatherglass) by [Vijay Bala](https://github.com/vijaybala-lang).
-
-Deep appreciation to the original author for the keyless weather multi-provider architecture and lunar phase calculations. GnomeMeteo carries forward this foundation with an entirely reimagined UI, native Libadwaita preferences, St CSS styling, and unified symbolic aesthetics.
-
----
-
-## 📄 License
-
-GnomeMeteo is free software licensed under the **GNU General Public License v2.0 or later** (GPL-2.0-or-later). See [LICENSE](LICENSE) for details.
+GnomeMeteo is created and maintained by [OleksiyM](https://github.com/OleksiyM).
+It is developed as a focused, modernized GNOME Shell extension evolved from the original [Weatherglass](https://github.com/vijaybala-lang/weatherglass) project created by Vijay Bala. Full lineage and copyright credit are preserved under the [GNU General Public License v3.0](LICENSE).

@@ -3,46 +3,175 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  release:
-    name: Build & Publish Release
-    runs-on: ubuntu-latest
-
+  guard:
+    name: Validate release tag
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
-      - name: Checkout repository
+      - name: Check out the tagged source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate tag and version contract
+        id: version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version=$(./scripts/check-version.sh "$RELEASE_TAG")
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build package
+    needs: guard
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    env:
+      VERSION: ${{ needs.guard.outputs.version }}
+    steps:
+      - name: Check out the tagged source
         uses: actions/checkout@v4
 
-      - name: Install build tools
+      - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y gettext libglib2.0-bin zip
+          sudo apt-get install -y gettext libglib2.0-bin nodejs zip
 
-      - name: Validate JavaScript syntax
+      - name: Build extension package
         run: |
-          node -c extension/*.js
+          ./scripts/build-package.sh
 
-      - name: Build gettext translations
-        run: |
-          ./scripts/build-i18n.sh
-
-      - name: Compile GSettings schemas
-        run: |
-          glib-compile-schemas --strict extension/schemas/
-
-      - name: Create extension zip package
-        run: |
-          mkdir -p dist
-          cd extension
-          zip -qr ../dist/meteo@oleksiym.github.io.shell-extension.zip . -x ".*"
-          cd ..
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Attest package provenance
+        id: attest
+        uses: actions/attest@v2
         with:
-          files: dist/meteo@oleksiym.github.io.shell-extension.zip
-          generate_release_notes: true
+          subject-path: dist/meteo@oleksiym.github.io.shell-extension.zip
+
+      - name: Preserve local attestation bundle
+        env:
+          BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          install -m 0644 "$BUNDLE_PATH" "dist/meteo@oleksiym.github.io.shell-extension.zip.sigstore.json"
+
+      - name: Stage release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish release
+    needs: [guard, build]
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.guard.outputs.version }}
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Check out full history at the release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Download staged release assets
+        uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: dist
+
+      - name: Verify checksum manifest
+        working-directory: dist
+        run: |
+          set -euo pipefail
+          sha256sum --check SHA256SUMS
+
+      - name: Attest checksum manifest
+        id: attest_checksums
+        uses: actions/attest@v2
+        with:
+          subject-path: dist/SHA256SUMS
+
+      - name: Preserve checksum attestation bundle
+        env:
+          BUNDLE_PATH: ${{ steps.attest_checksums.outputs.bundle-path }}
+        run: install -m 0644 "$BUNDLE_PATH" dist/SHA256SUMS.sigstore.json
+
+      - name: Refuse to overwrite an existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            printf 'Release %s already exists; refusing to overwrite its assets.\n' "$RELEASE_TAG" >&2
+            exit 1
+          fi
+
+      - name: Write commit-based release notes
+        env:
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          previous_tag=''
+          while IFS= read -r candidate; do
+            [[ "$candidate" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || continue
+            [[ "$candidate" != "$RELEASE_TAG" ]] || continue
+            if [[ $(printf '%s\n' "$candidate" "$RELEASE_TAG" | sort -V | head -n 1) == "$candidate" ]]; then
+              previous_tag=$candidate
+              break
+            fi
+          done < <(git for-each-ref --merged "$RELEASE_TAG" --sort=-version:refname --format='%(refname:short)' refs/tags)
+
+          printf '## What’s New\n\n' > release-notes.md
+          if [[ -n "$previous_tag" ]]; then
+            printf '[Compare changes](https://github.com/%s/compare/%s...%s)\n\n' "$GH_REPO" "$previous_tag" "$RELEASE_TAG" >> release-notes.md
+            range="${previous_tag}..${RELEASE_TAG}"
+          else
+            range=$RELEASE_TAG
+          fi
+          git log --no-merges --format='- %s (`%h`)' "$range" >> release-notes.md
+
+          {
+            printf '\n## Install / Update\n\n```bash\n'
+            printf 'curl -fsSL https://raw.githubusercontent.com/%s/%s/install.sh | bash\n' "$GH_REPO" "$RELEASE_TAG"
+            printf '```\n'
+          } >> release-notes.md
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          mapfile -t assets < <(find dist -maxdepth 1 -type f -printf '%p\n' | LC_ALL=C sort)
+          gh release create "$RELEASE_TAG" "${assets[@]}" \
+            --verify-tag \
+            --notes-file release-notes.md \
+            --title "GnomeMeteo ${RELEASE_TAG#v}"

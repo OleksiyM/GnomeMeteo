@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3584e4"/>
+      <stop offset="100%" stop-color="#1c71d8"/>
+    </linearGradient>
+
+    <linearGradient id="sun-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f9f06b"/>
+      <stop offset="50%" stop-color="#f6d32d"/>
+      <stop offset="100%" stop-color="#e5a50a"/>
+    </linearGradient>
+
+    <linearGradient id="cloud-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#dbe2ed"/>
+    </linearGradient>
+
+    <filter id="cloud-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#0e3c88" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Base Squircle -->
+  <rect x="36" y="36" width="440" height="440" rx="96" fill="url(#sky)"/>
+  <rect x="38" y="38" width="436" height="436" rx="94" fill="none" stroke="rgba(255, 255, 255, 0.22)" stroke-width="3"/>
+
+  <!-- Sun Rays / Glow -->
+  <circle cx="325" cy="180" r="90" fill="#f6d32d" opacity="0.25"/>
+  <!-- Golden Sun -->
+  <circle cx="325" cy="180" r="72" fill="url(#sun-grad)"/>
+
+  <!-- Adwaita Weather Cloud -->
+  <g filter="url(#cloud-shadow)">
+    <path d="M 160 348
+             L 355 348
+             A 48 48 0 0 0 355 252
+             A 42 42 0 0 0 318 222
+             A 76 76 0 0 0 188 230
+             A 58 58 0 0 0 128 308
+             A 40 40 0 0 0 160 348 Z"
+          fill="url(#cloud-grad)"/>
+  </g>
+</svg>
