@@ -954,6 +954,7 @@ export const MeteoIndicator = GObject.registerClass(
                     });
 
                     const barBox = new St.Widget({
+                        layout_manager: new Clutter.BinLayout(),
                         style: `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`,
                         x_expand: true,
                         y_align: Clutter.ActorAlign.CENTER,
@@ -961,6 +962,8 @@ export const MeteoIndicator = GObject.registerClass(
 
                     const barFill = new St.Widget({
                         style_class: 'meteo-range-fill',
+                        x_align: Clutter.ActorAlign.START,
+                        y_align: Clutter.ActorAlign.CENTER,
                         style: 'height: 5px; border-radius: 3px;',
                     });
                     barBox.add_child(barFill);
@@ -968,7 +971,9 @@ export const MeteoIndicator = GObject.registerClass(
                     let dotWidget = null;
                     if (i === 0) {
                         dotWidget = new St.Widget({
-                            style: 'width: 7px; height: 7px; border-radius: 4px; background-color: #ffffff; border: 1.5px solid rgba(0, 0, 0, 0.65); margin-top: -1px;',
+                            x_align: Clutter.ActorAlign.START,
+                            y_align: Clutter.ActorAlign.CENTER,
+                            style: 'width: 7px; height: 7px; border-radius: 4px; background-color: #ffffff; border: 1.5px solid rgba(0, 0, 0, 0.65);',
                         });
                         barBox.add_child(dotWidget);
                     }
@@ -1211,8 +1216,9 @@ export const MeteoIndicator = GObject.registerClass(
                     slot.barFill.style = `margin-left: ${fillLeft}px; width: ${fillWidth}px; height: 5px; background-gradient-direction: horizontal; background-gradient-start: #59c0fa; background-gradient-end: #f59e0b; border-radius: 3px;`;
 
                     if (slot.dotWidget) {
-                        const dotPos = Math.max(fillLeft, Math.min(fillRight - 5, Math.round(((currentTemp - globalMin) / rangeSpan) * BAR_WIDTH)));
-                        slot.dotWidget.style = `margin-left: ${dotPos}px; width: 7px; height: 7px; border-radius: 4px; background-color: #ffffff; border: 1.5px solid rgba(0, 0, 0, 0.65); margin-top: -1px;`;
+                        const rawDotX = Math.round(((currentTemp - globalMin) / rangeSpan) * BAR_WIDTH);
+                        const dotPos = Math.max(fillLeft, Math.min(Math.max(fillLeft, fillRight - 7), rawDotX - 3));
+                        slot.dotWidget.style = `margin-left: ${dotPos}px; width: 7px; height: 7px; border-radius: 4px; background-color: #ffffff; border: 1.5px solid rgba(0, 0, 0, 0.65);`;
                         slot.dotWidget.show();
                     }
 
