@@ -954,7 +954,6 @@ export const MeteoIndicator = GObject.registerClass(
                     });
 
                     const barBox = new St.Widget({
-                        layout_manager: new Clutter.BinLayout(),
                         style: `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`,
                         x_expand: true,
                         y_align: Clutter.ActorAlign.CENTER,
@@ -962,21 +961,9 @@ export const MeteoIndicator = GObject.registerClass(
 
                     const barFill = new St.Widget({
                         style_class: 'meteo-range-fill',
-                        x_align: Clutter.ActorAlign.START,
-                        y_align: Clutter.ActorAlign.CENTER,
                         style: 'height: 5px; border-radius: 3px;',
                     });
                     barBox.add_child(barFill);
-
-                    let dotWidget = null;
-                    if (i === 0) {
-                        dotWidget = new St.Widget({
-                            x_align: Clutter.ActorAlign.START,
-                            y_align: Clutter.ActorAlign.CENTER,
-                            style: 'width: 7px; height: 7px; border-radius: 4px; background-color: #ffffff; border: 1.5px solid rgba(0, 0, 0, 0.65);',
-                        });
-                        barBox.add_child(dotWidget);
-                    }
 
                     const rightLab = new St.Label({
                         text: '',
@@ -998,7 +985,6 @@ export const MeteoIndicator = GObject.registerClass(
                         leftLab,
                         barBox,
                         barFill,
-                        dotWidget,
                         rightLab,
                     });
                 }
@@ -1172,7 +1158,6 @@ export const MeteoIndicator = GObject.registerClass(
                     slot.barBox.style = `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`;
                     const fillW = Math.max(0, Math.min(BAR_WIDTH, Math.round((prob / 100) * BAR_WIDTH)));
                     slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 5px; background-gradient-direction: none; background-color: #3898ec; border-radius: 3px;`;
-                    if (slot.dotWidget) slot.dotWidget.hide();
 
                     slot.rightLab.text = `${prob}%`;
                     slot.rightLab.style = 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 38px; text-align: right;';
@@ -1187,7 +1172,6 @@ export const MeteoIndicator = GObject.registerClass(
                     const maxDisplayWind = Math.round(isImperial ? maxWind * 0.621371 : maxWind);
                     const fillW = Math.max(0, Math.min(BAR_WIDTH, Math.round((windVal / Math.max(1, maxDisplayWind)) * BAR_WIDTH)));
                     slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 5px; background-gradient-direction: none; background-color: #30b0c7; border-radius: 3px;`;
-                    if (slot.dotWidget) slot.dotWidget.hide();
 
                     slot.rightLab.text = `${windVal} ${windUnit}`;
                     slot.rightLab.style = 'font-size: 12px; font-weight: 600; color: #ffffff; min-width: 62px; text-align: right;';
@@ -1214,13 +1198,6 @@ export const MeteoIndicator = GObject.registerClass(
 
                     // St native gradient syntax (background-gradient-direction / start / end)
                     slot.barFill.style = `margin-left: ${fillLeft}px; width: ${fillWidth}px; height: 5px; background-gradient-direction: horizontal; background-gradient-start: #59c0fa; background-gradient-end: #f59e0b; border-radius: 3px;`;
-
-                    if (slot.dotWidget) {
-                        const rawDotX = Math.round(((currentTemp - globalMin) / rangeSpan) * BAR_WIDTH);
-                        const dotPos = Math.max(fillLeft, Math.min(Math.max(fillLeft, fillRight - 7), rawDotX - 3));
-                        slot.dotWidget.style = `margin-left: ${dotPos}px; width: 7px; height: 7px; border-radius: 4px; background-color: #ffffff; border: 1.5px solid rgba(0, 0, 0, 0.65);`;
-                        slot.dotWidget.show();
-                    }
 
                     slot.rightLab.text = `${Math.round(d.tmax)}°`;
                     slot.rightLab.style = 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 30px; text-align: right;';
