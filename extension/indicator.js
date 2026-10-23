@@ -476,6 +476,8 @@ export const MeteoIndicator = GObject.registerClass(
             this._box.add_child(this._label);
             this.add_child(this._box);
 
+            this._updatePanelIndicator();
+
             this.menu.box.style = 'width: 348px; min-width: 348px; max-width: 348px; padding: 10px 12px;';
 
             this._coordinator = new WeatherCoordinator(this._settings);
@@ -487,7 +489,9 @@ export const MeteoIndicator = GObject.registerClass(
             this._buildPlaceholder(t.loading);
 
             this._settingsChangedId = this._settings.connect('changed', (settings, key) => {
-                if (key === 'language' || key === 'hour-format') {
+                if (key === 'show-icon' || key === 'show-temperature') {
+                    this._updatePanelIndicator();
+                } else if (key === 'language' || key === 'hour-format') {
                     if (this._weatherData) {
                         const isAuto = settings.get_boolean('auto-location');
                         this._onWeatherReceived(this._weatherData, isAuto);
@@ -511,6 +515,16 @@ export const MeteoIndicator = GObject.registerClass(
 
             this._coordinator.fetch(true);
             this._coordinator.startTimer();
+        }
+
+        _updatePanelIndicator() {
+            let showIcon = this._settings.get_boolean('show-icon');
+            let showTemp = this._settings.get_boolean('show-temperature');
+            if (!showIcon && !showTemp) {
+                showIcon = true;
+            }
+            this._icon.visible = showIcon;
+            this._label.visible = showTemp;
         }
 
         _onWeatherReceived(data, isAuto) {

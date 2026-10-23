@@ -1116,9 +1116,9 @@ export class WeatherClient {
     }
 
     /** City search for the preferences dialog. */
-    async geocode(query) {
+    async geocode(query, lang = 'en') {
         const raw = await get(`${OPEN_METEO_GEOCODING_API}?${buildQueryString({name: query, count: 6,
-                                                                              language: 'en', format: 'json'})}`);
+                                                                              language: lang, format: 'json'})}`);
         return (raw.results ?? []).map(result => ({
             name: result.name,
             admin: result.admin1 ?? '',
