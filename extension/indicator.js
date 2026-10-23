@@ -32,7 +32,7 @@ const MESSAGES = {
         windUnitImperial: 'миль/год',
         now: 'Зараз',
         max: 'Макс.',
-        min: 'мін.',
+        min: 'Мін.',
         feelsLikeShort: 'Відчувається як',
         updatedAt: 'Оновлено о',
         recently: 'нещодавно',
@@ -111,7 +111,7 @@ const MESSAGES = {
         windUnitImperial: 'миль/ч',
         now: 'Сейчас',
         max: 'Макс.',
-        min: 'мин.',
+        min: 'Мин.',
         feelsLikeShort: 'Ощущается как',
         updatedAt: 'Обновлено в',
         recently: 'недавно',
@@ -189,8 +189,8 @@ const MESSAGES = {
         windUnit: 'km/h',
         windUnitImperial: 'mph',
         now: 'Now',
-        max: 'H:',
-        min: 'L:',
+        max: 'Max.',
+        min: 'Min.',
         feelsLikeShort: 'Feels like',
         updatedAt: 'Updated at',
         recently: 'recently',
@@ -583,7 +583,7 @@ export const MeteoIndicator = GObject.registerClass(
             const headerContainer = new St.BoxLayout({
                 vertical: true,
                 x_expand: true,
-                style: 'padding: 2px 4px 6px 4px;',
+                style: 'padding: 4px 4px 6px 4px;',
             });
 
             const topRow = new St.BoxLayout({
@@ -651,16 +651,15 @@ export const MeteoIndicator = GObject.registerClass(
 
             const tempLabel = new St.Label({
                 text: `${Math.round(current.temp)}°`,
-                style: 'font-size: 52px; font-weight: 200; color: #ffffff; text-align: center; margin-top: 2px;',
+                style: 'font-size: 56px; font-weight: 300; color: #ffffff; text-align: center; margin-top: 1px; margin-bottom: 1px;',
                 x_align: Clutter.ActorAlign.CENTER,
             });
             headerContainer.add_child(tempLabel);
 
             const condText = t.wmo[current.code] || sceneInfo.desc || 'Ясно';
-            const feelsVal = current.feels !== undefined ? `${Math.round(current.feels)}°` : `${Math.round(current.temp)}°`;
             const condLabel = new St.Label({
-                text: `${condText} · ${t.feelsLikeShort} ${feelsVal}`,
-                style: 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.85); text-align: center; margin-top: 2px;',
+                text: condText,
+                style: 'font-size: 14.5px; font-weight: 500; color: #ffffff; text-align: center;',
                 x_align: Clutter.ActorAlign.CENTER,
             });
             headerContainer.add_child(condLabel);
@@ -669,12 +668,20 @@ export const MeteoIndicator = GObject.registerClass(
                 const todayMax = Math.round(dailyArr[0].tmax);
                 const todayMin = Math.round(dailyArr[0].tmin);
                 const rangeLabel = new St.Label({
-                    text: `${t.max}: ${todayMax}° · ${t.min}: ${todayMin}°`,
-                    style: 'font-size: 12.5px; font-weight: 600; color: rgba(255, 255, 255, 0.7); text-align: center; margin-top: 2px;',
+                    text: `${t.max} ${todayMax}° · ${t.min} ${todayMin}°`,
+                    style: 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.82); text-align: center; margin-top: 3px;',
                     x_align: Clutter.ActorAlign.CENTER,
                 });
                 headerContainer.add_child(rangeLabel);
             }
+
+            const feelsVal = current.feels !== undefined ? `${Math.round(current.feels)}°` : `${Math.round(current.temp)}°`;
+            const feelsLabel = new St.Label({
+                text: `${t.feelsLikeShort} ${feelsVal}`,
+                style: 'font-size: 12px; font-weight: 400; color: rgba(255, 255, 255, 0.55); text-align: center; margin-top: 2px;',
+                x_align: Clutter.ActorAlign.CENTER,
+            });
+            headerContainer.add_child(feelsLabel);
 
             headerItem.add_child(headerContainer);
             this.menu.addMenuItem(headerItem);
