@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate and Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gettext libglib2.0-bin nodejs zip
+
+      - name: Validate JavaScript syntax
+        run: |
+          node -c extension/*.js
+
+      - name: Compile GSettings schemas
+        run: |
+          glib-compile-schemas --strict extension/schemas/
+
+      - name: Build gettext translations
+        run: |
+          ./scripts/build-i18n.sh
+
+      - name: Verify package bundle
+        run: |
+          mkdir -p dist
+          cd extension
+          zip -qr ../dist/meteo@oleksiym.github.io.shell-extension.zip . -x ".*"
+          cd ..
+          unzip -l dist/meteo@oleksiym.github.io.shell-extension.zip

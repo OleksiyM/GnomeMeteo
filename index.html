@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GnomeMeteo — Weather Indicator & Forecast for GNOME Shell</title>
+  <meta name="description" content="Elegant, lightweight weather indicator and forecast for GNOME Shell 45+ with native Libadwaita styling.">
+  <link rel="icon" type="image/png" href="extension/assets/weatherglass-icon-128.png">
+  <style>
+    :root {
+      --bg: #101216;
+      --card-bg: rgba(255, 255, 255, 0.05);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --text-main: #f6f8fa;
+      --text-muted: #9aa0a6;
+      --accent: #3584e4;
+      --accent-hover: #1c71d8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Cantarell", "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: radial-gradient(circle at 50% 0%, #1e2638 0%, var(--bg) 70%);
+      color: var(--text-main);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 2.5rem 1.5rem 1.5rem;
+      text-align: center;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      background: rgba(53, 132, 228, 0.15);
+      color: #62a0ea;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      margin-bottom: 1rem;
+      border: 1px solid rgba(53, 132, 228, 0.3);
+    }
+
+    h1 {
+      font-size: 2.8rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.8rem;
+      background: linear-gradient(180deg, #ffffff 0%, #cfd7e6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      max-width: 620px;
+      margin: 0 auto 2rem;
+    }
+
+    .cta-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 2rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(53, 132, 228, 0.4);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--card-bg);
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-1px);
+    }
+
+    main {
+      flex: 1;
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 0 1.5rem 3rem;
+      width: 100%;
+    }
+
+    .preview-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem 0 3.5rem;
+    }
+
+    .preview-image {
+      max-width: 100%;
+      height: auto;
+      filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.6));
+      border-radius: 18px;
+      transition: transform 0.3s ease;
+    }
+
+    .preview-image:hover {
+      transform: scale(1.01);
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 3.5rem;
+    }
+
+    .feature-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.75rem;
+      backdrop-filter: blur(12px);
+      transition: border-color 0.2s;
+    }
+
+    .feature-card:hover {
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .feature-icon {
+      font-size: 1.8rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .feature-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: #ffffff;
+    }
+
+    .feature-desc {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .install-section {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 2rem;
+      text-align: center;
+      max-width: 680px;
+      margin: 0 auto 3rem;
+    }
+
+    .install-section h2 {
+      font-size: 1.4rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .code-block {
+      background: #000000;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      padding: 0.9rem 1.25rem;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.9rem;
+      color: #8ff0a4;
+      text-align: left;
+      overflow-x: auto;
+      margin-top: 1rem;
+    }
+
+    footer {
+      border-top: 1px solid var(--card-border);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    footer a {
+      color: #62a0ea;
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="badge">GNOME Shell 45 – 50+</div>
+    <h1>GnomeMeteo</h1>
+    <p class="subtitle">
+      Elegant, lightweight weather indicator and forecast for the GNOME desktop. Fast, keyless multi-provider support with native Libadwaita styling.
+    </p>
+    <div class="cta-buttons">
+      <a href="https://github.com/OleksiyM/GnomeMeteo" class="btn btn-primary" target="_blank" rel="noopener">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+        GitHub Repository
+      </a>
+      <a href="https://github.com/OleksiyM/GnomeMeteo/releases/latest" class="btn btn-secondary" target="_blank" rel="noopener">
+        Download Latest Release
+      </a>
+    </div>
+  </header>
+
+  <main>
+    <div class="preview-container">
+      <img src="screenshots/screenshot-1.png" alt="GnomeMeteo New York Forecast Preview" class="preview-image" width="467" height="917">
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">✨</div>
+        <div class="feature-title">Top Panel Indicator</div>
+        <div class="feature-desc">
+          Live temperature and weather conditions right in the GNOME status area. Toggle icon or temperature display dynamically without restarting.
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">⏱️</div>
+        <div class="feature-title">Hourly Forecast & Pager</div>
+        <div class="feature-desc">
+          Switch seamlessly between Temperature, Precipitation chance, and Wind speed metrics with dedicated controls and pagination.
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🗓️</div>
+        <div class="feature-title">7-Day Gradient Visualizer</div>
+        <div class="feature-desc">
+          Daily forecast overview with visual temperature range bars showing weekly minimum and maximum temperatures at a glance.
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">⚙️</div>
+        <div class="feature-title">Libadwaita Preferences</div>
+        <div class="feature-desc">
+          Single-page preferences window with automatic location discovery, multi-provider selection (Open-Meteo, MET Norway, NOAA), and full Ukrainian, English, and Russian localization.
+        </div>
+      </div>
+    </div>
+
+    <div class="install-section">
+      <h2>🚀 One-Step Installation</h2>
+      <p style="color: var(--text-muted); font-size: 0.95rem;">Clone and install into your local GNOME Shell environment:</p>
+      <div class="code-block">
+        git clone https://github.com/OleksiyM/GnomeMeteo.git &amp;&amp; cd GnomeMeteo &amp;&amp; ./install.sh
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>
+      Created with ❤️ by <a href="https://github.com/OleksiyM" target="_blank" rel="noopener">OleksiyM</a>.
+      Lineage credit to original WeatherGlass author Vijay Bala. Released under the GPL-3.0 License.
+    </p>
+  </footer>
+
+</body>
+</html>

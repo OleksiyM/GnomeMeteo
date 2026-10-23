@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Publish Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gettext libglib2.0-bin zip
+
+      - name: Validate JavaScript syntax
+        run: |
+          node -c extension/*.js
+
+      - name: Build gettext translations
+        run: |
+          ./scripts/build-i18n.sh
+
+      - name: Compile GSettings schemas
+        run: |
+          glib-compile-schemas --strict extension/schemas/
+
+      - name: Create extension zip package
+        run: |
+          mkdir -p dist
+          cd extension
+          zip -qr ../dist/meteo@oleksiym.github.io.shell-extension.zip . -x ".*"
+          cd ..
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/meteo@oleksiym.github.io.shell-extension.zip
+          generate_release_notes: true
