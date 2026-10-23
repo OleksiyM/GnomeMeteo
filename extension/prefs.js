@@ -367,7 +367,7 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
                 const dialog = new AboutClass({
                     application_name: 'GnomeMeteo',
                     application_icon: 'org.gnome.Weather-symbolic',
-                    version: '1.0.0',
+                    version: this.metadata['version-name'] ?? '1.0.1',
                     website: 'https://oleksiym.github.io/GnomeMeteo/',
                     copyright: '© 2026 GnomeMeteo\nBased on Weatherglass by Vijay Bala',
                     license_type: Gtk.License.GPL_3_0,
