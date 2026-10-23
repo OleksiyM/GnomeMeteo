@@ -476,7 +476,7 @@ export const MeteoIndicator = GObject.registerClass(
             this._box.add_child(this._label);
             this.add_child(this._box);
 
-            this.menu.box.style = 'min-width: 340px; max-width: 356px; padding: 10px 12px;';
+            this.menu.box.style = 'width: 348px; min-width: 348px; max-width: 348px; padding: 10px 12px;';
 
             this._coordinator = new WeatherCoordinator(this._settings);
             this._coordinator.onData((data, isAuto) => this._onWeatherReceived(data, isAuto));
@@ -931,7 +931,7 @@ export const MeteoIndicator = GObject.registerClass(
                 });
 
                 const daysCount = Math.min(7, dailyArr.length);
-                const BAR_WIDTH = 104;
+                const BAR_WIDTH = 92;
 
                 for (let i = 0; i < daysCount; i++) {
                     const dayData = dailyArr[i];
@@ -1174,7 +1174,7 @@ export const MeteoIndicator = GObject.registerClass(
                 slot.icon.show();
                 slot.icon.icon_name = getSymbolicIcon(dScene.scene, true);
 
-                const BAR_WIDTH = 104;
+                const BAR_WIDTH = 92;
 
                 if (this._hourlyMetric === 'precip') {
                     const prob = Math.round(d.precipProb ?? 0);
@@ -1204,7 +1204,7 @@ export const MeteoIndicator = GObject.registerClass(
                     slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 5px; background-gradient-direction: none; background-color: #30b0c7; border-radius: 3px;`;
 
                     slot.rightLab.text = `${windVal} ${windUnit}`;
-                    slot.rightLab.style = 'font-size: 12px; font-weight: 600; color: #ffffff; min-width: 58px; text-align: right;';
+                    slot.rightLab.style = 'font-size: 12px; font-weight: 600; color: #ffffff; min-width: 60px; text-align: right;';
                 } else {
                     slot.barBox.style = `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`;
 
