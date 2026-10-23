@@ -924,7 +924,7 @@ export const MeteoIndicator = GObject.registerClass(
                 });
 
                 const daysCount = Math.min(7, dailyArr.length);
-                const BAR_WIDTH = 84;
+                const BAR_WIDTH = 104;
 
                 for (let i = 0; i < daysCount; i++) {
                     const dayData = dailyArr[i];
@@ -947,6 +947,10 @@ export const MeteoIndicator = GObject.registerClass(
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
+                    const spacer = new St.Widget({
+                        x_expand: true,
+                    });
+
                     const leftLab = new St.Label({
                         text: '',
                         style: 'font-size: 13px; color: rgba(255, 255, 255, 0.55); min-width: 28px; text-align: right;',
@@ -955,7 +959,6 @@ export const MeteoIndicator = GObject.registerClass(
 
                     const barBox = new St.Widget({
                         style: `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`,
-                        x_expand: true,
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
@@ -973,6 +976,7 @@ export const MeteoIndicator = GObject.registerClass(
 
                     dayRow.add_child(nameLab);
                     dayRow.add_child(dIcon);
+                    dayRow.add_child(spacer);
                     dayRow.add_child(leftLab);
                     dayRow.add_child(barBox);
                     dayRow.add_child(rightLab);
@@ -1185,14 +1189,14 @@ export const MeteoIndicator = GObject.registerClass(
                     slot.icon.show();
                     slot.icon.icon_name = getSymbolicIcon(dScene.scene, true);
 
-                    const BAR_WIDTH = 84;
+                    const BAR_WIDTH = 104;
                     slot.barBox.style = `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`;
 
                     slot.leftLab.show();
                     slot.leftLab.text = `${Math.round(d.tmin)}°`;
                     slot.leftLab.style = 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.6); min-width: 28px; text-align: right;';
 
-                    const fillLeft = Math.max(0, Math.min(BAR_WIDTH - 10, Math.round(((d.tmin - globalMin) / rangeSpan) * BAR_WIDTH)));
+                    const fillLeft = Math.max(0, Math.min(BAR_WIDTH - 8, Math.round(((d.tmin - globalMin) / rangeSpan) * BAR_WIDTH)));
                     const fillRight = Math.max(fillLeft + 8, Math.min(BAR_WIDTH, Math.round(((d.tmax - globalMin) / rangeSpan) * BAR_WIDTH)));
                     const fillWidth = Math.max(8, fillRight - fillLeft);
 
