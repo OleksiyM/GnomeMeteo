@@ -137,7 +137,7 @@ const MESSAGES = {
             'Waxing Gibbous': 'Растущая',
             'Full Moon': 'Полнолуние',
             'Waning Gibbous': 'Убывающая',
-            'Last Quarter': 'Последняя четверть',
+            'Last Quarter': 'Третья четверть',
             'Waning Crescent': 'Старая',
         },
         wmo: {
@@ -1039,7 +1039,7 @@ export const MeteoIndicator = GObject.registerClass(
                     x_expand: true,
                     reactive: !!tooltipText,
                     can_focus: false,
-                    style: 'background-color: rgba(255, 255, 255, 0.07); border-radius: 14px; padding: 9px 12px; min-height: 64px;',
+                    style: 'background-color: rgba(255, 255, 255, 0.07); border-radius: 14px; padding: 9px 10px; min-height: 64px;',
                 });
 
                 const headRow = new St.BoxLayout({
@@ -1065,7 +1065,7 @@ export const MeteoIndicator = GObject.registerClass(
 
                 const vLab = new St.Label({
                     text: value,
-                    style: 'font-size: 18px; font-weight: 600; color: #ffffff; margin: 1px 0;',
+                    style: 'font-size: 15px; font-weight: 600; color: #ffffff; margin: 1px 0;',
                 });
                 tile.add_child(vLab);
 
