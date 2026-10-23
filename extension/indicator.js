@@ -931,7 +931,7 @@ export const MeteoIndicator = GObject.registerClass(
                 });
 
                 const daysCount = Math.min(7, dailyArr.length);
-                const BAR_WIDTH = 92;
+                const BAR_WIDTH = 74;
 
                 for (let i = 0; i < daysCount; i++) {
                     const dayData = dailyArr[i];
@@ -1174,7 +1174,7 @@ export const MeteoIndicator = GObject.registerClass(
                 slot.icon.show();
                 slot.icon.icon_name = getSymbolicIcon(dScene.scene, true);
 
-                const BAR_WIDTH = 92;
+                const BAR_WIDTH = 74;
 
                 if (this._hourlyMetric === 'precip') {
                     const prob = Math.round(d.precipProb ?? 0);
