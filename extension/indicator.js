@@ -725,7 +725,7 @@ export const MeteoIndicator = GObject.registerClass(
             const scrollItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
             const vScroll = new St.ScrollView({
                 hscrollbar_policy: St.PolicyType.NEVER,
-                vscrollbar_policy: St.PolicyType.NEVER,
+                vscrollbar_policy: St.PolicyType.EXTERNAL,
                 enable_mouse_scrolling: true,
                 style: 'max-height: 560px; x-expand: true;',
             });
@@ -857,11 +857,12 @@ export const MeteoIndicator = GObject.registerClass(
                 hourlyHeaderRow.add_child(controlsRow);
                 hourlyCardBox.add_child(hourlyHeaderRow);
 
-                // Horizontal Scroll for 24 Hours (No scrollbar)
+                // Horizontal Scroll for 24 Hours (No scrollbar with PolicyType.EXTERNAL)
                 const hScroll = new St.ScrollView({
-                    hscrollbar_policy: St.PolicyType.NEVER,
+                    hscrollbar_policy: St.PolicyType.EXTERNAL,
                     vscrollbar_policy: St.PolicyType.NEVER,
                     enable_mouse_scrolling: true,
+                    clip_to_allocation: true,
                     style: 'height: 72px;',
                 });
 
