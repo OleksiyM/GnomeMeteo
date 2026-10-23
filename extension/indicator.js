@@ -258,7 +258,7 @@ function resolveLang(settings) {
     const sys = GLib.get_language_names()[0] || '';
     if (sys.startsWith('uk')) return 'uk';
     if (sys.startsWith('ru')) return 'ru';
-    return 'uk';
+    return 'en';
 }
 
 function is12HourFormat(settings) {
