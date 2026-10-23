@@ -61,7 +61,7 @@ jobs:
 
       - name: Attest package provenance
         id: attest
-        uses: actions/attest@v2
+        uses: actions/attest-build-provenance@v2
         with:
           subject-path: dist/meteo@oleksiym.github.io.shell-extension.zip
 
@@ -111,7 +111,7 @@ jobs:
 
       - name: Attest checksum manifest
         id: attest_checksums
-        uses: actions/attest@v2
+        uses: actions/attest-build-provenance@v2
         with:
           subject-path: dist/SHA256SUMS
 
