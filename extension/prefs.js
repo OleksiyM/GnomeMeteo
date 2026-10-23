@@ -39,7 +39,7 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
         const client = new WeatherClient();
-        window.set_default_size(560, 680);
+        window.set_default_size(580, 700);
 
         // Single clean scrollable page
         const page = new Adw.PreferencesPage();
@@ -281,12 +281,12 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
         });
         const provRow = new Adw.ComboRow({
             title: _('Provider'),
-            subtitle: _('Open-Meteo (global) · MET Norway (CC BY-SA 4.0) · NOAA NWS (US)'),
+            subtitle: _('Forecast data source'),
             model: new Gtk.StringList({
                 strings: [
-                    _('Open-Meteo (default, worldwide)'),
-                    _('MET Norway (api.met.no)'),
-                    _('NOAA NWS (US only)'),
+                    _('Open-Meteo (Worldwide)'),
+                    _('MET Norway'),
+                    _('NOAA NWS (US)'),
                 ],
             }),
         });
@@ -298,17 +298,17 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
 
         const modelRow = new Adw.ComboRow({
             title: _('Forecast model'),
-            subtitle: _('Open-Meteo only · fine-tune national or global weather models'),
+            subtitle: _('Prediction model (Open-Meteo)'),
             model: new Gtk.StringList({
                 strings: [
-                    _('Best match (Open-Meteo regional auto-pick)'),
-                    _('ECMWF IFS high-res (~12 km, recommended)'),
+                    _('Best match (Recommended)'),
+                    _('ECMWF IFS (High resolution)'),
                     _('ECMWF IFS (0.25° grid)'),
-                    _('DWD ICON (German Weather Service)'),
-                    _('NOAA GFS (US global)'),
-                    _('GEM global (Canada)'),
+                    _('DWD ICON (Germany)'),
+                    _('NOAA GFS (US)'),
+                    _('GEM (Canada)'),
                     _('JMA (Japan)'),
-                    _('UK Met Office global (10 km)'),
+                    _('UK Met Office (10 km)'),
                 ],
             }),
         });
