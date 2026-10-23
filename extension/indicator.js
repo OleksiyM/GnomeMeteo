@@ -719,8 +719,14 @@ export const MeteoIndicator = GObject.registerClass(
                     y_align: Clutter.ActorAlign.CENTER,
                 });
 
+                const isImperial = this._settings.get_string('units') === 'imperial';
+                const windUnit = isImperial ? t.windUnitImperial : t.windUnit;
+                const initialMetricTitle = (this._hourlyMetric === 'wind')
+                    ? `${t.hourlyMetrics.wind} (${windUnit})`
+                    : t.hourlyMetrics[this._hourlyMetric];
+
                 this._hourlyTitleLabel = new St.Label({
-                    text: t.hourlyMetrics[this._hourlyMetric],
+                    text: initialMetricTitle,
                     style: 'font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.55); letter-spacing: 0.05em;',
                     x_expand: true,
                     y_align: Clutter.ActorAlign.CENTER,
@@ -931,7 +937,7 @@ export const MeteoIndicator = GObject.registerClass(
                 });
 
                 const daysCount = Math.min(7, dailyArr.length);
-                const BAR_WIDTH = 74;
+                const BAR_WIDTH = 104;
 
                 for (let i = 0; i < daysCount; i++) {
                     const dayData = dailyArr[i];
@@ -1038,7 +1044,14 @@ export const MeteoIndicator = GObject.registerClass(
                 return tile;
             };
 
-            const row1 = new St.BoxLayout({ x_expand: true, style: 'spacing: 8px;' });
+            const row1 = new St.Widget({
+                layout_manager: new Clutter.BoxLayout({
+                    orientation: Clutter.Orientation.HORIZONTAL,
+                    homogeneous: true,
+                    spacing: 8,
+                }),
+                x_expand: true,
+            });
             let sunriseStr = '07:15';
             let sunsetStr = '17:45';
             if (dailyArr[0] && dailyArr[0].sunrise) {
@@ -1055,7 +1068,14 @@ export const MeteoIndicator = GObject.registerClass(
             row1.add_child(makeTile(dt.moon, moon.nameTrans, dt.moonIllum.replace('{n}', Math.round(moon.illum * 100))));
             detailsContainer.add_child(row1);
 
-            const row2 = new St.BoxLayout({ x_expand: true, style: 'spacing: 8px;' });
+            const row2 = new St.Widget({
+                layout_manager: new Clutter.BoxLayout({
+                    orientation: Clutter.Orientation.HORIZONTAL,
+                    homogeneous: true,
+                    spacing: 8,
+                }),
+                x_expand: true,
+            });
             const humVal = current.humidity !== undefined ? `${Math.round(current.humidity)}%` : '—';
             const dewPoint = current.humidity !== undefined ? Math.round(current.temp - ((100 - current.humidity) / 5)) : Math.round(current.temp - 4);
             const pressMm = current.pressure ? Math.round(current.pressure * 0.750062) : 750;
@@ -1093,7 +1113,12 @@ export const MeteoIndicator = GObject.registerClass(
             }
 
             if (this._hourlyTitleLabel) {
-                this._hourlyTitleLabel.text = t.hourlyMetrics[this._hourlyMetric];
+                const isImperial = this._settings.get_string('units') === 'imperial';
+                const windUnit = isImperial ? t.windUnitImperial : t.windUnit;
+                const metricTitle = (this._hourlyMetric === 'wind')
+                    ? `${t.hourlyMetrics.wind} (${windUnit})`
+                    : t.hourlyMetrics[this._hourlyMetric];
+                this._hourlyTitleLabel.text = metricTitle;
             }
 
             this._updateHourlyRow();
@@ -1174,7 +1199,7 @@ export const MeteoIndicator = GObject.registerClass(
                 slot.icon.show();
                 slot.icon.icon_name = getSymbolicIcon(dScene.scene, true);
 
-                const BAR_WIDTH = 74;
+                const BAR_WIDTH = 104;
 
                 if (this._hourlyMetric === 'precip') {
                     const prob = Math.round(d.precipProb ?? 0);
@@ -1203,8 +1228,8 @@ export const MeteoIndicator = GObject.registerClass(
                     slot.barBox.style = `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`;
                     slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 5px; background-gradient-direction: none; background-color: #30b0c7; border-radius: 3px;`;
 
-                    slot.rightLab.text = `${windVal} ${windUnit}`;
-                    slot.rightLab.style = 'font-size: 12px; font-weight: 600; color: #ffffff; min-width: 60px; text-align: right;';
+                    slot.rightLab.text = `${windVal}`;
+                    slot.rightLab.style = 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 30px; text-align: right;';
                 } else {
                     slot.barBox.style = `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`;
 
