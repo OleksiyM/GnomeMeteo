@@ -442,7 +442,7 @@ export const MeteoIndicator = GObject.registerClass(
     { GTypeName: `MeteoIndicator_${Date.now()}` },
     class extends PanelMenu.Button {
         _init(extension) {
-            super._init(0.0, 'Meteo');
+            super._init(0.0, 'GnomeMeteo');
             this._ext = extension;
             this._settings = extension.getSettings();
             this._tooltipHelper = new TooltipHelper();

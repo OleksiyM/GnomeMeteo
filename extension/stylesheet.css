@@ -1,4 +1,4 @@
-/* weatherglass */
+/* GnomeMeteo */
 
 .aw-panel-box {
     spacing: 5px;
@@ -38,7 +38,7 @@
     spacing: 6px;
 }
 
-/* -- Meteo Header (Apple Weather style, centered hero + corner buttons) -- */
+/* -- GnomeMeteo Header (centered hero + corner buttons) -- */
 
 .meteo-header {
     spacing: 1px;
@@ -91,7 +91,7 @@
     margin-top: 6px;
 }
 
-/* -- Rounded Card Sections (iOS style panels) -- */
+/* -- Rounded Card Sections (Libadwaita style panels) -- */
 
 .meteo-scroll-box {
     spacing: 7px;

@@ -37,6 +37,7 @@ const ResultRow = GObject.registerClass(class ResultRow extends Adw.ActionRow {
 
 export default class GnomeMeteoPrefs extends ExtensionPreferences {
     fillPreferencesWindow(window) {
+        window.title = 'GnomeMeteo';
         const settings = this.getSettings();
         const client = new WeatherClient();
         window.set_default_size(580, 700);
@@ -366,18 +367,15 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
                 const dialog = new AboutClass({
                     application_name: 'GnomeMeteo',
                     application_icon: 'org.gnome.Weather-symbolic',
-                    version: String(this.metadata.version || '1.0.0'),
-                    developer_name: 'OleksiyM',
-                    developers: [
-                        'OleksiyM',
-                        'Vijay Bala (original Weatherglass codebase)',
-                    ],
-                    website: 'https://github.com/OleksiyM/GnomeMeteo',
-                    issue_url: 'https://github.com/OleksiyM/GnomeMeteo/issues',
-                    copyright: '© 2026 OleksiyM\nBased on Weatherglass by Vijay Bala',
-                    license_type: Gtk.License.GPL_2_0,
+                    version: '1.0.0',
+                    website: 'https://oleksiym.github.io/GnomeMeteo/',
+                    copyright: '© 2026 GnomeMeteo\nBased on Weatherglass by Vijay Bala',
+                    license_type: Gtk.License.GPL_3_0,
                     comments: _('Clean, modern weather indicator and forecast for GNOME Shell'),
                 });
+                dialog.add_link('GitHub', 'https://github.com/OleksiyM/GnomeMeteo');
+                dialog.add_link(_('Releases'), 'https://github.com/OleksiyM/GnomeMeteo/releases');
+                dialog.add_link('X (@oleksiyML)', 'https://x.com/oleksiyML');
                 dialog.present(window);
             });
             headerBar.pack_end(aboutBtn);

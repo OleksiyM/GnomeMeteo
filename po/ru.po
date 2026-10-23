@@ -225,6 +225,11 @@ msgstr "Как часто обновлять погоду в фоне"
 msgid "About GnomeMeteo"
 msgstr "О программе GnomeMeteo"
 
-#: extension/prefs.js:379
+#: extension/prefs.js:374
 msgid "Clean, modern weather indicator and forecast for GNOME Shell"
 msgstr "Лаконичный, современный индикатор погоды и прогноз для GNOME Shell"
+
+#: extension/prefs.js:377
+msgid "Releases"
+msgstr "Релизы"
+

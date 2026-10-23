@@ -225,6 +225,11 @@ msgstr "Періодичність фонового завантаження д�
 msgid "About GnomeMeteo"
 msgstr "Про GnomeMeteo"
 
-#: extension/prefs.js:379
+#: extension/prefs.js:374
 msgid "Clean, modern weather indicator and forecast for GNOME Shell"
 msgstr "Лаконічний, сучасний індикатор погоди та прогноз для GNOME Shell"
+
+#: extension/prefs.js:377
+msgid "Releases"
+msgstr "Релізи"
+

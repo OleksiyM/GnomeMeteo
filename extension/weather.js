@@ -944,7 +944,7 @@ export function desktopEntryName() {
 }
 
 export function desktopEntryText() {
-    return ['[Desktop Entry]', 'Type=Application', 'Name=Weatherglass',
+    return ['[Desktop Entry]', 'Type=Application', 'Name=GnomeMeteo',
             'Comment=Weather for the GNOME panel', 'Icon=weather-overcast',
             'NoDisplay=true', 'Terminal=false',
             'X-Geoclue-Reason=Show the weather for where you are', ''].join('\n');
@@ -980,7 +980,7 @@ function readConsentStub(done) {
             done({file, text: new TextDecoder().decode(bytes)});
         } catch (err) {
             if (!err.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND))
-                logError(err, 'Weatherglass: consent entry unreadable');
+                logError(err, 'GnomeMeteo: consent entry unreadable');
             done({file, text: null});
         }
     });
@@ -994,11 +994,7 @@ function readConsentStub(done) {
  * consent agent, never by this call stack. */
 export function ensureDesktopEntry() {
     readConsentStub(({file, text}) => {
-        /* Keep any entry that carries our consent key: the standalone
-         * WeatherGlass app historically installed a richer .desktop
-         * under the same id and it satisfies the consent agent just as
-         * well (Name + X-Geoclue-Reason). Byte-equality here used to
-         * bulldoze it. */
+        /* Keep any entry that carries our consent key */
         if (text !== null && text.includes('X-Geoclue-Reason'))
             return;
         try {
@@ -1009,7 +1005,7 @@ export function ensureDesktopEntry() {
             // concrete failure mode: unwritable home; the consent
             // prompt then never appears and detection falls back to
             // the IP chain anyway
-            logError(err, 'Weatherglass: consent entry not installed');
+            logError(err, 'GnomeMeteo: consent entry not installed');
         }
     });
 }
@@ -1030,7 +1026,7 @@ export function removeDesktopEntry() {
         try {
             file.delete(null);
         } catch (err) {
-            logError(err, 'Weatherglass: consent entry not removable');
+            logError(err, 'GnomeMeteo: consent entry not removable');
         }
     });
 }
@@ -1077,7 +1073,7 @@ export class WeatherClient {
             } catch (err) {
                 this._geoRetryAt = nowSec + geoRetryDelaySec(this._geoFailures);
                 this._geoFailures++;
-                log(`Weatherglass: GeoClue unusable (${err.message}); using IP lookup`);
+                log(`GnomeMeteo: GeoClue unusable (${err.message}); using IP lookup`);
             }
         }
         if (!fix) {

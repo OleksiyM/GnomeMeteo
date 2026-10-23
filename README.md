@@ -2,7 +2,7 @@
 
 > **Elegant weather indicator and forecast for GNOME Shell 45+**
 
-GnomeMeteo is a lightweight, modern weather extension for the GNOME desktop, featuring an iOS Weather-inspired popup, native Libadwaita styling, multi-provider weather forecasts, and smooth segmented metric switching.
+GnomeMeteo is a lightweight, modern weather extension for the GNOME desktop, featuring a clean card-based weather popup, native Libadwaita styling, multi-provider weather forecasts, and smooth segmented metric switching.
 
 <p align="center">
   <img src="screenshots/screenshot-1.png" alt="GnomeMeteo Forecast Popup" width="45%" />

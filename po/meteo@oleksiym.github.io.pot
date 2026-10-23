@@ -225,6 +225,11 @@ msgstr ""
 msgid "About GnomeMeteo"
 msgstr ""
 
-#: extension/prefs.js:379
+#: extension/prefs.js:374
 msgid "Clean, modern weather indicator and forecast for GNOME Shell"
 msgstr ""
+
+#: extension/prefs.js:377
+msgid "Releases"
+msgstr ""
+
