@@ -49,6 +49,7 @@ const MESSAGES = {
             dewPoint: 'Точка роси: {n}°',
             pressure: 'ТИСК',
             mm: 'мм рт. ст.',
+            inHg: 'inHg',
             normal: 'Нормальний',
         },
         moonPhases: {
@@ -128,6 +129,7 @@ const MESSAGES = {
             dewPoint: 'Точка росы: {n}°',
             pressure: 'ДАВЛЕНИЕ',
             mm: 'мм рт. ст.',
+            inHg: 'inHg',
             normal: 'Нормальное',
         },
         moonPhases: {
@@ -207,6 +209,7 @@ const MESSAGES = {
             dewPoint: 'Dew point: {n}°',
             pressure: 'PRESSURE',
             mm: 'mmHg',
+            inHg: 'inHg',
             normal: 'Normal',
         },
         moonPhases: {
@@ -337,6 +340,13 @@ function toDisplayTemp(celsius, isImperial) {
 function toDisplayWind(kmh, isImperial) {
     if (kmh === null || kmh === undefined || Number.isNaN(kmh)) return 0;
     return Math.round(isImperial ? (kmh * 0.621371) : kmh);
+}
+
+function toDisplayPressure(hPa, isImperial) {
+    if (!hPa || Number.isNaN(hPa)) return isImperial ? '29.9' : '750';
+    return isImperial
+        ? (hPa * 0.029530).toFixed(1)
+        : String(Math.round(hPa * 0.750062));
 }
 
 class TooltipHelper {
@@ -1138,10 +1148,11 @@ export const MeteoIndicator = GObject.registerClass(
             const humVal = current.humidity !== undefined ? `${Math.round(current.humidity)}%` : '—';
             const rawDewPoint = current.humidity !== undefined ? current.temp - ((100 - current.humidity) / 5) : current.temp - 4;
             const dewPoint = toDisplayTemp(rawDewPoint, isImperial);
-            const pressMm = current.pressure ? Math.round(current.pressure * 0.750062) : 750;
+            const pressVal = toDisplayPressure(current.pressure, isImperial);
+            const pressUnit = isImperial ? dt.inHg : dt.mm;
 
             row2.add_child(makeTile('weather-showers-symbolic', dt.humidity, humVal, dt.dewPoint.replace('{n}', dewPoint)));
-            row2.add_child(makeTile('find-location-symbolic', dt.pressure, `${pressMm}`, `${dt.mm} · ${dt.normal}`));
+            row2.add_child(makeTile('find-location-symbolic', dt.pressure, pressVal, `${pressUnit} · ${dt.normal}`));
             detailsContainer.add_child(row2);
 
             contentBox.add_child(detailsContainer);
