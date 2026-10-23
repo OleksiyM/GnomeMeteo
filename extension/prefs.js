@@ -232,7 +232,7 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
     }
 
     _buildUnitsGroup(settings) {
-        const unitsGroup = new Adw.PreferencesGroup({ title: _('Units & Format') });
+        const unitsGroup = new Adw.PreferencesGroup({ title: _('Units and Format') });
 
         const langRow = new Adw.ComboRow({
             title: _('Language'),
