@@ -1,4 +1,4 @@
-// Meteo Indicator (Apple-inspired smartphone card layout, full i18n, accurate hourly clock times)
+// Meteo Indicator (Clean GNOME Adwaita-inspired card layout, full i18n, accurate hourly clock times)
 
 import GObject from 'gi://GObject';
 import St from 'gi://St';
@@ -39,23 +39,12 @@ const MESSAGES = {
         myLocation: 'Моє розташування',
         loading: 'Завантаження погоди…',
         error: 'Помилка',
-        summaryNoPrecip: '💬 В найближчі години опадів не очікується.',
-        summaryPrecip: '💬 Очікуються опади в найближчі години.',
-        summaryLightRain: '💬 Можливий невеликий дощ.',
         details: {
             sunriseSunset: '🌅 СХІД І ЗАХІД',
             sunrise: 'Схід',
             sunset: 'Захід',
             moon: '🌖 ФАЗА МІСЯЦЯ',
-            moonIllum: '{n}% освіченості',
-            feelsLike: '🌡️ ВІДЧУВАЄТЬСЯ',
-            feelsCooler: 'Через вітер прохолодніше',
-            feelsWarmer: 'Через вологість тепліше',
-            feelsSimilar: 'Схоже на реальну',
-            visibility: '👁️ ВИДИМІСТЬ',
-            km: 'км',
-            cleanAir: 'Чисте повітря',
-            haze: 'Легкий серпанок',
+            moonIllum: '{n}% освітленості',
             humidity: '💧 ВОЛОГІСТЬ',
             dewPoint: 'Точка роси: {n}°',
             pressure: '🧭 ТИСК',
@@ -129,23 +118,12 @@ const MESSAGES = {
         myLocation: 'Моё местоположение',
         loading: 'Загрузка погоды…',
         error: 'Ошибка',
-        summaryNoPrecip: '💬 В ближайшие часы осадков не ожидается.',
-        summaryPrecip: '💬 Ожидаются осадки в ближайшие часы.',
-        summaryLightRain: '💬 Возможен небольшой дождь.',
         details: {
             sunriseSunset: '🌅 ВОСХОД И ЗАКАТ',
             sunrise: 'Восход',
             sunset: 'Закат',
             moon: '🌖 ФАЗА ЛУНЫ',
             moonIllum: '{n}% освещенности',
-            feelsLike: '🌡️ ОЩУЩАЕТСЯ',
-            feelsCooler: 'Из-за ветра холоднее',
-            feelsWarmer: 'Из-за влажности теплее',
-            feelsSimilar: 'Похоже на реальную',
-            visibility: '👁️ ВИДИМОСТЬ',
-            km: 'км',
-            cleanAir: 'Чистый воздух',
-            haze: 'Лёгкая дымка',
             humidity: '💧 ВЛАЖНОСТЬ',
             dewPoint: 'Точка росы: {n}°',
             pressure: '🧭 ДАВЛЕНИЕ',
@@ -219,23 +197,12 @@ const MESSAGES = {
         myLocation: 'My location',
         loading: 'Fetching weather…',
         error: 'Error',
-        summaryNoPrecip: '💬 No precipitation expected in the coming hours.',
-        summaryPrecip: '💬 Precipitation expected in the coming hours.',
-        summaryLightRain: '💬 Light rain possible.',
         details: {
             sunriseSunset: '🌅 SUNRISE & SUNSET',
             sunrise: 'Rise',
             sunset: 'Set',
             moon: '🌖 MOON PHASE',
             moonIllum: '{n}% illumination',
-            feelsLike: '🌡️ FEELS LIKE',
-            feelsCooler: 'Wind makes it cooler',
-            feelsWarmer: 'Humidity makes it warmer',
-            feelsSimilar: 'Similar to actual',
-            visibility: '👁️ VISIBILITY',
-            km: 'km',
-            cleanAir: 'Clear air',
-            haze: 'Light haze',
             humidity: '💧 HUMIDITY',
             dewPoint: 'Dew point: {n}°',
             pressure: '🧭 PRESSURE',
@@ -490,7 +457,6 @@ export const MeteoIndicator = GObject.registerClass(
             this._dailySlots = [];
             this._metricButtons = {};
 
-            // 1. Panel button: clean symbolic icon + temperature (e.g. 13°)
             this._box = new St.BoxLayout({
                 style_class: 'panel-status-indicators-box',
                 y_align: Clutter.ActorAlign.CENTER,
@@ -510,10 +476,8 @@ export const MeteoIndicator = GObject.registerClass(
             this._box.add_child(this._label);
             this.add_child(this._box);
 
-            // 2. Vertical smartphone-card dimensions
-            this.menu.box.style = 'min-width: 330px; max-width: 350px; padding: 10px 12px;';
+            this.menu.box.style = 'min-width: 340px; max-width: 356px; padding: 10px 12px;';
 
-            // 3. Connect weather coordinator
             this._coordinator = new WeatherCoordinator(this._settings);
             this._coordinator.onData((data, isAuto) => this._onWeatherReceived(data, isAuto));
             this._coordinator.onError(err => this._onWeatherError(err));
@@ -522,7 +486,6 @@ export const MeteoIndicator = GObject.registerClass(
             const t = MESSAGES[lang] || MESSAGES.uk;
             this._buildPlaceholder(t.loading);
 
-            // 4. Settings listener
             this._settingsChangedId = this._settings.connect('changed', (settings, key) => {
                 if (key === 'language' || key === 'hour-format') {
                     if (this._weatherData) {
@@ -538,7 +501,6 @@ export const MeteoIndicator = GObject.registerClass(
                 }
             });
 
-            // 5. Hide tooltip on menu close, refresh if stale
             this._menuOpenId = this.menu.connect('open-state-changed', (menu, open) => {
                 if (!open) {
                     this._tooltipHelper.hide();
@@ -547,7 +509,6 @@ export const MeteoIndicator = GObject.registerClass(
                 }
             });
 
-            // 6. Initial fetch
             this._coordinator.fetch(true);
             this._coordinator.startTimer();
         }
@@ -558,7 +519,6 @@ export const MeteoIndicator = GObject.registerClass(
             const sceneInfo = deriveScene(current);
             const iconName = getSymbolicIcon(sceneInfo.scene, current.isDay);
 
-            // Find accurate start hour index
             let startIdx = 0;
             if (hourly && Array.isArray(hourly.time)) {
                 const nowIso = current?.timeIso || '';
@@ -575,7 +535,6 @@ export const MeteoIndicator = GObject.registerClass(
             }
             this._hourlyStartIndex = startIdx;
 
-            // Update panel indicator
             const roundedTemp = Math.round(current.temp);
             this._icon.icon_name = iconName;
             this._label.text = `${roundedTemp}°`;
@@ -588,8 +547,6 @@ export const MeteoIndicator = GObject.registerClass(
             const cityName = (isAuto && detectedName)
                 ? detectedName
                 : (this._settings.get_string('location-name') || t.myLocation);
-
-            console.log(`[Meteo] Weather updated: city=${cityName}, temp=${roundedTemp}°, hourIdx=${startIdx}, lang=${lang}`);
 
             this._buildFullMenu(cityName, current, daily, hourly, sceneInfo, lang);
         }
@@ -620,32 +577,35 @@ export const MeteoIndicator = GObject.registerClass(
             const dailyArr = Array.isArray(daily) ? daily : [];
 
             // ══════════════════════════════════════════════════════════════════
-            // 1. PINNED HEADER (Top controls + City, Big Temp, Condition, Summary)
+            // 1. PINNED HEADER
             // ══════════════════════════════════════════════════════════════════
             const headerItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
             const headerContainer = new St.BoxLayout({
                 vertical: true,
                 x_expand: true,
-                style: 'padding: 4px 6px 6px 6px;',
+                style: 'padding: 2px 4px 6px 4px;',
             });
 
-            // Top control row: [🔄 Refresh] on left, [⚙️ Settings] on right, City in center
             const topRow = new St.BoxLayout({
                 x_expand: true,
                 y_align: Clutter.ActorAlign.CENTER,
             });
 
+            const iconBtnStyle = 'width: 30px; height: 30px; border-radius: 15px; background-color: rgba(255, 255, 255, 0.08); padding: 0;';
+            const iconBtnHoverStyle = 'width: 30px; height: 30px; border-radius: 15px; background-color: rgba(255, 255, 255, 0.18); padding: 0;';
+
             const refreshBtn = new St.Button({
                 child: new St.Icon({
                     icon_name: 'view-refresh-symbolic',
-                    icon_size: 16,
+                    icon_size: 15,
                     style_class: 'system-status-icon',
                 }),
-                style_class: 'button',
+                style: iconBtnStyle,
                 can_focus: true,
                 y_align: Clutter.ActorAlign.CENTER,
             });
             refreshBtn.connect('notify::hover', () => {
+                refreshBtn.style = refreshBtn.hover ? iconBtnHoverStyle : iconBtnStyle;
                 if (refreshBtn.hover) {
                     this._tooltipHelper.show(refreshBtn, `${t.updatedAt} ${this._lastUpdateStr || t.recently}`);
                 } else {
@@ -668,12 +628,15 @@ export const MeteoIndicator = GObject.registerClass(
             const prefsBtn = new St.Button({
                 child: new St.Icon({
                     icon_name: 'preferences-system-symbolic',
-                    icon_size: 16,
+                    icon_size: 15,
                     style_class: 'system-status-icon',
                 }),
-                style_class: 'button',
+                style: iconBtnStyle,
                 can_focus: true,
                 y_align: Clutter.ActorAlign.CENTER,
+            });
+            prefsBtn.connect('notify::hover', () => {
+                prefsBtn.style = prefsBtn.hover ? iconBtnHoverStyle : iconBtnStyle;
             });
             prefsBtn.connect('clicked', () => {
                 this._tooltipHelper.hide();
@@ -686,31 +649,28 @@ export const MeteoIndicator = GObject.registerClass(
             topRow.add_child(prefsBtn);
             headerContainer.add_child(topRow);
 
-            // Centered Big Temperature (Clean white)
             const tempLabel = new St.Label({
                 text: `${Math.round(current.temp)}°`,
-                style: 'font-size: 52px; font-weight: 200; color: #ffffff; text-align: center; margin-top: 1px;',
+                style: 'font-size: 52px; font-weight: 200; color: #ffffff; text-align: center; margin-top: 2px;',
                 x_align: Clutter.ActorAlign.CENTER,
             });
             headerContainer.add_child(tempLabel);
 
-            // Translated Condition Description + Feels-Like
             const condText = t.wmo[current.code] || sceneInfo.desc || 'Ясно';
             const feelsVal = current.feels !== undefined ? `${Math.round(current.feels)}°` : `${Math.round(current.temp)}°`;
             const condLabel = new St.Label({
                 text: `${condText} · ${t.feelsLikeShort} ${feelsVal}`,
-                style: 'font-size: 14px; font-weight: 500; color: #ffffff; opacity: 0.9; text-align: center; margin-top: 2px;',
+                style: 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.85); text-align: center; margin-top: 2px;',
                 x_align: Clutter.ActorAlign.CENTER,
             });
             headerContainer.add_child(condLabel);
 
-            // Daily Range (High / Low for today) in crisp white
             if (dailyArr.length > 0 && dailyArr[0].tmax !== undefined) {
                 const todayMax = Math.round(dailyArr[0].tmax);
                 const todayMin = Math.round(dailyArr[0].tmin);
                 const rangeLabel = new St.Label({
                     text: `${t.max}: ${todayMax}° · ${t.min}: ${todayMin}°`,
-                    style: 'font-size: 13px; font-weight: 600; color: #ffffff; opacity: 0.85; text-align: center; margin-top: 2px;',
+                    style: 'font-size: 12.5px; font-weight: 600; color: rgba(255, 255, 255, 0.7); text-align: center; margin-top: 2px;',
                     x_align: Clutter.ActorAlign.CENTER,
                 });
                 headerContainer.add_child(rangeLabel);
@@ -720,7 +680,7 @@ export const MeteoIndicator = GObject.registerClass(
             this.menu.addMenuItem(headerItem);
 
             // ══════════════════════════════════════════════════════════════════
-            // SCROLLABLE CONTAINER (Hourly 24h, 7 Days, 2x2 Details Grid)
+            // SCROLLABLE CONTAINER
             // ══════════════════════════════════════════════════════════════════
             const scrollItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
             const vScroll = new St.ScrollView({
@@ -733,38 +693,37 @@ export const MeteoIndicator = GObject.registerClass(
             const contentBox = new St.BoxLayout({
                 vertical: true,
                 x_expand: true,
-                style: 'padding-right: 4px;',
+                style: 'spacing: 8px;',
             });
 
             // ──────────────────────────────────────────────────────────────────
-            // 2. CARD: HOURLY FORECAST (Accurate future clock hours, 24h scroll)
+            // 2. CARD: HOURLY FORECAST (Clean header controls, full-width strip)
             // ──────────────────────────────────────────────────────────────────
             if (hourly && Array.isArray(hourly.temp) && hourly.temp.length > 0) {
                 const hourlyCardBox = new St.BoxLayout({
                     vertical: true,
                     x_expand: true,
-                    style: 'background-color: rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 10px 12px; margin: 4px 0;',
+                    style: 'background-color: rgba(255, 255, 255, 0.07); border-radius: 14px; padding: 10px 12px;',
                 });
 
                 const hourlyHeaderRow = new St.BoxLayout({
                     x_expand: true,
-                    style: 'margin-bottom: 8px;',
+                    style: 'margin-bottom: 10px; spacing: 6px;',
                     y_align: Clutter.ActorAlign.CENTER,
                 });
 
                 this._hourlyTitleLabel = new St.Label({
                     text: t.hourlyMetrics[this._hourlyMetric],
-                    style: 'font-size: 11px; font-weight: bold; color: rgba(255, 255, 255, 0.6); letter-spacing: 0.05em; text-transform: uppercase;',
+                    style: 'font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.55); letter-spacing: 0.05em;',
                     x_expand: true,
                     y_align: Clutter.ActorAlign.CENTER,
                 });
                 hourlyHeaderRow.add_child(this._hourlyTitleLabel);
 
-                // Segmented Metric Toggle Pill (Temp / Precip / Wind)
+                // Segmented Metric Switcher
                 const switcherBox = new St.BoxLayout({
-                    style: 'background-color: rgba(0, 0, 0, 0.28); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 8px; padding: 2px; spacing: 2px;',
+                    style: 'background-color: rgba(0, 0, 0, 0.24); border-radius: 8px; padding: 2px; spacing: 2px;',
                     y_align: Clutter.ActorAlign.CENTER,
-                    x_align: Clutter.ActorAlign.END,
                 });
 
                 const METRICS = [
@@ -790,7 +749,7 @@ export const MeteoIndicator = GObject.registerClass(
                             if (m.id !== this._hourlyMetric) btn.opacity = 210;
                         } else {
                             this._tooltipHelper.hide();
-                            if (m.id !== this._hourlyMetric) btn.opacity = 140;
+                            if (m.id !== this._hourlyMetric) btn.opacity = 135;
                         }
                     });
 
@@ -802,134 +761,90 @@ export const MeteoIndicator = GObject.registerClass(
                     switcherBox.add_child(btn);
                     this._metricButtons[m.id] = btn;
                 }
-
                 hourlyHeaderRow.add_child(switcherBox);
-                hourlyCardBox.add_child(hourlyHeaderRow);
 
-                // Overlay container: hScroll on bottom, floating buttons on the edges on top
-                const scrollStack = new St.Widget({
-                    layout_manager: new Clutter.BinLayout(),
-                    x_expand: true,
-                    style: 'height: 72px;',
+                // Compact Header Pager [< | >] — never overlaps forecast items!
+                const navBox = new St.BoxLayout({
+                    style: 'background-color: rgba(0, 0, 0, 0.24); border-radius: 8px; padding: 2px; spacing: 2px;',
+                    y_align: Clutter.ActorAlign.CENTER,
                 });
 
-                // Horizontal Scroll for 24 Hours (No scrollbar with PolicyType.EXTERNAL)
+                const navBtnBase = 'padding: 3px 6px; border-radius: 6px; background-color: transparent;';
+                const navBtnHover = 'padding: 3px 6px; border-radius: 6px; background-color: rgba(255, 255, 255, 0.16);';
+
+                const prevBtn = new St.Button({
+                    child: new St.Icon({
+                        icon_name: 'go-previous-symbolic',
+                        icon_size: 12,
+                        style_class: 'system-status-icon',
+                    }),
+                    style: navBtnBase,
+                    can_focus: true,
+                    y_align: Clutter.ActorAlign.CENTER,
+                });
+
+                const nextBtn = new St.Button({
+                    child: new St.Icon({
+                        icon_name: 'go-next-symbolic',
+                        icon_size: 12,
+                        style_class: 'system-status-icon',
+                    }),
+                    style: navBtnBase,
+                    can_focus: true,
+                    y_align: Clutter.ActorAlign.CENTER,
+                });
+
+                prevBtn.connect('notify::hover', () => {
+                    prevBtn.style = (prevBtn.reactive && prevBtn.hover) ? navBtnHover : navBtnBase;
+                });
+                nextBtn.connect('notify::hover', () => {
+                    nextBtn.style = (nextBtn.reactive && nextBtn.hover) ? navBtnHover : navBtnBase;
+                });
+
+                navBox.add_child(prevBtn);
+                navBox.add_child(nextBtn);
+                hourlyHeaderRow.add_child(navBox);
+                hourlyCardBox.add_child(hourlyHeaderRow);
+
+                // Full-width Horizontal Scroll for 24 Hours (no overlay clutter!)
                 const hScroll = new St.ScrollView({
                     hscrollbar_policy: St.PolicyType.EXTERNAL,
                     vscrollbar_policy: St.PolicyType.NEVER,
                     enable_mouse_scrolling: true,
-                    clip_to_allocation: true,
-                    style: 'height: 72px;',
-                });
-                scrollStack.add_child(hScroll);
-
-                // Horizontal overlay row spanning full width: prevBtn on left, nextBtn on right
-                const overlayRow = new St.BoxLayout({
                     x_expand: true,
-                    y_align: Clutter.ActorAlign.CENTER,
-                    reactive: false,
+                    style: 'height: 66px;',
                 });
-
-                // Left gradient fade button (hidden initially, appears when scrolled right)
-                const prevBtn = new St.Button({
-                    child: new St.Icon({
-                        icon_name: 'go-previous-symbolic',
-                        icon_size: 14,
-                        style_class: 'system-status-icon',
-                        x_align: Clutter.ActorAlign.START,
-                        y_align: Clutter.ActorAlign.CENTER,
-                        style: 'margin-left: 6px;',
-                    }),
-                    style: 'width: 38px; height: 72px; border-radius: 14px 0 0 14px; background: linear-gradient(to right, rgba(46, 49, 58, 0.98) 0%, rgba(46, 49, 58, 0.85) 45%, transparent 100%); border: none; padding: 0;',
-                    can_focus: false,
-                    reactive: false,
-                    visible: false,
-                    x_align: Clutter.ActorAlign.START,
-                    y_align: Clutter.ActorAlign.FILL,
-                });
-                prevBtn.opacity = 210;
-                prevBtn.connect('notify::hover', () => {
-                    if (prevBtn.reactive && prevBtn.hover) {
-                        prevBtn.style = 'width: 38px; height: 72px; border-radius: 14px 0 0 14px; background: linear-gradient(to right, rgba(58, 62, 74, 1) 0%, rgba(58, 62, 74, 0.9) 45%, transparent 100%); border: none; padding: 0;';
-                        prevBtn.opacity = 255;
-                    } else if (prevBtn.reactive) {
-                        prevBtn.style = 'width: 38px; height: 72px; border-radius: 14px 0 0 14px; background: linear-gradient(to right, rgba(46, 49, 58, 0.98) 0%, rgba(46, 49, 58, 0.85) 45%, transparent 100%); border: none; padding: 0;';
-                        prevBtn.opacity = 210;
-                    }
-                });
-
-                // Spacer pushes nextBtn to the far right edge
-                const navSpacer = new St.Widget({
-                    x_expand: true,
-                    reactive: false,
-                });
-
-                // Right gradient fade button (visible initially, hides when at end)
-                const nextBtn = new St.Button({
-                    child: new St.Icon({
-                        icon_name: 'go-next-symbolic',
-                        icon_size: 14,
-                        style_class: 'system-status-icon',
-                        x_align: Clutter.ActorAlign.END,
-                        y_align: Clutter.ActorAlign.CENTER,
-                        style: 'margin-right: 6px;',
-                    }),
-                    style: 'width: 38px; height: 72px; border-radius: 0 14px 14px 0; background: linear-gradient(to left, rgba(46, 49, 58, 0.98) 0%, rgba(46, 49, 58, 0.85) 45%, transparent 100%); border: none; padding: 0;',
-                    can_focus: true,
-                    reactive: true,
-                    visible: true,
-                    x_align: Clutter.ActorAlign.END,
-                    y_align: Clutter.ActorAlign.FILL,
-                });
-                nextBtn.opacity = 210;
-                nextBtn.connect('notify::hover', () => {
-                    if (nextBtn.reactive && nextBtn.hover) {
-                        nextBtn.style = 'width: 38px; height: 72px; border-radius: 0 14px 14px 0; background: linear-gradient(to left, rgba(58, 62, 74, 1) 0%, rgba(58, 62, 74, 0.9) 45%, transparent 100%); border: none; padding: 0;';
-                        nextBtn.opacity = 255;
-                    } else if (nextBtn.reactive) {
-                        nextBtn.style = 'width: 38px; height: 72px; border-radius: 0 14px 14px 0; background: linear-gradient(to left, rgba(46, 49, 58, 0.98) 0%, rgba(46, 49, 58, 0.85) 45%, transparent 100%); border: none; padding: 0;';
-                        nextBtn.opacity = 210;
-                    }
-                });
-
-                overlayRow.add_child(prevBtn);
-                overlayRow.add_child(navSpacer);
-                overlayRow.add_child(nextBtn);
-
-                scrollStack.add_child(overlayRow);
-                hourlyCardBox.add_child(scrollStack);
 
                 const hadj = hScroll.get_hadjustment();
 
-                const updateNavVisibility = () => {
+                const updateNavState = () => {
                     const currentVal = hadj.value;
                     const maxVal = Math.max(0, hadj.upper - hadj.page_size);
 
-                    const canGoLeft = currentVal > 5;
-                    const canGoRight = currentVal < maxVal - 5;
+                    const canGoLeft = currentVal > 4;
+                    const canGoRight = maxVal <= 4 ? true : currentVal < maxVal - 4;
 
-                    prevBtn.visible = canGoLeft;
-                    prevBtn.can_focus = canGoLeft;
                     prevBtn.reactive = canGoLeft;
+                    prevBtn.opacity = canGoLeft ? 230 : 75;
+                    if (!canGoLeft) prevBtn.style = navBtnBase;
 
-                    nextBtn.visible = canGoRight;
-                    nextBtn.can_focus = canGoRight;
                     nextBtn.reactive = canGoRight;
+                    nextBtn.opacity = canGoRight ? 230 : 75;
+                    if (!canGoRight) nextBtn.style = navBtnBase;
                 };
 
-                hadj.connect('notify::value', updateNavVisibility);
-                hadj.connect('changed', updateNavVisibility);
-                this._updateHourlyNavVisibility = updateNavVisibility;
+                hadj.connect('notify::value', updateNavState);
+                hadj.connect('changed', updateNavState);
+                this._updateHourlyNavVisibility = updateNavState;
 
-                // Slot stride: ~56px per hour (44px min-width + 12px spacing).
-                // Smooth glide by 3 hours (168px) per click!
-                const SCROLL_STEP = 168;
+                // 5 columns visible at once (~60px stride) -> scroll by 4 hours (240px)
+                const SCROLL_STEP = 232;
 
                 const smoothScrollTo = (target) => {
                     if (typeof hadj.ease === 'function') {
                         hadj.ease(target, {
                             mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-                            duration: 250,
+                            duration: 240,
                         });
                     } else {
                         hadj.value = target;
@@ -950,7 +865,7 @@ export const MeteoIndicator = GObject.registerClass(
                 });
 
                 const hourlyRow = new St.BoxLayout({
-                    style: 'spacing: 12px; padding: 2px 24px 2px 24px;',
+                    style: 'spacing: 10px; padding: 2px 2px;',
                 });
 
                 const availableSlots = Math.min(24, hourly.temp.length - this._hourlyStartIndex);
@@ -958,31 +873,30 @@ export const MeteoIndicator = GObject.registerClass(
                     const dataIdx = this._hourlyStartIndex + i;
                     const col = new St.BoxLayout({
                         vertical: true,
-                        style: 'spacing: 4px; min-width: 44px;',
+                        style: 'spacing: 6px; min-width: 48px;',
                         x_align: Clutter.ActorAlign.CENTER,
                     });
 
-                    // Slot 0 is "Now" / "Зараз" / "Сейчас"; subsequent slots are actual clock times (e.g. 23:00, 00:00)
-                    let timeStr = (i === 0)
+                    const timeStr = (i === 0)
                         ? t.now
                         : formatHour(hourly.time[dataIdx], is12h);
 
                     const tLab = new St.Label({
                         text: timeStr,
-                        style: 'font-size: 11px; color: #ffffff; font-weight: 500;',
+                        style: `font-size: 11.5px; color: ${i === 0 ? '#ffffff' : 'rgba(255, 255, 255, 0.75)'}; font-weight: ${i === 0 ? '700' : '500'};`,
                         x_align: Clutter.ActorAlign.CENTER,
                     });
 
                     const hIcon = new St.Icon({
                         icon_name: 'weather-clear-symbolic',
-                        icon_size: 16,
+                        icon_size: 18,
                         style_class: 'system-status-icon',
                         x_align: Clutter.ActorAlign.CENTER,
                     });
 
                     const valLab = new St.Label({
                         text: '',
-                        style: 'font-size: 12px; font-weight: 600; color: #ffffff;',
+                        style: 'font-size: 13px; font-weight: 600; color: #ffffff;',
                         x_align: Clutter.ActorAlign.CENTER,
                     });
 
@@ -994,35 +908,35 @@ export const MeteoIndicator = GObject.registerClass(
                     this._hourlySlots.push({ dataIdx, icon: hIcon, val: valLab });
                 }
 
-                hScroll.add_child(hourlyRow);
+                hScroll.set_child(hourlyRow);
                 hourlyCardBox.add_child(hScroll);
                 contentBox.add_child(hourlyCardBox);
             }
 
             // ──────────────────────────────────────────────────────────────────
-            // 3. CARD: 7-DAY FORECAST (Compact, clean weekly view)
+            // 3. CARD: 7-DAY FORECAST
             // ──────────────────────────────────────────────────────────────────
             if (dailyArr.length > 0) {
                 const dailyCardBox = new St.BoxLayout({
                     vertical: true,
                     x_expand: true,
-                    style: 'background-color: rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 8px 12px; margin: 4px 0;',
+                    style: 'background-color: rgba(255, 255, 255, 0.07); border-radius: 14px; padding: 10px 12px; spacing: 4px;',
                 });
 
                 const daysCount = Math.min(7, dailyArr.length);
-                const BAR_WIDTH = 75;
+                const BAR_WIDTH = 84;
 
                 for (let i = 0; i < daysCount; i++) {
                     const dayData = dailyArr[i];
                     const dayRow = new St.BoxLayout({
                         x_expand: true,
-                        style: 'spacing: 8px; padding: 2.5px 0;',
+                        style: 'spacing: 8px; padding: 2px 0;',
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
                     const nameLab = new St.Label({
                         text: formatDayName(dayData.date, i, lang),
-                        style: 'font-size: 13px; font-weight: 500; min-width: 62px; color: #ffffff;',
+                        style: `font-size: 13px; font-weight: ${i === 0 ? '600' : '500'}; min-width: 68px; color: #ffffff;`,
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
@@ -1035,31 +949,32 @@ export const MeteoIndicator = GObject.registerClass(
 
                     const leftLab = new St.Label({
                         text: '',
-                        style: 'font-size: 13px; color: rgba(255, 255, 255, 0.55); min-width: 26px; text-align: right;',
+                        style: 'font-size: 13px; color: rgba(255, 255, 255, 0.55); min-width: 28px; text-align: right;',
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
                     const barBox = new St.Widget({
-                        style: `width: ${BAR_WIDTH}px; height: 4px; background-color: rgba(255, 255, 255, 0.15); border-radius: 2px;`,
+                        style: `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`,
+                        x_expand: true,
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
                     const barFill = new St.Widget({
-                        style: 'height: 4px; border-radius: 2px;',
+                        style: 'height: 5px; border-radius: 3px;',
                     });
                     barBox.add_child(barFill);
 
                     let dotWidget = null;
                     if (i === 0) {
                         dotWidget = new St.Widget({
-                            style: 'width: 6px; height: 6px; border-radius: 3px; background-color: #ffffff; border: 1px solid rgba(0,0,0,0.5); margin-top: -1px;',
+                            style: 'width: 7px; height: 7px; border-radius: 4px; background-color: #ffffff; border: 1.5px solid rgba(0, 0, 0, 0.65); margin-top: -1px;',
                         });
                         barBox.add_child(dotWidget);
                     }
 
                     const rightLab = new St.Label({
                         text: '',
-                        style: 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 32px; text-align: right;',
+                        style: 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 30px; text-align: right;',
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
@@ -1086,33 +1001,33 @@ export const MeteoIndicator = GObject.registerClass(
             }
 
             // ──────────────────────────────────────────────────────────────────
-            // 4. CARD: 2×3 WEATHER DETAILS GRID
+            // 4. CARD: 2×2 WEATHER DETAILS GRID
             // ──────────────────────────────────────────────────────────────────
             const dt = t.details;
             const detailsContainer = new St.BoxLayout({
                 vertical: true,
                 x_expand: true,
-                style: 'spacing: 8px; margin: 4px 0;',
+                style: 'spacing: 8px;',
             });
 
             const makeTile = (title, value, subtext) => {
                 const tile = new St.BoxLayout({
                     vertical: true,
                     x_expand: true,
-                    style: 'background-color: rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 7px 11px; min-height: 62px;',
+                    style: 'background-color: rgba(255, 255, 255, 0.07); border-radius: 14px; padding: 9px 12px; min-height: 64px;',
                 });
                 const tLab = new St.Label({
                     text: title,
-                    style: 'font-size: 11px; font-weight: bold; color: rgba(255, 255, 255, 0.6); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 2px;',
+                    style: 'font-size: 10.5px; font-weight: 700; color: rgba(255, 255, 255, 0.55); letter-spacing: 0.04em; margin-bottom: 3px;',
                 });
-                const valFontSize = (typeof value === 'string' && value.length > 8) ? 16 : 19;
+                const valFontSize = (typeof value === 'string' && value.length > 9) ? 15 : 18;
                 const vLab = new St.Label({
                     text: value,
                     style: `font-size: ${valFontSize}px; font-weight: 600; color: #ffffff; margin: 1px 0;`,
                 });
                 const sLab = new St.Label({
                     text: subtext || '',
-                    style: 'font-size: 11px; color: rgba(255, 255, 255, 0.85); margin-top: auto;',
+                    style: 'font-size: 11.5px; color: rgba(255, 255, 255, 0.72); margin-top: 2px;',
                 });
                 tile.add_child(tLab);
                 tile.add_child(vLab);
@@ -1120,7 +1035,6 @@ export const MeteoIndicator = GObject.registerClass(
                 return tile;
             };
 
-            // Row 1: Sunrise & Sunset | Moon Phase
             const row1 = new St.BoxLayout({ x_expand: true, style: 'spacing: 8px;' });
             let sunriseStr = '07:15';
             let sunsetStr = '17:45';
@@ -1138,7 +1052,6 @@ export const MeteoIndicator = GObject.registerClass(
             row1.add_child(makeTile(dt.moon, moon.nameTrans, dt.moonIllum.replace('{n}', Math.round(moon.illum * 100))));
             detailsContainer.add_child(row1);
 
-            // Row 2: Humidity | Pressure
             const row2 = new St.BoxLayout({ x_expand: true, style: 'spacing: 8px;' });
             const humVal = current.humidity !== undefined ? `${Math.round(current.humidity)}%` : '—';
             const dewPoint = current.humidity !== undefined ? Math.round(current.temp - ((100 - current.humidity) / 5)) : Math.round(current.temp - 4);
@@ -1168,23 +1081,16 @@ export const MeteoIndicator = GObject.registerClass(
 
             for (const [key, btn] of Object.entries(this._metricButtons)) {
                 if (key === this._hourlyMetric) {
-                    btn.style = 'padding: 3px 8px; border-radius: 6px; background-color: rgba(255, 255, 255, 0.28); color: #ffffff;';
+                    btn.style = 'padding: 3px 8px; border-radius: 6px; background-color: rgba(255, 255, 255, 0.24); color: #ffffff;';
                     btn.opacity = 255;
                 } else {
                     btn.style = 'padding: 3px 8px; border-radius: 6px; background-color: transparent;';
-                    btn.opacity = 140;
+                    btn.opacity = 135;
                 }
             }
 
-            const daysCount = this._dailySlots.length;
-            const titleTemplate = t.dailyTitle.replace('{n}', daysCount);
-            const metricName = t.hourlyMetrics[this._hourlyMetric];
-
             if (this._hourlyTitleLabel) {
-                this._hourlyTitleLabel.text = metricName;
-            }
-            if (this._dailyTitleLabel) {
-                this._dailyTitleLabel.text = titleTemplate;
+                this._hourlyTitleLabel.text = t.hourlyMetrics[this._hourlyMetric];
             }
 
             this._updateHourlyRow();
@@ -1250,45 +1156,36 @@ export const MeteoIndicator = GObject.registerClass(
                 const d = slot.data;
 
                 if (this._hourlyMetric === 'precip') {
-                    // Hide repetitive icon, show blue droplet if prob >= 20%
                     slot.icon.hide();
                     const prob = Math.round(d.precipProb ?? 0);
-                    if (prob >= 20) {
-                        slot.leftLab.text = '💧';
-                        slot.leftLab.style = 'font-size: 11px; min-width: 22px; text-align: center;';
-                        slot.leftLab.show();
-                    } else {
-                        slot.leftLab.text = '';
-                        slot.leftLab.style = 'min-width: 22px; text-align: center;';
-                        slot.leftLab.show();
-                    }
+                    slot.leftLab.text = prob >= 20 ? '💧' : '';
+                    slot.leftLab.style = 'font-size: 11px; min-width: 22px; text-align: center;';
+                    slot.leftLab.show();
 
-                    const BAR_WIDTH = 100;
-                    slot.barBox.style = `width: ${BAR_WIDTH}px; height: 4px; background-color: rgba(255, 255, 255, 0.15); border-radius: 2px;`;
+                    const BAR_WIDTH = 104;
+                    slot.barBox.style = `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`;
                     const fillW = Math.max(0, Math.min(BAR_WIDTH, Math.round((prob / 100) * BAR_WIDTH)));
-                    slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 4px; background-color: #3898ec; border-radius: 2px;`;
+                    slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 5px; background-color: #3898ec; border-radius: 3px;`;
                     if (slot.dotWidget) slot.dotWidget.hide();
 
                     slot.rightLab.text = `${prob}%`;
                     slot.rightLab.style = 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 38px; text-align: right;';
                 } else if (this._hourlyMetric === 'wind') {
-                    // Hide repetitive icon and left label, show full speed + unit at the end
                     slot.icon.hide();
                     slot.leftLab.hide();
 
-                    const BAR_WIDTH = 100;
-                    slot.barBox.style = `width: ${BAR_WIDTH}px; height: 4px; background-color: rgba(255, 255, 255, 0.15); border-radius: 2px;`;
+                    const BAR_WIDTH = 104;
+                    slot.barBox.style = `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`;
                     const rawSpeed = d.windMax ?? 0;
                     const windVal = Math.round(isImperial ? rawSpeed * 0.621371 : rawSpeed);
                     const maxDisplayWind = Math.round(isImperial ? maxWind * 0.621371 : maxWind);
                     const fillW = Math.max(0, Math.min(BAR_WIDTH, Math.round((windVal / Math.max(1, maxDisplayWind)) * BAR_WIDTH)));
-                    slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 4px; background-color: #30b0c7; border-radius: 2px;`;
+                    slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 5px; background-color: #30b0c7; border-radius: 3px;`;
                     if (slot.dotWidget) slot.dotWidget.hide();
 
                     slot.rightLab.text = `${windVal} ${windUnit}`;
                     slot.rightLab.style = 'font-size: 12px; font-weight: 600; color: #ffffff; min-width: 62px; text-align: right;';
                 } else {
-                    // Temperature: condition icon, gray min temp, gradient bar with today dot, white max temp
                     const dScene = deriveScene({
                         code: d.code ?? 0,
                         visibility: null,
@@ -1298,27 +1195,28 @@ export const MeteoIndicator = GObject.registerClass(
                     slot.icon.show();
                     slot.icon.icon_name = getSymbolicIcon(dScene.scene, true);
 
-                    const BAR_WIDTH = 75;
-                    slot.barBox.style = `width: ${BAR_WIDTH}px; height: 4px; background-color: rgba(255, 255, 255, 0.15); border-radius: 2px;`;
+                    const BAR_WIDTH = 84;
+                    slot.barBox.style = `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`;
 
                     slot.leftLab.show();
                     slot.leftLab.text = `${Math.round(d.tmin)}°`;
-                    slot.leftLab.style = 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.85); min-width: 26px; text-align: right;';
+                    slot.leftLab.style = 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.6); min-width: 28px; text-align: right;';
 
                     const fillLeft = Math.max(0, Math.min(BAR_WIDTH - 10, Math.round(((d.tmin - globalMin) / rangeSpan) * BAR_WIDTH)));
                     const fillRight = Math.max(fillLeft + 8, Math.min(BAR_WIDTH, Math.round(((d.tmax - globalMin) / rangeSpan) * BAR_WIDTH)));
                     const fillWidth = Math.max(8, fillRight - fillLeft);
 
-                    slot.barFill.style = `margin-left: ${fillLeft}px; width: ${fillWidth}px; height: 4px; background: linear-gradient(to right, #59c0fa, #fba626); border-radius: 2px;`;
+                    // St native gradient syntax so the temperature bar actually shows a warm/cool gradient
+                    slot.barFill.style = `margin-left: ${fillLeft}px; width: ${fillWidth}px; height: 5px; -st-gradient-direction: horizontal; -st-gradient-start: #59c0fa; -st-gradient-end: #f59e0b; border-radius: 3px;`;
 
                     if (slot.dotWidget) {
-                        const dotPos = Math.max(fillLeft, Math.min(fillRight - 4, Math.round(((currentTemp - globalMin) / rangeSpan) * BAR_WIDTH)));
-                        slot.dotWidget.style = `margin-left: ${dotPos}px; width: 6px; height: 6px; border-radius: 3px; background-color: #ffffff; border: 1px solid rgba(0,0,0,0.6); margin-top: -1px;`;
+                        const dotPos = Math.max(fillLeft, Math.min(fillRight - 5, Math.round(((currentTemp - globalMin) / rangeSpan) * BAR_WIDTH)));
+                        slot.dotWidget.style = `margin-left: ${dotPos}px; width: 7px; height: 7px; border-radius: 4px; background-color: #ffffff; border: 1.5px solid rgba(0, 0, 0, 0.65); margin-top: -1px;`;
                         slot.dotWidget.show();
                     }
 
                     slot.rightLab.text = `${Math.round(d.tmax)}°`;
-                    slot.rightLab.style = 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 32px; text-align: right;';
+                    slot.rightLab.style = 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 30px; text-align: right;';
                 }
             }
         }
