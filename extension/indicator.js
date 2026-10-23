@@ -760,61 +760,11 @@ export const MeteoIndicator = GObject.registerClass(
                 });
                 hourlyHeaderRow.add_child(this._hourlyTitleLabel);
 
-                const controlsRow = new St.BoxLayout({
-                    style: 'spacing: 6px;',
-                    y_align: Clutter.ActorAlign.CENTER,
-                });
-
-                // Navigation buttons < and > (scroll without scrollbar)
-                const navBox = new St.BoxLayout({
-                    style: 'background-color: rgba(0, 0, 0, 0.28); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 8px; padding: 2px; spacing: 2px;',
-                    y_align: Clutter.ActorAlign.CENTER,
-                });
-
-                const prevBtn = new St.Button({
-                    child: new St.Icon({
-                        icon_name: 'go-previous-symbolic',
-                        icon_size: 12,
-                        style_class: 'system-status-icon',
-                    }),
-                    style: 'padding: 3px 6px; border-radius: 6px; background-color: transparent;',
-                    can_focus: true,
-                    y_align: Clutter.ActorAlign.CENTER,
-                });
-                prevBtn.opacity = 160;
-                prevBtn.connect('notify::hover', () => {
-                    prevBtn.opacity = prevBtn.hover ? 255 : 160;
-                    prevBtn.style = prevBtn.hover
-                        ? 'padding: 3px 6px; border-radius: 6px; background-color: rgba(255, 255, 255, 0.18);'
-                        : 'padding: 3px 6px; border-radius: 6px; background-color: transparent;';
-                });
-
-                const nextBtn = new St.Button({
-                    child: new St.Icon({
-                        icon_name: 'go-next-symbolic',
-                        icon_size: 12,
-                        style_class: 'system-status-icon',
-                    }),
-                    style: 'padding: 3px 6px; border-radius: 6px; background-color: transparent;',
-                    can_focus: true,
-                    y_align: Clutter.ActorAlign.CENTER,
-                });
-                nextBtn.opacity = 160;
-                nextBtn.connect('notify::hover', () => {
-                    nextBtn.opacity = nextBtn.hover ? 255 : 160;
-                    nextBtn.style = nextBtn.hover
-                        ? 'padding: 3px 6px; border-radius: 6px; background-color: rgba(255, 255, 255, 0.18);'
-                        : 'padding: 3px 6px; border-radius: 6px; background-color: transparent;';
-                });
-
-                navBox.add_child(prevBtn);
-                navBox.add_child(nextBtn);
-                controlsRow.add_child(navBox);
-
-                // Segmented Metric Toggle Pill
+                // Segmented Metric Toggle Pill (Temp / Precip / Wind)
                 const switcherBox = new St.BoxLayout({
                     style: 'background-color: rgba(0, 0, 0, 0.28); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 8px; padding: 2px; spacing: 2px;',
                     y_align: Clutter.ActorAlign.CENTER,
+                    x_align: Clutter.ActorAlign.END,
                 });
 
                 const METRICS = [
@@ -853,9 +803,15 @@ export const MeteoIndicator = GObject.registerClass(
                     this._metricButtons[m.id] = btn;
                 }
 
-                controlsRow.add_child(switcherBox);
-                hourlyHeaderRow.add_child(controlsRow);
+                hourlyHeaderRow.add_child(switcherBox);
                 hourlyCardBox.add_child(hourlyHeaderRow);
+
+                // Overlay container: hScroll on bottom, floating narrow chevrons on sides
+                const scrollStack = new St.Widget({
+                    layout_manager: new Clutter.BinLayout(),
+                    x_expand: true,
+                    style: 'height: 72px;',
+                });
 
                 // Horizontal Scroll for 24 Hours (No scrollbar with PolicyType.EXTERNAL)
                 const hScroll = new St.ScrollView({
@@ -865,21 +821,97 @@ export const MeteoIndicator = GObject.registerClass(
                     clip_to_allocation: true,
                     style: 'height: 72px;',
                 });
+                scrollStack.add_child(hScroll);
+
+                // Left overlay button: hidden initially, narrow vertical pill, centered
+                const prevBtn = new St.Button({
+                    child: new St.Icon({
+                        icon_name: 'go-previous-symbolic',
+                        icon_size: 13,
+                        style_class: 'system-status-icon',
+                    }),
+                    style: 'width: 20px; height: 48px; border-radius: 10px; background-color: rgba(16, 20, 28, 0.82); border: 1px solid rgba(255, 255, 255, 0.25); box-shadow: 0 2px 8px rgba(0,0,0,0.45); padding: 0; margin-left: 2px;',
+                    can_focus: true,
+                    x_align: Clutter.ActorAlign.START,
+                    y_align: Clutter.ActorAlign.CENTER,
+                    visible: false,
+                });
+                prevBtn.opacity = 210;
+                prevBtn.connect('notify::hover', () => {
+                    prevBtn.opacity = prevBtn.hover ? 255 : 210;
+                    prevBtn.style = prevBtn.hover
+                        ? 'width: 20px; height: 48px; border-radius: 10px; background-color: rgba(30, 42, 60, 0.95); border: 1px solid rgba(255, 255, 255, 0.45); box-shadow: 0 2px 8px rgba(0,0,0,0.55); padding: 0; margin-left: 2px;'
+                        : 'width: 20px; height: 48px; border-radius: 10px; background-color: rgba(16, 20, 28, 0.82); border: 1px solid rgba(255, 255, 255, 0.25); box-shadow: 0 2px 8px rgba(0,0,0,0.45); padding: 0; margin-left: 2px;';
+                });
+
+                // Right overlay button: visible initially, narrow vertical pill, centered
+                const nextBtn = new St.Button({
+                    child: new St.Icon({
+                        icon_name: 'go-next-symbolic',
+                        icon_size: 13,
+                        style_class: 'system-status-icon',
+                    }),
+                    style: 'width: 20px; height: 48px; border-radius: 10px; background-color: rgba(16, 20, 28, 0.82); border: 1px solid rgba(255, 255, 255, 0.25); box-shadow: 0 2px 8px rgba(0,0,0,0.45); padding: 0; margin-right: 2px;',
+                    can_focus: true,
+                    x_align: Clutter.ActorAlign.END,
+                    y_align: Clutter.ActorAlign.CENTER,
+                    visible: true,
+                });
+                nextBtn.opacity = 210;
+                nextBtn.connect('notify::hover', () => {
+                    nextBtn.opacity = nextBtn.hover ? 255 : 210;
+                    nextBtn.style = nextBtn.hover
+                        ? 'width: 20px; height: 48px; border-radius: 10px; background-color: rgba(30, 42, 60, 0.95); border: 1px solid rgba(255, 255, 255, 0.45); box-shadow: 0 2px 8px rgba(0,0,0,0.55); padding: 0; margin-right: 2px;'
+                        : 'width: 20px; height: 48px; border-radius: 10px; background-color: rgba(16, 20, 28, 0.82); border: 1px solid rgba(255, 255, 255, 0.25); box-shadow: 0 2px 8px rgba(0,0,0,0.45); padding: 0; margin-right: 2px;';
+                });
+
+                scrollStack.add_child(prevBtn);
+                scrollStack.add_child(nextBtn);
+                hourlyCardBox.add_child(scrollStack);
+
+                const hadj = hScroll.get_hadjustment();
+
+                const updateNavVisibility = () => {
+                    const currentVal = hadj.value;
+                    const maxVal = Math.max(0, hadj.upper - hadj.page_size);
+                    prevBtn.visible = currentVal > 5;
+                    nextBtn.visible = currentVal < maxVal - 5;
+                };
+
+                hadj.connect('notify::value', updateNavVisibility);
+                hadj.connect('changed', updateNavVisibility);
+                this._updateHourlyNavVisibility = updateNavVisibility;
+
+                // Slot stride: ~56px per hour (44px min-width + 12px spacing).
+                // Smooth glide by 3 hours (168px) per click!
+                const SCROLL_STEP = 168;
+
+                const smoothScrollTo = (target) => {
+                    if (typeof hadj.ease === 'function') {
+                        hadj.ease(target, {
+                            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                            duration: 250,
+                        });
+                    } else {
+                        hadj.value = target;
+                    }
+                };
 
                 prevBtn.connect('clicked', () => {
-                    const hadj = hScroll.get_hadjustment();
-                    const step = 180;
-                    hadj.value = Math.max(hadj.lower, hadj.value - step);
+                    this._tooltipHelper.hide();
+                    const target = Math.max(hadj.lower, hadj.value - SCROLL_STEP);
+                    smoothScrollTo(target);
                 });
 
                 nextBtn.connect('clicked', () => {
-                    const hadj = hScroll.get_hadjustment();
-                    const step = 180;
-                    hadj.value = Math.min(hadj.upper - hadj.page_size, hadj.value + step);
+                    this._tooltipHelper.hide();
+                    const maxVal = Math.max(hadj.lower, hadj.upper - hadj.page_size);
+                    const target = Math.min(maxVal, hadj.value + SCROLL_STEP);
+                    smoothScrollTo(target);
                 });
 
                 const hourlyRow = new St.BoxLayout({
-                    style: 'spacing: 14px; padding: 2px 0;',
+                    style: 'spacing: 12px; padding: 2px 8px;',
                 });
 
                 const availableSlots = Math.min(24, hourly.temp.length - this._hourlyStartIndex);
@@ -1118,6 +1150,7 @@ export const MeteoIndicator = GObject.registerClass(
 
             this._updateHourlyRow();
             this._updateDailyRows();
+            this._updateHourlyNavVisibility?.();
         }
 
         _updateHourlyRow() {
