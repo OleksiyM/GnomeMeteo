@@ -1,0 +1,230 @@
+# Ukrainian translation for GnomeMeteo.
+# Copyright (C) 2026 OleksiyM
+# This file is distributed under the same license as the GnomeMeteo package.
+# OleksiyM <oleksiymaliovanyy@gmail.com>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: GnomeMeteo 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-23 17:35+0300\n"
+"PO-Revision-Date: 2026-10-23 17:35+0300\n"
+"Last-Translator: OleksiyM <oleksiymaliovanyy@gmail.com>\n"
+"Language-Team: Ukrainian <uk@li.org>\n"
+"Language: uk\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#: extension/prefs.js:78
+msgid "Location"
+msgstr "Розташування"
+
+#: extension/prefs.js:79
+msgid "Uses system location when available, otherwise your public IP address"
+msgstr "Використовує системне розташування за наявності або публічну IP-адресу"
+
+#: extension/prefs.js:82
+msgid "Detect location automatically"
+msgstr "Визначати розташування автоматично"
+
+#: extension/prefs.js:83
+msgid "Disable to search and pick your city manually"
+msgstr "Вимкніть, щоб знайти та вибрати місто вручну"
+
+#: extension/prefs.js:93
+msgid "Search a city"
+msgstr "Пошук міста"
+
+#: extension/prefs.js:95
+msgid "City name — press Enter to search"
+msgstr "Назва міста — натисніть Enter для пошуку"
+
+#: extension/prefs.js:100
+msgid "Results"
+msgstr "Результати"
+
+#: extension/prefs.js:136
+msgid "No matches"
+msgstr "Нічого не знайдено"
+
+#: extension/prefs.js:162
+msgid "Selected coordinates"
+msgstr "Обрані координати"
+
+#: extension/prefs.js:163
+msgid "Coordinates used for the weather forecast"
+msgstr "Координати для запиту прогнозу погоди"
+
+#: extension/prefs.js:166
+msgid "Display name"
+msgstr "Назва для відображення"
+
+#: extension/prefs.js:167
+msgid "Latitude"
+msgstr "Широта"
+
+#: extension/prefs.js:168
+msgid "Longitude"
+msgstr "Довгота"
+
+#: extension/prefs.js:214
+msgid "Panel indicator"
+msgstr "Індикатор на панелі"
+
+#: extension/prefs.js:215
+msgid "What appears in the GNOME top bar"
+msgstr "Налаштування вигляду на верхній панелі GNOME"
+
+#: extension/prefs.js:218
+msgid "Show temperature"
+msgstr "Показувати температуру"
+
+#: extension/prefs.js:219
+msgid "Display current temperature number in the panel"
+msgstr "Показувати число поточної температури на панелі"
+
+#: extension/prefs.js:222
+msgid "Show weather icon"
+msgstr "Показувати іконку погоди"
+
+#: extension/prefs.js:223
+msgid "Display symbolic weather icon in the panel"
+msgstr "Показувати символьну іконку погоди на панелі"
+
+#: extension/prefs.js:235
+msgid "Units and Format"
+msgstr "Одиниці та формат"
+
+#: extension/prefs.js:238
+msgid "Language"
+msgstr "Мова"
+
+#: extension/prefs.js:239
+msgid "Interface display language"
+msgstr "Мова відображення інтерфейсу"
+
+#: extension/prefs.js:251
+msgid "Measurement system"
+msgstr "Система вимірювання"
+
+#: extension/prefs.js:252
+msgid "Temperature, wind and precipitation units"
+msgstr "Одиниці для температури, вітру та опадів"
+
+#: extension/prefs.js:254
+msgid "Imperial (°F, mph)"
+msgstr "Імперська (°F, миль/год)"
+
+#: extension/prefs.js:254
+msgid "Metric (°C, km/h)"
+msgstr "Метрична (°C, км/год)"
+
+#: extension/prefs.js:263
+msgid "Hour format"
+msgstr "Формат часу"
+
+#: extension/prefs.js:264
+msgid "Clock format in hourly forecast"
+msgstr "Формат годинника у погодинному прогнозі"
+
+#: extension/prefs.js:266
+msgid "12-hour"
+msgstr "12-годинний"
+
+#: extension/prefs.js:266
+msgid "24-hour"
+msgstr "24-годинний"
+
+#: extension/prefs.js:266
+msgid "Automatic (system)"
+msgstr "Автоматично (системний)"
+
+#: extension/prefs.js:279
+msgid "Weather forecast provider"
+msgstr "Постачальник прогнозу погоди"
+
+#: extension/prefs.js:280
+msgid "Free, keyless weather forecasters"
+msgstr "Безкоштовні погодні сервіси без API-ключів"
+
+#: extension/prefs.js:283
+msgid "Provider"
+msgstr "Постачальник"
+
+#: extension/prefs.js:284
+msgid "Forecast data source"
+msgstr "Джерело даних прогнозу"
+
+#: extension/prefs.js:287
+msgid "Open-Meteo (Worldwide)"
+msgstr "Open-Meteo (Світовий)"
+
+#: extension/prefs.js:288
+msgid "MET Norway"
+msgstr "MET Norway (Норвегія)"
+
+#: extension/prefs.js:289
+msgid "NOAA NWS (US)"
+msgstr "NOAA NWS (США)"
+
+#: extension/prefs.js:300
+msgid "Forecast model"
+msgstr "Модель прогнозу"
+
+#: extension/prefs.js:301
+msgid "Prediction model (Open-Meteo)"
+msgstr "Модель розрахунку (Open-Meteo)"
+
+#: extension/prefs.js:304
+msgid "Best match (Recommended)"
+msgstr "Найкраща відповідність (Рекомендовано)"
+
+#: extension/prefs.js:305
+msgid "ECMWF IFS (High resolution)"
+msgstr "ECMWF IFS (Висока роздільність)"
+
+#: extension/prefs.js:306
+msgid "ECMWF IFS (0.25° grid)"
+msgstr "ECMWF IFS (Сітка 0.25°)"
+
+#: extension/prefs.js:307
+msgid "DWD ICON (Germany)"
+msgstr "DWD ICON (Німеччина)"
+
+#: extension/prefs.js:308
+msgid "NOAA GFS (US)"
+msgstr "NOAA GFS (США)"
+
+#: extension/prefs.js:309
+msgid "GEM (Canada)"
+msgstr "GEM (Канада)"
+
+#: extension/prefs.js:310
+msgid "JMA (Japan)"
+msgstr "JMA (Японія)"
+
+#: extension/prefs.js:311
+msgid "UK Met Office (10 km)"
+msgstr "UK Met Office (10 км)"
+
+#: extension/prefs.js:330
+msgid "Data updates"
+msgstr "Оновлення даних"
+
+#: extension/prefs.js:332
+msgid "Refresh interval (minutes)"
+msgstr "Інтервал оновлення (хвилини)"
+
+#: extension/prefs.js:333
+msgid "How often weather is fetched in the background"
+msgstr "Періодичність фонового завантаження даних"
+
+#: extension/prefs.js:360
+msgid "About GnomeMeteo"
+msgstr "Про GnomeMeteo"
+
+#: extension/prefs.js:379
+msgid "Clean, modern weather indicator and forecast for GNOME Shell"
+msgstr "Лаконічний, сучасний індикатор погоди та прогноз для GNOME Shell"

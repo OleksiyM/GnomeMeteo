@@ -1,0 +1,230 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the GnomeMeteo package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: GnomeMeteo 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-23 17:38+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: extension/prefs.js:78
+msgid "Location"
+msgstr ""
+
+#: extension/prefs.js:79
+msgid "Uses system location when available, otherwise your public IP address"
+msgstr ""
+
+#: extension/prefs.js:82
+msgid "Detect location automatically"
+msgstr ""
+
+#: extension/prefs.js:83
+msgid "Disable to search and pick your city manually"
+msgstr ""
+
+#: extension/prefs.js:93
+msgid "Search a city"
+msgstr ""
+
+#: extension/prefs.js:95
+msgid "City name — press Enter to search"
+msgstr ""
+
+#: extension/prefs.js:100
+msgid "Results"
+msgstr ""
+
+#: extension/prefs.js:136
+msgid "No matches"
+msgstr ""
+
+#: extension/prefs.js:162
+msgid "Selected coordinates"
+msgstr ""
+
+#: extension/prefs.js:163
+msgid "Coordinates used for the weather forecast"
+msgstr ""
+
+#: extension/prefs.js:166
+msgid "Display name"
+msgstr ""
+
+#: extension/prefs.js:167
+msgid "Latitude"
+msgstr ""
+
+#: extension/prefs.js:168
+msgid "Longitude"
+msgstr ""
+
+#: extension/prefs.js:214
+msgid "Panel indicator"
+msgstr ""
+
+#: extension/prefs.js:215
+msgid "What appears in the GNOME top bar"
+msgstr ""
+
+#: extension/prefs.js:218
+msgid "Show temperature"
+msgstr ""
+
+#: extension/prefs.js:219
+msgid "Display current temperature number in the panel"
+msgstr ""
+
+#: extension/prefs.js:222
+msgid "Show weather icon"
+msgstr ""
+
+#: extension/prefs.js:223
+msgid "Display symbolic weather icon in the panel"
+msgstr ""
+
+#: extension/prefs.js:235
+msgid "Units and Format"
+msgstr ""
+
+#: extension/prefs.js:238
+msgid "Language"
+msgstr ""
+
+#: extension/prefs.js:239
+msgid "Interface display language"
+msgstr ""
+
+#: extension/prefs.js:251
+msgid "Measurement system"
+msgstr ""
+
+#: extension/prefs.js:252
+msgid "Temperature, wind and precipitation units"
+msgstr ""
+
+#: extension/prefs.js:254
+msgid "Imperial (°F, mph)"
+msgstr ""
+
+#: extension/prefs.js:254
+msgid "Metric (°C, km/h)"
+msgstr ""
+
+#: extension/prefs.js:263
+msgid "Hour format"
+msgstr ""
+
+#: extension/prefs.js:264
+msgid "Clock format in hourly forecast"
+msgstr ""
+
+#: extension/prefs.js:266
+msgid "12-hour"
+msgstr ""
+
+#: extension/prefs.js:266
+msgid "24-hour"
+msgstr ""
+
+#: extension/prefs.js:266
+msgid "Automatic (system)"
+msgstr ""
+
+#: extension/prefs.js:279
+msgid "Weather forecast provider"
+msgstr ""
+
+#: extension/prefs.js:280
+msgid "Free, keyless weather forecasters"
+msgstr ""
+
+#: extension/prefs.js:283
+msgid "Provider"
+msgstr ""
+
+#: extension/prefs.js:284
+msgid "Forecast data source"
+msgstr ""
+
+#: extension/prefs.js:287
+msgid "Open-Meteo (Worldwide)"
+msgstr ""
+
+#: extension/prefs.js:288
+msgid "MET Norway"
+msgstr ""
+
+#: extension/prefs.js:289
+msgid "NOAA NWS (US)"
+msgstr ""
+
+#: extension/prefs.js:300
+msgid "Forecast model"
+msgstr ""
+
+#: extension/prefs.js:301
+msgid "Prediction model (Open-Meteo)"
+msgstr ""
+
+#: extension/prefs.js:304
+msgid "Best match (Recommended)"
+msgstr ""
+
+#: extension/prefs.js:305
+msgid "ECMWF IFS (High resolution)"
+msgstr ""
+
+#: extension/prefs.js:306
+msgid "ECMWF IFS (0.25° grid)"
+msgstr ""
+
+#: extension/prefs.js:307
+msgid "DWD ICON (Germany)"
+msgstr ""
+
+#: extension/prefs.js:308
+msgid "NOAA GFS (US)"
+msgstr ""
+
+#: extension/prefs.js:309
+msgid "GEM (Canada)"
+msgstr ""
+
+#: extension/prefs.js:310
+msgid "JMA (Japan)"
+msgstr ""
+
+#: extension/prefs.js:311
+msgid "UK Met Office (10 km)"
+msgstr ""
+
+#: extension/prefs.js:330
+msgid "Data updates"
+msgstr ""
+
+#: extension/prefs.js:332
+msgid "Refresh interval (minutes)"
+msgstr ""
+
+#: extension/prefs.js:333
+msgid "How often weather is fetched in the background"
+msgstr ""
+
+#: extension/prefs.js:360
+msgid "About GnomeMeteo"
+msgstr ""
+
+#: extension/prefs.js:379
+msgid "Clean, modern weather indicator and forecast for GNOME Shell"
+msgstr ""
