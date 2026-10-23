@@ -1109,12 +1109,18 @@ export const MeteoIndicator = GObject.registerClass(
                         ? Math.round(hourly.precipProb[dataIdx])
                         : 0;
                     slot.val.text = `${prob}%`;
+                    slot.val.style = prob === 0
+                        ? 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.4);'
+                        : 'font-size: 13px; font-weight: 600; color: #ffffff;';
+                    slot.icon.opacity = prob === 0 ? 130 : 255;
                 } else if (this._hourlyMetric === 'wind') {
                     slot.icon.icon_name = 'weather-windy-symbolic';
+                    slot.icon.opacity = 255;
                     const windSpeed = (hourly.wind && hourly.wind[dataIdx] !== undefined)
                         ? Math.round(hourly.wind[dataIdx])
                         : 0;
                     slot.val.text = `${windSpeed}`;
+                    slot.val.style = 'font-size: 13px; font-weight: 600; color: #ffffff;';
                 } else {
                     const isDay = hourly.isDay ? hourly.isDay[dataIdx] : current.isDay;
                     const hScene = deriveScene({
@@ -1123,8 +1129,10 @@ export const MeteoIndicator = GObject.registerClass(
                         cape: 0,
                         isDay,
                     });
+                    slot.icon.opacity = 255;
                     slot.icon.icon_name = getSymbolicIcon(hScene.scene, isDay);
                     slot.val.text = `${Math.round(hourly.temp[dataIdx])}°`;
+                    slot.val.style = 'font-size: 13px; font-weight: 600; color: #ffffff;';
                 }
             }
         }
@@ -1165,14 +1173,16 @@ export const MeteoIndicator = GObject.registerClass(
                     const prob = Math.round(d.precipProb ?? 0);
                     slot.leftLab.show();
                     slot.leftLab.text = '💧';
-                    slot.leftLab.style = `font-size: 11px; min-width: 28px; text-align: right; opacity: ${prob >= 20 ? '0.95' : '0.35'};`;
+                    slot.leftLab.style = `font-size: 11px; min-width: 28px; text-align: right; opacity: ${prob >= 20 ? '0.95' : (prob > 0 ? '0.6' : '0.25')};`;
 
                     slot.barBox.style = `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`;
                     const fillW = Math.max(0, Math.min(BAR_WIDTH, Math.round((prob / 100) * BAR_WIDTH)));
                     slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 5px; background-gradient-direction: none; background-color: #3898ec; border-radius: 3px;`;
 
                     slot.rightLab.text = `${prob}%`;
-                    slot.rightLab.style = 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 38px; text-align: right;';
+                    slot.rightLab.style = prob === 0
+                        ? 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.4); min-width: 38px; text-align: right;'
+                        : 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 38px; text-align: right;';
                 } else if (this._hourlyMetric === 'wind') {
                     const rawSpeed = d.windMax ?? 0;
                     const windVal = Math.round(isImperial ? rawSpeed * 0.621371 : rawSpeed);
