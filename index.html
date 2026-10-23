@@ -148,19 +148,94 @@
 
     .code-block {
       background: #000000;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 10px;
-      padding: 0.85rem 1.25rem;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 12px;
+      padding: 0.65rem 0.85rem 0.65rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      text-align: left;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      transition: border-color 0.2s ease;
+    }
+
+    .code-block:hover {
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .code-content {
       font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
       font-size: 0.92rem;
       color: #f6f8fa;
-      user-select: all;
       overflow-x: auto;
+      white-space: nowrap;
+      flex-grow: 1;
+      padding: 0.35rem 0;
+      scrollbar-width: thin;
+      user-select: all;
     }
 
-    .code-block span.prompt {
+    .code-content span.prompt {
       color: var(--text-muted);
       user-select: none;
+    }
+
+    .copy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #e6edf3;
+      border-radius: 8px;
+      padding: 0.45rem 0.85rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      flex-shrink: 0;
+      user-select: none;
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      background: rgba(255, 255, 255, 0.16);
+      border-color: rgba(255, 255, 255, 0.3);
+      color: #ffffff;
+    }
+
+    .copy-btn:active {
+      transform: scale(0.96);
+    }
+
+    .copy-btn svg {
+      flex-shrink: 0;
+    }
+
+    .copy-btn .check-icon {
+      display: none;
+      color: #3fb950;
+    }
+
+    .copy-btn.copied {
+      background: rgba(63, 185, 80, 0.15);
+      border-color: rgba(63, 185, 80, 0.4);
+      color: #3fb950;
+    }
+
+    .copy-btn.copied .copy-icon {
+      display: none;
+    }
+
+    .copy-btn.copied .check-icon {
+      display: inline-block;
+      animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
     }
 
     .showcase-grid {
@@ -278,7 +353,19 @@
     <div class="install-box">
       <div class="install-box-title">🚀 One-Liner Install (No git clone, no sudo)</div>
       <div class="code-block">
-        <span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh | bash
+        <div class="code-content">
+          <span class="prompt">$ </span><code id="cmd-text">curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh | bash</code>
+        </div>
+        <button id="copy-btn" class="copy-btn" type="button" aria-label="Copy command">
+          <svg class="copy-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          <svg class="check-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <span class="copy-label">Copy</span>
+        </button>
       </div>
     </div>
 
@@ -334,6 +421,37 @@
       Lineage credit to original WeatherGlass author Vijay Bala. Released under the GPL-3.0 License.
     </p>
   </footer>
+
+  <script>
+    const copyBtn = document.getElementById('copy-btn');
+    const cmdText = document.getElementById('cmd-text').innerText.trim();
+    const copyLabel = copyBtn.querySelector('.copy-label');
+
+    copyBtn.addEventListener('click', async () => {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(cmdText);
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = cmdText;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+        copyBtn.classList.add('copied');
+        copyLabel.textContent = 'Copied!';
+        setTimeout(() => {
+          copyBtn.classList.remove('copied');
+          copyLabel.textContent = 'Copy';
+        }, 2000);
+      } catch (err) {
+        console.error('Failed to copy command:', err);
+      }
+    });
+  </script>
 
 </body>
 </html>
