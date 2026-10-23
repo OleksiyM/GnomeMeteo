@@ -23,9 +23,9 @@ const MESSAGES = {
             wind: 'ВІТЕР',
         },
         metricTips: {
-            temp: 'Температура (°C)',
-            precip: 'Ймовірність опадів (%)',
-            wind: 'Швидкість вітру (км/год)',
+            temp: 'Температура',
+            precip: 'Ймовірність опадів',
+            wind: 'Швидкість вітру',
         },
         dailyTitle: '🗓️ ПРОГНОЗ НА {n} ДНІВ',
         windUnit: 'км/год',
@@ -102,9 +102,9 @@ const MESSAGES = {
             wind: 'ВЕТЕР',
         },
         metricTips: {
-            temp: 'Температура (°C)',
-            precip: 'Вероятность осадков (%)',
-            wind: 'Скорость ветра (км/ч)',
+            temp: 'Температура',
+            precip: 'Вероятность осадков',
+            wind: 'Скорость ветра',
         },
         dailyTitle: '🗓️ ПРОГНОЗ НА {n} ДНЕЙ',
         windUnit: 'км/ч',
@@ -181,9 +181,9 @@ const MESSAGES = {
             wind: 'WIND',
         },
         metricTips: {
-            temp: 'Temperature (°C)',
-            precip: 'Precipitation chance (%)',
-            wind: 'Wind speed (km/h)',
+            temp: 'Temperature',
+            precip: 'Precipitation chance',
+            wind: 'Wind speed',
         },
         dailyTitle: '🗓️ {n}-DAY FORECAST',
         windUnit: 'km/h',
@@ -597,7 +597,7 @@ export const MeteoIndicator = GObject.registerClass(
             const headerContainer = new St.BoxLayout({
                 vertical: true,
                 x_expand: true,
-                style: 'padding: 4px 4px 6px 4px;',
+                style: 'padding: 4px 4px 10px 4px;',
             });
 
             const topRow = new St.BoxLayout({
@@ -714,7 +714,7 @@ export const MeteoIndicator = GObject.registerClass(
             const contentBox = new St.BoxLayout({
                 vertical: true,
                 x_expand: true,
-                style: 'spacing: 8px;',
+                style: 'spacing: 10px;',
             });
 
             // ──────────────────────────────────────────────────────────────────
@@ -729,7 +729,7 @@ export const MeteoIndicator = GObject.registerClass(
 
                 const hourlyHeaderRow = new St.BoxLayout({
                     x_expand: true,
-                    style: 'margin-bottom: 10px; spacing: 6px;',
+                    style: 'margin-bottom: 14px; spacing: 6px;',
                     y_align: Clutter.ActorAlign.CENTER,
                 });
 
@@ -1045,7 +1045,7 @@ export const MeteoIndicator = GObject.registerClass(
                 const headRow = new St.BoxLayout({
                     vertical: false,
                     y_align: Clutter.ActorAlign.CENTER,
-                    style: 'spacing: 5px; margin-bottom: 3px;',
+                    style: 'spacing: 5px; margin-bottom: 6px;',
                 });
                 if (iconName) {
                     headRow.add_child(new St.Icon({
