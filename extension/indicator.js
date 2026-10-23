@@ -678,7 +678,7 @@ export const MeteoIndicator = GObject.registerClass(
             const feelsVal = current.feels !== undefined ? `${Math.round(current.feels)}°` : `${Math.round(current.temp)}°`;
             const feelsLabel = new St.Label({
                 text: `${t.feelsLikeShort} ${feelsVal}`,
-                style: 'font-size: 12px; font-weight: 400; color: rgba(255, 255, 255, 0.55); text-align: center; margin-top: 2px;',
+                style: 'font-size: 12px; font-weight: 400; color: rgba(255, 255, 255, 0.72); text-align: center; margin-top: 2px;',
                 x_align: Clutter.ActorAlign.CENTER,
             });
             headerContainer.add_child(feelsLabel);
