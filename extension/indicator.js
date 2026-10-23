@@ -960,6 +960,7 @@ export const MeteoIndicator = GObject.registerClass(
                     });
 
                     const barFill = new St.Widget({
+                        style_class: 'meteo-range-fill',
                         style: 'height: 5px; border-radius: 3px;',
                     });
                     barBox.add_child(barFill);
@@ -1165,7 +1166,7 @@ export const MeteoIndicator = GObject.registerClass(
                     const BAR_WIDTH = 104;
                     slot.barBox.style = `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`;
                     const fillW = Math.max(0, Math.min(BAR_WIDTH, Math.round((prob / 100) * BAR_WIDTH)));
-                    slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 5px; background-color: #3898ec; border-radius: 3px;`;
+                    slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 5px; background-gradient-direction: none; background-color: #3898ec; border-radius: 3px;`;
                     if (slot.dotWidget) slot.dotWidget.hide();
 
                     slot.rightLab.text = `${prob}%`;
@@ -1180,7 +1181,7 @@ export const MeteoIndicator = GObject.registerClass(
                     const windVal = Math.round(isImperial ? rawSpeed * 0.621371 : rawSpeed);
                     const maxDisplayWind = Math.round(isImperial ? maxWind * 0.621371 : maxWind);
                     const fillW = Math.max(0, Math.min(BAR_WIDTH, Math.round((windVal / Math.max(1, maxDisplayWind)) * BAR_WIDTH)));
-                    slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 5px; background-color: #30b0c7; border-radius: 3px;`;
+                    slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 5px; background-gradient-direction: none; background-color: #30b0c7; border-radius: 3px;`;
                     if (slot.dotWidget) slot.dotWidget.hide();
 
                     slot.rightLab.text = `${windVal} ${windUnit}`;
@@ -1206,8 +1207,8 @@ export const MeteoIndicator = GObject.registerClass(
                     const fillRight = Math.max(fillLeft + 8, Math.min(BAR_WIDTH, Math.round(((d.tmax - globalMin) / rangeSpan) * BAR_WIDTH)));
                     const fillWidth = Math.max(8, fillRight - fillLeft);
 
-                    // St native gradient syntax so the temperature bar actually shows a warm/cool gradient
-                    slot.barFill.style = `margin-left: ${fillLeft}px; width: ${fillWidth}px; height: 5px; -st-gradient-direction: horizontal; -st-gradient-start: #59c0fa; -st-gradient-end: #f59e0b; border-radius: 3px;`;
+                    // St native gradient syntax (background-gradient-direction / start / end)
+                    slot.barFill.style = `margin-left: ${fillLeft}px; width: ${fillWidth}px; height: 5px; background-gradient-direction: horizontal; background-gradient-start: #59c0fa; background-gradient-end: #f59e0b; border-radius: 3px;`;
 
                     if (slot.dotWidget) {
                         const dotPos = Math.max(fillLeft, Math.min(fillRight - 5, Math.round(((currentTemp - globalMin) / rangeSpan) * BAR_WIDTH)));
