@@ -5,6 +5,7 @@ import St from 'gi://St';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import Clutter from 'gi://Clutter';
+import Pango from 'gi://Pango';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
@@ -27,7 +28,7 @@ const MESSAGES = {
             precip: 'Ймовірність опадів',
             wind: 'Швидкість вітру',
         },
-        dailyTitle: '🗓️ ПРОГНОЗ НА {n} ДНІВ',
+        dailyTitle: 'ПРОГНОЗ НА {n} ДНІВ',
         windUnit: 'км/год',
         windUnitImperial: 'миль/год',
         now: 'Зараз',
@@ -41,8 +42,7 @@ const MESSAGES = {
         error: 'Помилка',
         details: {
             sunriseSunset: 'СХІД І ЗАХІД',
-            sunrise: 'Схід',
-            sunset: 'Захід',
+            daylight: 'День: {h} год {m} хв',
             moon: 'ФАЗА МІСЯЦЯ',
             moonIllum: '{n}% освітленості',
             humidity: 'ВОЛОГІСТЬ',
@@ -50,7 +50,9 @@ const MESSAGES = {
             pressure: 'ТИСК',
             mm: 'мм рт. ст.',
             inHg: 'inHg',
+            low: 'Низький',
             normal: 'Нормальний',
+            high: 'Високий',
         },
         moonPhases: {
             'New Moon': 'Молодик',
@@ -107,7 +109,7 @@ const MESSAGES = {
             precip: 'Вероятность осадков',
             wind: 'Скорость ветра',
         },
-        dailyTitle: '🗓️ ПРОГНОЗ НА {n} ДНЕЙ',
+        dailyTitle: 'ПРОГНОЗ НА {n} ДНЕЙ',
         windUnit: 'км/ч',
         windUnitImperial: 'миль/ч',
         now: 'Сейчас',
@@ -121,16 +123,17 @@ const MESSAGES = {
         error: 'Ошибка',
         details: {
             sunriseSunset: 'ВОСХОД И ЗАКАТ',
-            sunrise: 'Восход',
-            sunset: 'Закат',
+            daylight: 'День: {h} ч {m} мин',
             moon: 'ФАЗА ЛУНЫ',
-            moonIllum: '{n}% освещенности',
+            moonIllum: '{n}% освещённости',
             humidity: 'ВЛАЖНОСТЬ',
             dewPoint: 'Точка росы: {n}°',
             pressure: 'ДАВЛЕНИЕ',
             mm: 'мм рт. ст.',
             inHg: 'inHg',
+            low: 'Низкое',
             normal: 'Нормальное',
+            high: 'Высокое',
         },
         moonPhases: {
             'New Moon': 'Новолуние',
@@ -187,7 +190,7 @@ const MESSAGES = {
             precip: 'Precipitation chance',
             wind: 'Wind speed',
         },
-        dailyTitle: '🗓️ {n}-DAY FORECAST',
+        dailyTitle: '{n}-DAY FORECAST',
         windUnit: 'km/h',
         windUnitImperial: 'mph',
         now: 'Now',
@@ -201,8 +204,7 @@ const MESSAGES = {
         error: 'Error',
         details: {
             sunriseSunset: 'SUNRISE & SUNSET',
-            sunrise: 'Rise',
-            sunset: 'Set',
+            daylight: 'Daylight: {h}h {m}m',
             moon: 'MOON PHASE',
             moonIllum: '{n}% illumination',
             humidity: 'HUMIDITY',
@@ -210,7 +212,9 @@ const MESSAGES = {
             pressure: 'PRESSURE',
             mm: 'mmHg',
             inHg: 'inHg',
+            low: 'Low',
             normal: 'Normal',
+            high: 'High',
         },
         moonPhases: {
             'New Moon': 'New Moon',
@@ -295,6 +299,17 @@ function formatHour(timeStr, is12h) {
     }
 }
 
+function formatClockTime(dateObj, is12h) {
+    const hours = dateObj.getHours();
+    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+    if (is12h) {
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const h12 = hours % 12 || 12;
+        return `${h12}:${minutes} ${period}`;
+    }
+    return `${String(hours).padStart(2, '0')}:${minutes}`;
+}
+
 function getSymbolicIcon(scene, isDay = true) {
     switch (scene) {
         case 'sun': return 'weather-clear-symbolic';
@@ -316,6 +331,11 @@ function formatDayName(dateStr, index, lang) {
     const t = MESSAGES[lang] || MESSAGES.uk;
     if (index === 0) return t.today;
     try {
+        const parts = String(dateStr).split('-').map(Number);
+        if (parts.length === 3 && parts.every(Number.isFinite)) {
+            const d = new Date(parts[0], parts[1] - 1, parts[2]);
+            return t.days[d.getDay()];
+        }
         const d = new Date(dateStr);
         return t.days[d.getDay()];
     } catch {
@@ -343,10 +363,17 @@ function toDisplayWind(kmh, isImperial) {
 }
 
 function toDisplayPressure(hPa, isImperial) {
-    if (!hPa || Number.isNaN(hPa)) return isImperial ? '29.9' : '750';
+    if (!hPa || Number.isNaN(hPa)) return '—';
     return isImperial
         ? (hPa * 0.029530).toFixed(1)
         : String(Math.round(hPa * 0.750062));
+}
+
+function getPressureLevel(hPa, dt) {
+    if (!hPa || Number.isNaN(hPa)) return dt.normal;
+    if (hPa < 1009) return dt.low;
+    if (hPa > 1022) return dt.high;
+    return dt.normal;
 }
 
 class TooltipHelper {
@@ -414,18 +441,22 @@ class WeatherCoordinator {
         return this._lastFetch === 0 || (nowSec - this._lastFetch) > intervalSec;
     }
 
-    async fetch(force = false) {
+    async fetch() {
         if (this._busy) return;
         this._busy = true;
         if (this._onLoading) this._onLoading();
 
         try {
+            this._client.providerId = this._settings.get_string('provider');
+            this._client.model = this._settings.get_string('om-model');
             const isAuto = this._settings.get_boolean('auto-location');
+            const lang = resolveLang(this._settings);
             const data = await this._client.fetch({
                 auto: isAuto,
                 latitude: this._settings.get_double('location-latitude'),
                 longitude: this._settings.get_double('location-longitude'),
                 days: 10,
+                lang,
             });
             this._data = data;
             this._lastFetch = GLib.get_monotonic_time() / 1000000;
@@ -444,7 +475,7 @@ class WeatherCoordinator {
         }
         const intervalSec = Math.max(60, this._settings.get_int('refresh-minutes') * 60);
         this._refreshTimerId = GLib.timeout_add_seconds(GLib.PRIORITY_LOW, intervalSec, () => {
-            this.fetch(false);
+            this.fetch();
             return GLib.SOURCE_CONTINUE;
         });
     }
@@ -483,12 +514,13 @@ export const MeteoIndicator = GObject.registerClass(
             });
 
             this._icon = new St.Icon({
-                icon_name: 'weather-clear-symbolic',
+                icon_name: 'weather-overcast-symbolic',
                 style_class: 'system-status-icon',
+                opacity: 170,
             });
 
             this._label = new St.Label({
-                text: '13°',
+                text: '…',
                 y_align: Clutter.ActorAlign.CENTER,
             });
 
@@ -508,20 +540,31 @@ export const MeteoIndicator = GObject.registerClass(
             const t = MESSAGES[lang] || MESSAGES.uk;
             this._buildPlaceholder(t.loading);
 
+            if (this._settings.get_boolean('auto-location'))
+                ensureDesktopEntry();
+
             this._settingsChangedId = this._settings.connect('changed', (settings, key) => {
                 if (key === 'show-icon' || key === 'show-temperature') {
                     this._updatePanelIndicator();
-                } else if (key === 'language' || key === 'hour-format' || key === 'units') {
+                } else if (key === 'hour-format' || key === 'units' || key === 'location-name') {
                     if (this._weatherData) {
                         const isAuto = settings.get_boolean('auto-location');
                         this._onWeatherReceived(this._weatherData, isAuto);
                     }
+                } else if (key === 'language') {
+                    if (settings.get_boolean('auto-location')) {
+                        this._coordinator.fetch();
+                    } else if (this._weatherData) {
+                        this._onWeatherReceived(this._weatherData, false);
+                    }
+                } else if (key === 'refresh-minutes') {
+                    this._coordinator.startTimer();
                 } else if (key === 'auto-location') {
                     if (settings.get_boolean('auto-location')) ensureDesktopEntry();
                     else removeDesktopEntry();
-                    this._coordinator.fetch(true);
+                    this._coordinator.fetch();
                 } else if (['location-latitude', 'location-longitude', 'provider', 'om-model'].includes(key)) {
-                    this._coordinator.fetch(true);
+                    this._coordinator.fetch();
                 }
             });
 
@@ -529,12 +572,16 @@ export const MeteoIndicator = GObject.registerClass(
                 if (!open) {
                     this._tooltipHelper.hide();
                 } else if (this._coordinator.isStale()) {
-                    this._coordinator.fetch(false);
+                    this._coordinator.fetch();
                 }
             });
 
-            this._coordinator.fetch(true);
+            this._coordinator.fetch();
             this._coordinator.startTimer();
+        }
+
+        _assetGIcon(filename) {
+            return Gio.FileIcon.new(this._ext.dir.get_child('assets').get_child(filename));
         }
 
         _updatePanelIndicator() {
@@ -572,6 +619,7 @@ export const MeteoIndicator = GObject.registerClass(
             const isImperial = this._settings.get_string('units') === 'imperial';
             const roundedTemp = toDisplayTemp(current.temp, isImperial);
             this._icon.icon_name = iconName;
+            this._icon.opacity = 255;
             this._label.text = `${roundedTemp}°`;
 
             this._lastUpdateStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -650,7 +698,7 @@ export const MeteoIndicator = GObject.registerClass(
             });
             refreshBtn.connect('clicked', () => {
                 this._tooltipHelper.hide();
-                this._coordinator.fetch(true);
+                this._coordinator.fetch();
             });
 
             const cityLabel = new St.Label({
@@ -660,6 +708,7 @@ export const MeteoIndicator = GObject.registerClass(
                 x_align: Clutter.ActorAlign.CENTER,
                 y_align: Clutter.ActorAlign.CENTER,
             });
+            cityLabel.clutter_text.ellipsize = Pango.EllipsizeMode.END;
 
             const prefsBtn = new St.Button({
                 child: new St.Icon({
@@ -692,7 +741,7 @@ export const MeteoIndicator = GObject.registerClass(
             });
             headerContainer.add_child(tempLabel);
 
-            const condText = t.wmo[current.code] || sceneInfo.desc || 'Ясно';
+            const condText = t.wmo[current.code] || sceneInfo.desc || t.wmo[0];
             const condLabel = new St.Label({
                 text: condText,
                 style: 'font-size: 14.5px; font-weight: 500; color: #ffffff; text-align: center;',
@@ -731,7 +780,7 @@ export const MeteoIndicator = GObject.registerClass(
                 hscrollbar_policy: St.PolicyType.NEVER,
                 vscrollbar_policy: St.PolicyType.EXTERNAL,
                 enable_mouse_scrolling: true,
-                style: 'max-height: 560px; x-expand: true;',
+                style: 'max-height: 580px; x-expand: true;',
             });
 
             const contentBox = new St.BoxLayout({
@@ -741,7 +790,7 @@ export const MeteoIndicator = GObject.registerClass(
             });
 
             // ──────────────────────────────────────────────────────────────────
-            // 2. CARD: HOURLY FORECAST (Clean header controls, full-width strip)
+            // 2. CARD: HOURLY FORECAST
             // ──────────────────────────────────────────────────────────────────
             if (hourly && Array.isArray(hourly.temp) && hourly.temp.length > 0) {
                 const hourlyCardBox = new St.BoxLayout({
@@ -752,11 +801,10 @@ export const MeteoIndicator = GObject.registerClass(
 
                 const hourlyHeaderRow = new St.BoxLayout({
                     x_expand: true,
-                    style: 'margin-bottom: 14px; spacing: 6px;',
+                    style: 'margin-bottom: 12px; spacing: 6px;',
                     y_align: Clutter.ActorAlign.CENTER,
                 });
 
-                const isImperial = this._settings.get_string('units') === 'imperial';
                 const windUnit = isImperial ? t.windUnitImperial : t.windUnit;
                 const initialMetricTitle = (this._hourlyMetric === 'wind')
                     ? `${t.hourlyMetrics.wind} (${windUnit})`
@@ -764,10 +812,11 @@ export const MeteoIndicator = GObject.registerClass(
 
                 this._hourlyTitleLabel = new St.Label({
                     text: initialMetricTitle,
-                    style: 'font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.55); letter-spacing: 0.05em;',
+                    style: 'font-size: 10.5px; font-weight: 700; color: rgba(255, 255, 255, 0.55); letter-spacing: 0.05em;',
                     x_expand: true,
                     y_align: Clutter.ActorAlign.CENTER,
                 });
+                this._hourlyTitleLabel.clutter_text.ellipsize = Pango.EllipsizeMode.END;
                 hourlyHeaderRow.add_child(this._hourlyTitleLabel);
 
                 // Segmented Metric Switcher
@@ -777,18 +826,21 @@ export const MeteoIndicator = GObject.registerClass(
                 });
 
                 const METRICS = [
-                    { id: 'temp', icon: 'temperature-symbolic', tip: t.metricTips.temp },
+                    { id: 'temp', gicon: this._assetGIcon('meteo-temperature-symbolic.svg'), tip: t.metricTips.temp },
                     { id: 'precip', icon: 'weather-showers-symbolic', tip: t.metricTips.precip },
                     { id: 'wind', icon: 'weather-windy-symbolic', tip: t.metricTips.wind },
                 ];
 
                 for (const m of METRICS) {
+                    const iconProps = {
+                        icon_size: 13,
+                        style_class: 'system-status-icon',
+                    };
+                    if (m.gicon) iconProps.gicon = m.gicon;
+                    else iconProps.icon_name = m.icon;
+
                     const btn = new St.Button({
-                        child: new St.Icon({
-                            icon_name: m.icon,
-                            icon_size: 13,
-                            style_class: 'system-status-icon',
-                        }),
+                        child: new St.Icon(iconProps),
                         can_focus: true,
                         y_align: Clutter.ActorAlign.CENTER,
                     });
@@ -813,7 +865,7 @@ export const MeteoIndicator = GObject.registerClass(
                 }
                 hourlyHeaderRow.add_child(switcherBox);
 
-                // Compact Header Pager [< | >] — never overlaps forecast items!
+                // Compact Header Pager [< | >]
                 const navBox = new St.BoxLayout({
                     style: 'background-color: rgba(0, 0, 0, 0.24); border-radius: 8px; padding: 2px; spacing: 2px;',
                     y_align: Clutter.ActorAlign.CENTER,
@@ -856,7 +908,6 @@ export const MeteoIndicator = GObject.registerClass(
                 hourlyHeaderRow.add_child(navBox);
                 hourlyCardBox.add_child(hourlyHeaderRow);
 
-                // Full-width Horizontal Scroll for 24 Hours (no overlay clutter!)
                 const hScroll = new St.ScrollView({
                     hscrollbar_policy: St.PolicyType.EXTERNAL,
                     vscrollbar_policy: St.PolicyType.NEVER,
@@ -887,7 +938,6 @@ export const MeteoIndicator = GObject.registerClass(
                 hadj.connect('changed', updateNavState);
                 this._updateHourlyNavVisibility = updateNavState;
 
-                // 5 columns visible at once (~60px stride) -> scroll by 4 hours (240px)
                 const SCROLL_STEP = 232;
 
                 const smoothScrollTo = (target) => {
@@ -964,7 +1014,7 @@ export const MeteoIndicator = GObject.registerClass(
             }
 
             // ──────────────────────────────────────────────────────────────────
-            // 3. CARD: 7-DAY FORECAST
+            // 3. CARD: 7-DAY FORECAST (With unified section header & Today dot)
             // ──────────────────────────────────────────────────────────────────
             if (dailyArr.length > 0) {
                 const dailyCardBox = new St.BoxLayout({
@@ -974,6 +1024,26 @@ export const MeteoIndicator = GObject.registerClass(
                 });
 
                 const daysCount = Math.min(7, dailyArr.length);
+
+                const dailyHeaderRow = new St.BoxLayout({
+                    vertical: false,
+                    y_align: Clutter.ActorAlign.CENTER,
+                    style: 'spacing: 5px; margin-bottom: 4px;',
+                });
+                dailyHeaderRow.add_child(new St.Icon({
+                    icon_name: 'x-office-calendar-symbolic',
+                    icon_size: 11,
+                    style_class: 'system-status-icon',
+                    style: 'opacity: 0.6;',
+                }));
+                this._dailyTitleLabel = new St.Label({
+                    text: t.dailyTitle.replace('{n}', String(daysCount)),
+                    style: 'font-size: 10.5px; font-weight: 700; color: rgba(255, 255, 255, 0.55); letter-spacing: 0.05em;',
+                    y_align: Clutter.ActorAlign.CENTER,
+                });
+                dailyHeaderRow.add_child(this._dailyTitleLabel);
+                dailyCardBox.add_child(dailyHeaderRow);
+
                 const BAR_WIDTH = 104;
 
                 for (let i = 0; i < daysCount; i++) {
@@ -1018,6 +1088,14 @@ export const MeteoIndicator = GObject.registerClass(
                     });
                     barBox.add_child(barFill);
 
+                    let barDot = null;
+                    if (i === 0) {
+                        barDot = new St.Widget({
+                            style: 'width: 7px; height: 7px; border-radius: 4px; background-color: #ffffff; border: 1.5px solid rgba(16, 20, 28, 0.85); margin-top: -1px;',
+                        });
+                        barBox.add_child(barDot);
+                    }
+
                     const rightLab = new St.Label({
                         text: '',
                         style: 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 30px; text-align: right;',
@@ -1039,6 +1117,7 @@ export const MeteoIndicator = GObject.registerClass(
                         leftLab,
                         barBox,
                         barFill,
+                        barDot,
                         rightLab,
                     });
                 }
@@ -1056,7 +1135,7 @@ export const MeteoIndicator = GObject.registerClass(
                 style: 'spacing: 8px;',
             });
 
-            const makeTile = (iconName, title, value, subtext, tooltipText = null) => {
+            const makeTile = (iconSpec, title, value, subtext, tooltipText = null) => {
                 const tile = new St.BoxLayout({
                     vertical: true,
                     x_expand: true,
@@ -1068,35 +1147,43 @@ export const MeteoIndicator = GObject.registerClass(
                 const headRow = new St.BoxLayout({
                     vertical: false,
                     y_align: Clutter.ActorAlign.CENTER,
-                    style: 'spacing: 5px; margin-bottom: 6px;',
+                    style: 'spacing: 5px; margin-bottom: 5px;',
                 });
-                if (iconName) {
-                    headRow.add_child(new St.Icon({
-                        icon_name: iconName,
+                if (iconSpec) {
+                    const iconProps = {
                         icon_size: 11,
                         style_class: 'system-status-icon',
                         style: 'opacity: 0.6;',
-                    }));
+                    };
+                    if (typeof iconSpec === 'string') iconProps.icon_name = iconSpec;
+                    else iconProps.gicon = iconSpec;
+                    headRow.add_child(new St.Icon(iconProps));
                 }
                 const tLab = new St.Label({
                     text: title,
                     style: 'font-size: 10px; font-weight: 700; color: rgba(255, 255, 255, 0.55); letter-spacing: 0.04em;',
                     y_align: Clutter.ActorAlign.CENTER,
+                    x_expand: true,
                 });
+                tLab.clutter_text.ellipsize = Pango.EllipsizeMode.END;
                 headRow.add_child(tLab);
                 tile.add_child(headRow);
 
                 const vLab = new St.Label({
                     text: value,
-                    style: 'font-size: 15px; font-weight: 600; color: #ffffff; margin: 1px 0;',
+                    style: 'font-size: 14.5px; font-weight: 600; color: #ffffff; margin: 1px 0;',
+                    x_expand: true,
                 });
+                vLab.clutter_text.ellipsize = Pango.EllipsizeMode.END;
                 tile.add_child(vLab);
 
                 if (subtext) {
                     const sLab = new St.Label({
                         text: subtext,
                         style: 'font-size: 11.5px; color: rgba(255, 255, 255, 0.72); margin-top: 2px;',
+                        x_expand: true,
                     });
+                    sLab.clutter_text.ellipsize = Pango.EllipsizeMode.END;
                     tile.add_child(sLab);
                 }
 
@@ -1121,19 +1208,28 @@ export const MeteoIndicator = GObject.registerClass(
                 }),
                 x_expand: true,
             });
-            let sunriseStr = '07:15';
-            let sunsetStr = '17:45';
-            if (dailyArr[0] && dailyArr[0].sunrise) {
+
+            let sunriseStr = '07:00';
+            let sunsetStr = '18:00';
+            let daylightSub = '';
+            if (dailyArr[0] && dailyArr[0].sunrise && dailyArr[0].sunset) {
                 try {
                     const sr = new Date(dailyArr[0].sunrise);
                     const ss = new Date(dailyArr[0].sunset);
-                    sunriseStr = `${String(sr.getHours()).padStart(2, '0')}:${String(sr.getMinutes()).padStart(2, '0')}`;
-                    sunsetStr = `${String(ss.getHours()).padStart(2, '0')}:${String(ss.getMinutes()).padStart(2, '0')}`;
+                    sunriseStr = formatClockTime(sr, is12h);
+                    sunsetStr = formatClockTime(ss, is12h);
+                    const diffMin = Math.round((ss.getTime() - sr.getTime()) / 60000);
+                    if (diffMin > 0 && diffMin < 1440) {
+                        const dh = Math.floor(diffMin / 60);
+                        const dm = diffMin % 60;
+                        daylightSub = dt.daylight.replace('{h}', String(dh)).replace('{m}', String(dm).padStart(2, '0'));
+                    }
                 } catch { }
             }
+            const sunValStr = `↑ ${sunriseStr}  ↓ ${sunsetStr}`;
             const moon = getMoonInfo(lang);
 
-            row1.add_child(makeTile('daytime-sunrise-symbolic', dt.sunriseSunset, `${dt.sunrise}: ${sunriseStr}`, `${dt.sunset}: ${sunsetStr}`));
+            row1.add_child(makeTile('daytime-sunrise-symbolic', dt.sunriseSunset, sunValStr, daylightSub, `${ sunValStr }${ daylightSub ? ` · ${daylightSub}` : '' }`));
             row1.add_child(makeTile('weather-clear-night-symbolic', dt.moon, moon.nameTrans, dt.moonIllum.replace('{n}', Math.round(moon.illum * 100)), moon.nameTrans));
             detailsContainer.add_child(row1);
 
@@ -1150,9 +1246,10 @@ export const MeteoIndicator = GObject.registerClass(
             const dewPoint = toDisplayTemp(rawDewPoint, isImperial);
             const pressVal = toDisplayPressure(current.pressure, isImperial);
             const pressUnit = isImperial ? dt.inHg : dt.mm;
+            const pressStatus = getPressureLevel(current.pressure, dt);
 
-            row2.add_child(makeTile('weather-showers-symbolic', dt.humidity, humVal, dt.dewPoint.replace('{n}', dewPoint)));
-            row2.add_child(makeTile('find-location-symbolic', dt.pressure, pressVal, `${pressUnit} · ${dt.normal}`));
+            row2.add_child(makeTile(this._assetGIcon('meteo-humidity-symbolic.svg'), dt.humidity, humVal, dt.dewPoint.replace('{n}', dewPoint)));
+            row2.add_child(makeTile(this._assetGIcon('meteo-pressure-symbolic.svg'), dt.pressure, pressVal, `${pressUnit} · ${pressStatus}`));
             detailsContainer.add_child(row2);
 
             contentBox.add_child(detailsContainer);
@@ -1245,11 +1342,8 @@ export const MeteoIndicator = GObject.registerClass(
 
         _updateDailyRows() {
             if (!this._dailySlots || this._dailySlots.length === 0) return;
-            const currentTemp = this._weatherData?.current?.temp ?? 0;
+            const currentTemp = this._weatherData?.current?.temp ?? null;
             const isImperial = this._settings.get_string('units') === 'imperial';
-            const lang = resolveLang(this._settings);
-            const t = MESSAGES[lang] || MESSAGES.uk;
-            const windUnit = isImperial ? t.windUnitImperial : t.windUnit;
 
             let globalMin = Infinity;
             let globalMax = -Infinity;
@@ -1276,6 +1370,7 @@ export const MeteoIndicator = GObject.registerClass(
                 const BAR_WIDTH = 104;
 
                 if (this._hourlyMetric === 'precip') {
+                    if (slot.barDot) slot.barDot.hide();
                     const prob = Math.round(d.precipProb ?? 0);
                     slot.leftLab.show();
                     slot.leftLab.text = '💧';
@@ -1290,6 +1385,7 @@ export const MeteoIndicator = GObject.registerClass(
                         ? 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.4); min-width: 38px; text-align: right;'
                         : 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 38px; text-align: right;';
                 } else if (this._hourlyMetric === 'wind') {
+                    if (slot.barDot) slot.barDot.hide();
                     const rawSpeed = d.windMax ?? 0;
                     const windVal = toDisplayWind(rawSpeed, isImperial);
                     const maxDisplayWind = toDisplayWind(maxWind, isImperial);
@@ -1315,8 +1411,16 @@ export const MeteoIndicator = GObject.registerClass(
                     const fillRight = Math.max(fillLeft + 8, Math.min(BAR_WIDTH, Math.round(((d.tmax - globalMin) / rangeSpan) * BAR_WIDTH)));
                     const fillWidth = Math.max(8, fillRight - fillLeft);
 
-                    // St native gradient syntax (background-gradient-direction / start / end)
                     slot.barFill.style = `margin-left: ${fillLeft}px; width: ${fillWidth}px; height: 5px; background-gradient-direction: horizontal; background-gradient-start: #59c0fa; background-gradient-end: #f59e0b; border-radius: 3px;`;
+
+                    if (slot.barDot && currentTemp !== null && Number.isFinite(currentTemp)) {
+                        const clampedNow = Math.max(d.tmin, Math.min(d.tmax, currentTemp));
+                        const dotX = Math.max(0, Math.min(BAR_WIDTH - 7, Math.round(((clampedNow - globalMin) / rangeSpan) * BAR_WIDTH) - 3));
+                        slot.barDot.style = `margin-left: ${dotX}px; margin-top: -1px; width: 7px; height: 7px; border-radius: 4px; background-color: #ffffff; border: 1.5px solid rgba(16, 20, 28, 0.85);`;
+                        slot.barDot.show();
+                    } else if (slot.barDot) {
+                        slot.barDot.hide();
+                    }
 
                     slot.rightLab.text = `${toDisplayTemp(d.tmax, isImperial)}°`;
                     slot.rightLab.style = 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 30px; text-align: right;';
