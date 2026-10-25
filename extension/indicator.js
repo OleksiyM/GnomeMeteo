@@ -299,13 +299,13 @@ function formatHour(timeStr, is12h) {
     }
 }
 
-function formatClockTime(dateObj, is12h) {
+function formatClockTime(dateObj, is12h, compact12h = false) {
     const hours = dateObj.getHours();
     const minutes = String(dateObj.getMinutes()).padStart(2, '0');
     if (is12h) {
         const period = hours >= 12 ? 'PM' : 'AM';
         const h12 = hours % 12 || 12;
-        return `${h12}:${minutes} ${period}`;
+        return compact12h ? `${h12}:${minutes}${period}` : `${h12}:${minutes} ${period}`;
     }
     return `${String(hours).padStart(2, '0')}:${minutes}`;
 }
@@ -1027,6 +1027,7 @@ export const MeteoIndicator = GObject.registerClass(
 
                 const dailyHeaderRow = new St.BoxLayout({
                     vertical: false,
+                    x_expand: true,
                     y_align: Clutter.ActorAlign.CENTER,
                     style: 'spacing: 5px; margin-bottom: 4px;',
                 });
@@ -1039,6 +1040,7 @@ export const MeteoIndicator = GObject.registerClass(
                 this._dailyTitleLabel = new St.Label({
                     text: t.dailyTitle.replace('{n}', String(daysCount)),
                     style: 'font-size: 10.5px; font-weight: 700; color: rgba(255, 255, 255, 0.55); letter-spacing: 0.05em;',
+                    x_expand: true,
                     y_align: Clutter.ActorAlign.CENTER,
                 });
                 dailyHeaderRow.add_child(this._dailyTitleLabel);
@@ -1088,14 +1090,6 @@ export const MeteoIndicator = GObject.registerClass(
                     });
                     barBox.add_child(barFill);
 
-                    let barDot = null;
-                    if (i === 0) {
-                        barDot = new St.Widget({
-                            style: 'width: 7px; height: 7px; border-radius: 4px; background-color: #ffffff; border: 1.5px solid rgba(16, 20, 28, 0.85); margin-top: -1px;',
-                        });
-                        barBox.add_child(barDot);
-                    }
-
                     const rightLab = new St.Label({
                         text: '',
                         style: 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 30px; text-align: right;',
@@ -1117,7 +1111,6 @@ export const MeteoIndicator = GObject.registerClass(
                         leftLab,
                         barBox,
                         barFill,
-                        barDot,
                         rightLab,
                     });
                 }
@@ -1135,7 +1128,7 @@ export const MeteoIndicator = GObject.registerClass(
                 style: 'spacing: 8px;',
             });
 
-            const makeTile = (iconSpec, title, value, subtext, tooltipText = null) => {
+            const makeTile = (iconSpec, title, value, subtext, tooltipText = null, valFontSize = '14.5px') => {
                 const tile = new St.BoxLayout({
                     vertical: true,
                     x_expand: true,
@@ -1146,6 +1139,7 @@ export const MeteoIndicator = GObject.registerClass(
 
                 const headRow = new St.BoxLayout({
                     vertical: false,
+                    x_expand: true,
                     y_align: Clutter.ActorAlign.CENTER,
                     style: 'spacing: 5px; margin-bottom: 5px;',
                 });
@@ -1171,7 +1165,7 @@ export const MeteoIndicator = GObject.registerClass(
 
                 const vLab = new St.Label({
                     text: value,
-                    style: 'font-size: 14.5px; font-weight: 600; color: #ffffff; margin: 1px 0;',
+                    style: `font-size: ${valFontSize}; font-weight: 600; color: #ffffff; margin: 1px 0;`,
                     x_expand: true,
                 });
                 vLab.clutter_text.ellipsize = Pango.EllipsizeMode.END;
@@ -1211,13 +1205,17 @@ export const MeteoIndicator = GObject.registerClass(
 
             let sunriseStr = '07:00';
             let sunsetStr = '18:00';
+            let sunriseFullStr = '07:00';
+            let sunsetFullStr = '18:00';
             let daylightSub = '';
             if (dailyArr[0] && dailyArr[0].sunrise && dailyArr[0].sunset) {
                 try {
                     const sr = new Date(dailyArr[0].sunrise);
                     const ss = new Date(dailyArr[0].sunset);
-                    sunriseStr = formatClockTime(sr, is12h);
-                    sunsetStr = formatClockTime(ss, is12h);
+                    sunriseStr = formatClockTime(sr, is12h, true);
+                    sunsetStr = formatClockTime(ss, is12h, true);
+                    sunriseFullStr = formatClockTime(sr, is12h, false);
+                    sunsetFullStr = formatClockTime(ss, is12h, false);
                     const diffMin = Math.round((ss.getTime() - sr.getTime()) / 60000);
                     if (diffMin > 0 && diffMin < 1440) {
                         const dh = Math.floor(diffMin / 60);
@@ -1226,10 +1224,14 @@ export const MeteoIndicator = GObject.registerClass(
                     }
                 } catch { }
             }
-            const sunValStr = `↑ ${sunriseStr}  ↓ ${sunsetStr}`;
+            const sunValStr = is12h
+                ? `↑${sunriseStr} · ↓${sunsetStr}`
+                : `↑ ${sunriseStr}  ↓ ${sunsetStr}`;
+            const sunTipStr = `↑ ${sunriseFullStr}  ↓ ${sunsetFullStr}${daylightSub ? ` · ${daylightSub}` : ''}`;
+            const sunFontSize = is12h ? '12.5px' : '14.5px';
             const moon = getMoonInfo(lang);
 
-            row1.add_child(makeTile('daytime-sunrise-symbolic', dt.sunriseSunset, sunValStr, daylightSub, `${ sunValStr }${ daylightSub ? ` · ${daylightSub}` : '' }`));
+            row1.add_child(makeTile('daytime-sunrise-symbolic', dt.sunriseSunset, sunValStr, daylightSub, sunTipStr, sunFontSize));
             row1.add_child(makeTile('weather-clear-night-symbolic', dt.moon, moon.nameTrans, dt.moonIllum.replace('{n}', Math.round(moon.illum * 100)), moon.nameTrans));
             detailsContainer.add_child(row1);
 
@@ -1342,7 +1344,6 @@ export const MeteoIndicator = GObject.registerClass(
 
         _updateDailyRows() {
             if (!this._dailySlots || this._dailySlots.length === 0) return;
-            const currentTemp = this._weatherData?.current?.temp ?? null;
             const isImperial = this._settings.get_string('units') === 'imperial';
 
             let globalMin = Infinity;
@@ -1370,7 +1371,6 @@ export const MeteoIndicator = GObject.registerClass(
                 const BAR_WIDTH = 104;
 
                 if (this._hourlyMetric === 'precip') {
-                    if (slot.barDot) slot.barDot.hide();
                     const prob = Math.round(d.precipProb ?? 0);
                     slot.leftLab.show();
                     slot.leftLab.text = '💧';
@@ -1385,7 +1385,6 @@ export const MeteoIndicator = GObject.registerClass(
                         ? 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.4); min-width: 38px; text-align: right;'
                         : 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 38px; text-align: right;';
                 } else if (this._hourlyMetric === 'wind') {
-                    if (slot.barDot) slot.barDot.hide();
                     const rawSpeed = d.windMax ?? 0;
                     const windVal = toDisplayWind(rawSpeed, isImperial);
                     const maxDisplayWind = toDisplayWind(maxWind, isImperial);
@@ -1412,15 +1411,6 @@ export const MeteoIndicator = GObject.registerClass(
                     const fillWidth = Math.max(8, fillRight - fillLeft);
 
                     slot.barFill.style = `margin-left: ${fillLeft}px; width: ${fillWidth}px; height: 5px; background-gradient-direction: horizontal; background-gradient-start: #59c0fa; background-gradient-end: #f59e0b; border-radius: 3px;`;
-
-                    if (slot.barDot && currentTemp !== null && Number.isFinite(currentTemp)) {
-                        const clampedNow = Math.max(d.tmin, Math.min(d.tmax, currentTemp));
-                        const dotX = Math.max(0, Math.min(BAR_WIDTH - 7, Math.round(((clampedNow - globalMin) / rangeSpan) * BAR_WIDTH) - 3));
-                        slot.barDot.style = `margin-left: ${dotX}px; margin-top: -1px; width: 7px; height: 7px; border-radius: 4px; background-color: #ffffff; border: 1.5px solid rgba(16, 20, 28, 0.85);`;
-                        slot.barDot.show();
-                    } else if (slot.barDot) {
-                        slot.barDot.hide();
-                    }
 
                     slot.rightLab.text = `${toDisplayTemp(d.tmax, isImperial)}°`;
                     slot.rightLab.style = 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 30px; text-align: right;';
