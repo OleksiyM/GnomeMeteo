@@ -3,18 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GnomeMeteo — Weather Indicator & Forecast for GNOME Shell</title>
-  <meta name="description" content="Elegant, lightweight weather indicator and forecast for GNOME Shell 45+ with native Libadwaita styling.">
+  <title>GnomeMeteo — Native Weather Indicator & Forecast for GNOME Shell</title>
+  <meta name="description" content="Elegant, lightweight weather indicator and forecast for GNOME Shell 45–50+ with native Libadwaita styling, keyless multi-provider support, and SLSA v1 supply-chain provenance.">
+  <meta property="og:title" content="GnomeMeteo — Weather for GNOME Shell 45–50+">
+  <meta property="og:description" content="Native Libadwaita weather indicator and forecast popup with Open-Meteo, MET Norway, and NOAA NWS support.">
+  <meta property="og:image" content="https://oleksiym.github.io/GnomeMeteo/screenshots/screenshot-1.png">
   <link rel="icon" type="image/png" href="extension/assets/gnome-meteo-128.png">
   <style>
     :root {
-      --bg: #101216;
-      --card-bg: rgba(255, 255, 255, 0.05);
-      --card-border: rgba(255, 255, 255, 0.1);
-      --text-main: #f6f8fa;
-      --text-muted: #9aa0a6;
+      --bg-top: #151c2c;
+      --bg-main: #0c0f16;
+      --card-bg: rgba(255, 255, 255, 0.045);
+      --card-bg-hover: rgba(255, 255, 255, 0.075);
+      --card-border: rgba(255, 255, 255, 0.09);
+      --card-border-hover: rgba(255, 255, 255, 0.2);
+      --text-main: #f4f6fb;
+      --text-muted: #9ba3b4;
       --accent: #3584e4;
+      --accent-light: #62a0ea;
       --accent-hover: #1c71d8;
+      --green: #57e389;
+      --amber: #f8e45c;
     }
 
     * {
@@ -24,62 +33,138 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Cantarell", "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: radial-gradient(circle at 50% 0%, #1e2638 0%, var(--bg) 70%);
+      font-family: "Cantarell", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(ellipse 90% 50% at 50% -10%, var(--bg-top) 0%, var(--bg-main) 75%);
+      background-color: var(--bg-main);
       color: var(--text-main);
       line-height: 1.6;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      overflow-x: hidden;
     }
 
+    /* Top Navigation Bar */
+    .navbar {
+      max-width: 1120px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1.25rem 1.5rem 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--text-main);
+      text-decoration: none;
+    }
+
+    .nav-brand img {
+      width: 28px;
+      height: 28px;
+    }
+
+    .lang-switcher {
+      display: inline-flex;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      border-radius: 999px;
+      padding: 3px;
+      gap: 2px;
+    }
+
+    .lang-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 0.3rem 0.65rem;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      font-family: inherit;
+    }
+
+    .lang-btn:hover {
+      color: var(--text-main);
+    }
+
+    .lang-btn.active {
+      background: var(--accent);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(53, 132, 228, 0.35);
+    }
+
+    /* Hero Section */
     header {
-      padding: 3rem 1.5rem 1.5rem;
+      padding: 2.2rem 1.5rem 1.5rem;
       text-align: center;
-      max-width: 800px;
+      max-width: 840px;
       margin: 0 auto;
     }
 
-    .badge {
-      display: inline-block;
-      padding: 0.35rem 0.85rem;
-      border-radius: 999px;
-      background: rgba(53, 132, 228, 0.15);
-      color: #62a0ea;
-      font-size: 0.85rem;
-      font-weight: 600;
-      letter-spacing: 0.04em;
+    .badges-row {
+      display: flex;
+      justify-content: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
       margin-bottom: 1.25rem;
-      border: 1px solid rgba(53, 132, 228, 0.3);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.32rem 0.85rem;
+      border-radius: 999px;
+      background: rgba(53, 132, 228, 0.14);
+      color: var(--accent-light);
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      border: 1px solid rgba(53, 132, 228, 0.28);
+    }
+
+    .badge-sec {
+      background: rgba(87, 227, 137, 0.11);
+      color: var(--green);
+      border-color: rgba(87, 227, 137, 0.25);
     }
 
     .app-logo {
       width: 96px;
       height: 96px;
-      margin-bottom: 1rem;
-      filter: drop-shadow(0 8px 24px rgba(53, 132, 228, 0.35));
+      margin-bottom: 0.85rem;
+      filter: drop-shadow(0 10px 28px rgba(53, 132, 228, 0.35));
     }
 
     h1 {
-      font-size: 3rem;
+      font-size: clamp(2.4rem, 5vw, 3.3rem);
       font-weight: 800;
       letter-spacing: -0.03em;
-      margin-bottom: 0.8rem;
-      background: linear-gradient(180deg, #ffffff 0%, #cfd7e6 100%);
+      margin-bottom: 0.75rem;
+      background: linear-gradient(180deg, #ffffff 0%, #c5d1e8 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
     .subtitle {
-      font-size: 1.25rem;
+      font-size: 1.18rem;
       color: var(--text-muted);
-      max-width: 620px;
-      margin: 0 auto 2rem;
+      max-width: 640px;
+      margin: 0 auto 1.85rem;
     }
 
     .cta-buttons {
       display: flex;
-      gap: 1rem;
+      gap: 0.9rem;
       justify-content: center;
       flex-wrap: wrap;
       margin-bottom: 2rem;
@@ -88,8 +173,8 @@
     .btn {
       display: inline-flex;
       align-items: center;
-      gap: 0.5rem;
-      padding: 0.75rem 1.5rem;
+      gap: 0.55rem;
+      padding: 0.75rem 1.45rem;
       border-radius: 12px;
       font-weight: 600;
       font-size: 0.95rem;
@@ -100,7 +185,7 @@
     .btn-primary {
       background: var(--accent);
       color: #ffffff;
-      box-shadow: 0 4px 14px rgba(53, 132, 228, 0.4);
+      box-shadow: 0 4px 16px rgba(53, 132, 228, 0.38);
     }
 
     .btn-primary:hover {
@@ -115,48 +200,62 @@
     }
 
     .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--card-bg-hover);
+      border-color: var(--card-border-hover);
       transform: translateY(-1px);
     }
 
     main {
       flex: 1;
-      max-width: 1100px;
+      max-width: 1120px;
       margin: 0 auto;
-      padding: 0 1.5rem 3rem;
+      padding: 0 1.5rem 3.5rem;
       width: 100%;
     }
 
+    /* Install Box */
     .install-box {
-      background: rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 14px;
+      background: rgba(14, 18, 28, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      border-radius: 16px;
       padding: 1.25rem 1.5rem;
-      max-width: 720px;
-      margin: 0 auto 3rem;
-      text-align: center;
+      max-width: 760px;
+      margin: 0 auto 3.5rem;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+    }
+
+    .install-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.65rem;
     }
 
     .install-box-title {
-      font-size: 0.9rem;
-      font-weight: 600;
+      font-size: 0.84rem;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #8ff0a4;
-      margin-bottom: 0.6rem;
+      letter-spacing: 0.06em;
+      color: var(--green);
+    }
+
+    .install-verify-tag {
+      font-size: 0.78rem;
+      color: var(--text-muted);
     }
 
     .code-block {
-      background: #000000;
-      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: #06080d;
+      border: 1px solid rgba(255, 255, 255, 0.13);
       border-radius: 12px;
-      padding: 0.65rem 0.85rem 0.65rem 1.25rem;
+      padding: 0.6rem 0.75rem 0.6rem 1.15rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 1rem;
       text-align: left;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
       transition: border-color 0.2s ease;
     }
 
@@ -165,13 +264,13 @@
     }
 
     .code-content {
-      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-      font-size: 0.92rem;
+      font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+      font-size: 0.9rem;
       color: #f6f8fa;
       overflow-x: auto;
       white-space: nowrap;
       flex-grow: 1;
-      padding: 0.35rem 0;
+      padding: 0.3rem 0;
       scrollbar-width: thin;
       user-select: all;
     }
@@ -209,19 +308,15 @@
       transform: scale(0.96);
     }
 
-    .copy-btn svg {
-      flex-shrink: 0;
-    }
-
     .copy-btn .check-icon {
       display: none;
-      color: #3fb950;
+      color: var(--green);
     }
 
     .copy-btn.copied {
-      background: rgba(63, 185, 80, 0.15);
-      border-color: rgba(63, 185, 80, 0.4);
-      color: #3fb950;
+      background: rgba(87, 227, 137, 0.14);
+      border-color: rgba(87, 227, 137, 0.4);
+      color: var(--green);
     }
 
     .copy-btn.copied .copy-icon {
@@ -230,18 +325,13 @@
 
     .copy-btn.copied .check-icon {
       display: inline-block;
-      animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 
-    @keyframes popIn {
-      0% { transform: scale(0.5); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-
+    /* Showcase Grid */
     .showcase-grid {
       display: flex;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
       gap: 2.5rem;
       flex-wrap: wrap;
       margin-bottom: 4rem;
@@ -260,64 +350,110 @@
     }
 
     .showcase-item img:hover {
-      transform: scale(1.02);
+      transform: translateY(-4px);
     }
 
     .showcase-caption {
-      margin-top: 1rem;
-      font-size: 0.95rem;
+      margin-top: 0.9rem;
+      font-size: 0.92rem;
       font-weight: 600;
       color: var(--text-muted);
     }
 
+    /* Section Headings */
+    .section-title {
+      text-align: center;
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 2rem;
+    }
+
+    /* Features 3x2 Grid */
     .features-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 4rem;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.35rem;
+      margin-bottom: 3.5rem;
     }
 
     .feature-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: 16px;
-      padding: 1.75rem;
+      padding: 1.5rem 1.6rem;
       backdrop-filter: blur(12px);
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, background-color 0.2s;
     }
 
     .feature-card:hover {
-      border-color: rgba(255, 255, 255, 0.25);
+      background: var(--card-bg-hover);
+      border-color: var(--card-border-hover);
     }
 
     .feature-icon {
-      font-size: 1.8rem;
-      margin-bottom: 0.75rem;
+      font-size: 1.65rem;
+      margin-bottom: 0.65rem;
     }
 
     .feature-title {
-      font-size: 1.15rem;
+      font-size: 1.1rem;
       font-weight: 700;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.45rem;
       color: #ffffff;
     }
 
     .feature-desc {
       font-size: 0.92rem;
       color: var(--text-muted);
-      line-height: 1.5;
+      line-height: 1.55;
+    }
+
+    /* Security & Provenance Banner */
+    .security-banner {
+      background: linear-gradient(135deg, rgba(53, 132, 228, 0.1) 0%, rgba(87, 227, 137, 0.06) 100%);
+      border: 1px solid rgba(87, 227, 137, 0.22);
+      border-radius: 18px;
+      padding: 1.75rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .security-banner h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .security-banner p {
+      font-size: 0.93rem;
+      color: var(--text-muted);
+    }
+
+    .security-banner code {
+      background: rgba(0, 0, 0, 0.45);
+      padding: 0.15rem 0.45rem;
+      border-radius: 6px;
+      color: var(--green);
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 0.85rem;
     }
 
     footer {
       border-top: 1px solid var(--card-border);
-      padding: 2.5rem 1.5rem;
+      padding: 2.2rem 1.5rem;
       text-align: center;
       font-size: 0.88rem;
       color: var(--text-muted);
     }
 
     footer a {
-      color: #62a0ea;
+      color: var(--accent-light);
       text-decoration: none;
     }
 
@@ -328,30 +464,47 @@
 </head>
 <body>
 
+  <nav class="navbar">
+    <a href="#" class="nav-brand">
+      <img src="extension/assets/gnome-meteo-128.png" alt="GnomeMeteo">
+      <span>GnomeMeteo</span>
+    </a>
+    <div class="lang-switcher" role="group" aria-label="Language selector">
+      <button class="lang-btn active" data-lang="en" type="button">EN</button>
+      <button class="lang-btn" data-lang="uk" type="button">UA</button>
+      <button class="lang-btn" data-lang="ru" type="button">RU</button>
+    </div>
+  </nav>
+
   <header>
     <img src="extension/assets/gnome-meteo-512.png" alt="GnomeMeteo Logo" class="app-logo">
-    <br>
-    <div class="badge">GNOME Shell 45 – 50+</div>
+    <div class="badges-row">
+      <span class="badge">GNOME Shell 45 – 50+</span>
+      <span class="badge badge-sec" data-i18n="badgeSec">SLSA v1 Signed &amp; Keyless</span>
+    </div>
     <h1>GnomeMeteo</h1>
-    <p class="subtitle">
-      Elegant, lightweight weather indicator and forecast for the GNOME desktop. Fast, keyless multi-provider support with native Libadwaita styling.
+    <p class="subtitle" data-i18n="subtitle">
+      Elegant, lightweight weather indicator and forecast for the GNOME desktop. Native Libadwaita styling, multi-provider accuracy, and zero API keys.
     </p>
     <div class="cta-buttons">
       <a href="https://github.com/OleksiyM/GnomeMeteo" class="btn btn-primary" target="_blank" rel="noopener">
         <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
           <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
         </svg>
-        GitHub Repository
+        <span data-i18n="btnGithub">GitHub Repository</span>
       </a>
       <a href="https://github.com/OleksiyM/GnomeMeteo/releases/latest" class="btn btn-secondary" target="_blank" rel="noopener">
-        Releases (.zip)
+        <span data-i18n="btnReleases">Latest Release (.zip)</span>
       </a>
     </div>
   </header>
 
   <main>
     <div class="install-box">
-      <div class="install-box-title">🚀 One-Liner Install (No git clone, no sudo)</div>
+      <div class="install-header">
+        <div class="install-box-title" data-i18n="installTitle">🚀 One-Liner Install &amp; Update (No sudo)</div>
+        <div class="install-verify-tag" data-i18n="installVerify">🔒 SHA-256 + Sigstore SLSA verification</div>
+      </div>
       <div class="code-block">
         <div class="code-content">
           <span class="prompt">$ </span><code id="cmd-text">curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh | bash</code>
@@ -364,68 +517,207 @@
           <svg class="check-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
-          <span class="copy-label">Copy</span>
+          <span class="copy-label" data-i18n="copyBtn">Copy</span>
         </button>
       </div>
     </div>
 
     <div class="showcase-grid">
-      <div class="showcase-item" style="max-width: 440px;">
+      <div class="showcase-item" style="max-width: 380px;">
         <img src="screenshots/screenshot-1.png" alt="GnomeMeteo Forecast Popup Preview">
-        <div class="showcase-caption">Live Weather &amp; Forecast Popup</div>
+        <div class="showcase-caption" data-i18n="capPopup">Live Weather &amp; 7-Day Forecast Card</div>
       </div>
-      <div class="showcase-item" style="max-width: 520px;">
+      <div class="showcase-item" style="max-width: 500px;">
         <img src="screenshots/05-preferences.png" alt="GnomeMeteo Preferences Window">
-        <div class="showcase-caption">Native Libadwaita Preferences</div>
+        <div class="showcase-caption" data-i18n="capPrefs">Clean Single-Page Libadwaita Preferences</div>
       </div>
     </div>
 
+    <h2 class="section-title" data-i18n="secFeatures">Designed for the Modern GNOME Desktop</h2>
+
     <div class="features-grid">
       <div class="feature-card">
-        <div class="feature-icon">✨</div>
-        <div class="feature-title">Top Panel Indicator</div>
-        <div class="feature-desc">
-          Live temperature and weather conditions right in the GNOME status area. Toggle icon or temperature display dynamically without restarting.
+        <div class="feature-icon">🌡️</div>
+        <div class="feature-title" data-i18n="f1Title">Segmented Metric Switcher</div>
+        <div class="feature-desc" data-i18n="f1Desc">
+          Switch seamlessly between Temperature, Precipitation probability, and Wind speed across both the 24-hour strip and 7-day forecast rows.
         </div>
       </div>
 
       <div class="feature-card">
-        <div class="feature-icon">⏱️</div>
-        <div class="feature-title">Hourly Forecast &amp; Metrics</div>
-        <div class="feature-desc">
-          Switch seamlessly between Temperature, Precipitation chance, and Wind speed metrics with dedicated controls and pagination.
+        <div class="feature-icon">🌅</div>
+        <div class="feature-title" data-i18n="f2Title">Solar, Lunar &amp; Barometric Details</div>
+        <div class="feature-desc" data-i18n="f2Desc">
+          At-a-glance 2×2 grid displaying Sunrise/Sunset times with computed Daylight duration, astronomical Moon Phase, Dew Point, and Barometric Pressure level.
         </div>
       </div>
 
       <div class="feature-card">
-        <div class="feature-icon">🗓️</div>
-        <div class="feature-title">7-Day Gradient Visualizer</div>
-        <div class="feature-desc">
-          Daily forecast overview with visual temperature range bars showing weekly minimum and maximum temperatures at a glance.
+        <div class="feature-icon">🌍</div>
+        <div class="feature-title" data-i18n="f3Title">Keyless Multi-Provider Engine</div>
+        <div class="feature-desc" data-i18n="f3Desc">
+          Choose between Open-Meteo (with ECMWF IFS, DWD ICON, NOAA GFS models), MET Norway, or US NOAA NWS. Zero accounts, zero API keys, zero telemetry.
         </div>
       </div>
 
       <div class="feature-card">
-        <div class="feature-icon">⚙️</div>
-        <div class="feature-title">Libadwaita Preferences</div>
-        <div class="feature-desc">
-          Single-page preferences window with automatic location discovery, multi-provider selection (Open-Meteo, MET Norway, NOAA), and full Ukrainian, English, and Russian localization.
+        <div class="feature-icon">📊</div>
+        <div class="feature-title" data-i18n="f4Title">7-Day Gradient &amp; Live Marker</div>
+        <div class="feature-desc" data-i18n="f4Desc">
+          Native St horizontal temperature range bars with a live current-temperature indicator dot on Today's row for instant visual context.
         </div>
       </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">📍</div>
+        <div class="feature-title" data-i18n="f5Title">Smart Location Discovery</div>
+        <div class="feature-desc" data-i18n="f5Desc">
+          Automatic detection via system GeoClue or public IP fallback, plus instant localized city search with coordinate subtitles in Libadwaita preferences.
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🌐</div>
+        <div class="feature-title" data-i18n="f6Title">Full Localization &amp; Units</div>
+        <div class="feature-desc" data-i18n="f6Desc">
+          Complete Ukrainian, English, and Russian translations. Instant switching between Metric (°C, km/h, mmHg) and Imperial (°F, mph, inHg) systems.
+        </div>
+      </div>
+    </div>
+
+    <div class="security-banner">
+      <h3 data-i18n="secBannerTitle">🛡️ Verifiable Supply-Chain Security</h3>
+      <p data-i18n="secBannerDesc">
+        Every GnomeMeteo release is built reproducibly on GitHub Actions, verified with <code>SHA256SUMS</code>, and cryptographically attested with Sigstore SLSA v1 provenance. The installer automatically verifies checksums and provenance via <code>gh attestation verify</code> when GitHub CLI is installed (or enforce strictly with <code>--require-provenance</code>).
+      </p>
     </div>
   </main>
 
   <footer>
     <p>
-      Created with ❤️ by <a href="https://github.com/OleksiyM" target="_blank" rel="noopener">OleksiyM</a>.
-      Lineage credit to original WeatherGlass author Vijay Bala. Released under the GPL-3.0 License.
+      Created with ❤️ by <a href="https://github.com/OleksiyM" target="_blank" rel="noopener">OleksiyM</a> ·
+      <a href="https://x.com/oleksiyML" target="_blank" rel="noopener">X (@oleksiyML)</a><br>
+      Lineage credit to original WeatherGlass author Vijay Bala. Released under the <a href="https://github.com/OleksiyM/GnomeMeteo/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0 License</a>.
     </p>
   </footer>
 
   <script>
+    const I18N = {
+      en: {
+        badgeSec: 'SLSA v1 Signed & Keyless',
+        subtitle: 'Elegant, lightweight weather indicator and forecast for the GNOME desktop. Native Libadwaita styling, multi-provider accuracy, and zero API keys.',
+        btnGithub: 'GitHub Repository',
+        btnReleases: 'Latest Release (.zip)',
+        installTitle: '🚀 One-Liner Install & Update (No sudo)',
+        installVerify: '🔒 SHA-256 + Sigstore SLSA verification',
+        copyBtn: 'Copy',
+        copiedBtn: 'Copied!',
+        capPopup: 'Live Weather & 7-Day Forecast Card',
+        capPrefs: 'Clean Single-Page Libadwaita Preferences',
+        secFeatures: 'Designed for the Modern GNOME Desktop',
+        f1Title: 'Segmented Metric Switcher',
+        f1Desc: 'Switch seamlessly between Temperature, Precipitation probability, and Wind speed across both the 24-hour strip and 7-day forecast rows.',
+        f2Title: 'Solar, Lunar & Barometric Details',
+        f2Desc: 'At-a-glance 2×2 grid displaying Sunrise/Sunset times with computed Daylight duration, astronomical Moon Phase, Dew Point, and Barometric Pressure level.',
+        f3Title: 'Keyless Multi-Provider Engine',
+        f3Desc: 'Choose between Open-Meteo (with ECMWF IFS, DWD ICON, NOAA GFS models), MET Norway, or US NOAA NWS. Zero accounts, zero API keys, zero telemetry.',
+        f4Title: '7-Day Gradient & Live Marker',
+        f4Desc: 'Native St horizontal temperature range bars with a live current-temperature indicator dot on Today\'s row for instant visual context.',
+        f5Title: 'Smart Location Discovery',
+        f5Desc: 'Automatic detection via system GeoClue or public IP fallback, plus instant localized city search with coordinate subtitles in Libadwaita preferences.',
+        f6Title: 'Full Localization & Units',
+        f6Desc: 'Complete Ukrainian, English, and Russian translations. Instant switching between Metric (°C, km/h, mmHg) and Imperial (°F, mph, inHg) systems.',
+        secBannerTitle: '🛡️ Verifiable Supply-Chain Security',
+        secBannerDesc: 'Every GnomeMeteo release is built on GitHub Actions, verified with <code>SHA256SUMS</code>, and cryptographically attested with Sigstore SLSA v1 provenance. The installer automatically verifies checksums and provenance via <code>gh attestation verify</code> (or enforce strictly with <code>--require-provenance</code>).'
+      },
+      uk: {
+        badgeSec: 'SLSA v1 Підпис · Без API-ключів',
+        subtitle: 'Елегантний, легкий індикатор та прогноз погоди для GNOME Shell. Нативний дизайн Libadwaita, підтримка кількох метеосервісів та жодних ключів чи реєстрацій.',
+        btnGithub: 'Репозиторій GitHub',
+        btnReleases: 'Останній реліз (.zip)',
+        installTitle: '🚀 Встановлення та оновлення однією командою (Без sudo)',
+        installVerify: '🔒 Перевірка SHA-256 + Sigstore SLSA',
+        copyBtn: 'Копіювати',
+        copiedBtn: 'Скопійовано!',
+        capPopup: 'Картка поточної погоди та прогнозу на 7 днів',
+        capPrefs: 'Лаконічні односторінкові налаштування Libadwaita',
+        secFeatures: 'Створено для сучасного робочого столу GNOME',
+        f1Title: 'Перемикач погодних метрик',
+        f1Desc: 'Миттєво перемикайтеся між Температурою, Ймовірністю опадів та Швидкістю вітру одночасно для погодинного та 7-денного прогнозу.',
+        f2Title: 'Світловий день, Місяць та Тиск',
+        f2Desc: 'Наочна сітка 2×2: час сходу і заходу сонця з розрахунком тривалості дня, астрономічна фаза Місяця, точка роси та рівень атмосферного тиску.',
+        f3Title: 'Кілька провайдерів без ключів',
+        f3Desc: 'Обирайте між Open-Meteo (моделі ECMWF IFS, DWD ICON, NOAA GFS), MET Norway або NOAA NWS. Жодних облікових записів, API-ключів чи телеметрії.',
+        f4Title: 'Градієнтна шкала та маркер «Зараз»',
+        f4Desc: 'Нативні градієнтні смуги температурного діапазону на 7 днів із білим маркером поточної температури на сьогоднішньому дні.',
+        f5Title: 'Розумний пошук та геолокація',
+        f5Desc: 'Автоматичне визначення через системний GeoClue або за IP-адресою, а також зручний пошук міст рідною мовою у налаштуваннях.',
+        f6Title: 'Повна локалізація та одиниці',
+        f6Desc: 'Якісні переклади українською, англійською та російською мовами. Підтримка метричної (°C, км/год, мм рт. ст.) та імперської (°F, миль/год, inHg) систем.',
+        secBannerTitle: '🛡️ Криптографічний захист релізів (SLSA v1)',
+        secBannerDesc: 'Кожен реліз GnomeMeteo збирається у GitHub Actions, перевіряється за <code>SHA256SUMS</code> та підписується сертифікатом Sigstore SLSA v1. Інсталятор автоматично перевіряє цілісність та криптографічний підпис через <code>gh attestation verify</code> (або суворо з прапорцем <code>--require-provenance</code>).'
+      },
+      ru: {
+        badgeSec: 'SLSA v1 Подпись · Без API-ключей',
+        subtitle: 'Элегантный, лёгкий индикатор и прогноз погоды для GNOME Shell. Нативный стиль Libadwaita, поддержка нескольких метеосервисов и никаких ключей или аккаунтов.',
+        btnGithub: 'Репозиторий GitHub',
+        btnReleases: 'Последний релиз (.zip)',
+        installTitle: '🚀 Установка и обновление одной командой (Без sudo)',
+        installVerify: '🔒 Проверка SHA-256 + Sigstore SLSA',
+        copyBtn: 'Копировать',
+        copiedBtn: 'Скопировано!',
+        capPopup: 'Карточка текущей погоды и прогноза на 7 дней',
+        capPrefs: 'Лаконичные одностраничные настройки Libadwaita',
+        secFeatures: 'Создано для современного рабочего стола GNOME',
+        f1Title: 'Переключатель погодных метрик',
+        f1Desc: 'Мгновенно переключайтесь между Температурой, Вероятностью осадков и Скоростью ветра одновременно для почасового и 7-дневного прогноза.',
+        f2Title: 'Световой день, Луна и Давление',
+        f2Desc: 'Наглядная сетка 2×2: время восхода и заката с расчётом продолжительности светового дня, астрономическая фаза Луны, точка росы и уровень давления.',
+        f3Title: 'Несколько провайдеров без ключей',
+        f3Desc: 'Выбирайте между Open-Meteo (модели ECMWF IFS, DWD ICON, NOAA GFS), MET Norway или NOAA NWS. Никаких аккаунтов, API-ключей и телеметрии.',
+        f4Title: 'Градиентная шкала и маркер «Сейчас»',
+        f4Desc: 'Нативные градиентные полосы температурного диапазона на 7 дней с белой точкой текущей температуры на сегодняшнем дне.',
+        f5Title: 'Умный поиск и геолокация',
+        f5Desc: 'Автоматическое определение через системный GeoClue или по IP-адресу, а также удобный поиск городов на родном языке в настройках.',
+        f6Title: 'Полная локализация и единицы',
+        f6Desc: 'Полный перевод на украинский, английский и русский языки. Поддержка метрической (°C, км/ч, мм рт. ст.) и имперской (°F, миль/ч, inHg) систем.',
+        secBannerTitle: '🛡️ Криптографическая защита релизов (SLSA v1)',
+        secBannerDesc: 'Каждый релиз GnomeMeteo собирается в GitHub Actions, проверяется по <code>SHA256SUMS</code> и подписывается сертификатом Sigstore SLSA v1. Инсталлятор автоматически проверяет целостность и подпись через <code>gh attestation verify</code> (или в строгом режиме с флагом <code>--require-provenance</code>).'
+      }
+    };
+
+    let currentLang = 'en';
+    const langBtns = document.querySelectorAll('.lang-btn');
     const copyBtn = document.getElementById('copy-btn');
     const cmdText = document.getElementById('cmd-text').innerText.trim();
     const copyLabel = copyBtn.querySelector('.copy-label');
+
+    function setLanguage(lang) {
+      if (!I18N[lang]) lang = 'en';
+      currentLang = lang;
+      document.documentElement.lang = lang;
+      const dict = I18N[lang];
+
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (dict[key]) {
+          if (key === 'secBannerDesc') el.innerHTML = dict[key];
+          else el.textContent = dict[key];
+        }
+      });
+
+      langBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
+      });
+    }
+
+    langBtns.forEach(btn => {
+      btn.addEventListener('click', () => setLanguage(btn.getAttribute('data-lang')));
+    });
+
+    const navLang = (navigator.language || '').toLowerCase();
+    if (navLang.startsWith('uk')) setLanguage('uk');
+    else if (navLang.startsWith('ru')) setLanguage('ru');
 
     copyBtn.addEventListener('click', async () => {
       try {
@@ -442,10 +734,10 @@
           document.body.removeChild(ta);
         }
         copyBtn.classList.add('copied');
-        copyLabel.textContent = 'Copied!';
+        copyLabel.textContent = I18N[currentLang].copiedBtn;
         setTimeout(() => {
           copyBtn.classList.remove('copied');
-          copyLabel.textContent = 'Copy';
+          copyLabel.textContent = I18N[currentLang].copyBtn;
         }, 2000);
       } catch (err) {
         console.error('Failed to copy command:', err);
