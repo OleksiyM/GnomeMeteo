@@ -33,7 +33,7 @@ curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh
 
 * **Visual Hierarchy:** Clean 3-tier main condition block (prominent temperature, condition name, daily max/min range, feels-like).
 * **Segmented Metric Switcher:** Instantly toggle between **Temperature**, **Precipitation Probability**, and **Wind Speed** across both hourly and 7-day views.
-* **Native Libadwaita Gradients & Live Marker:** Smooth daily temperature range bars built with native St gradient syntax, including a live current-temperature dot on Today's bar.
+* **Native Libadwaita Gradients:** Smooth daily temperature range bars built with native St gradient syntax.
 * **Compact 2×2 Details Grid:** At-a-glance cards with monochrome symbolic icons for:
   * 🌅 **Sunrise & Sunset** (`↑ Rise  ↓ Set`) with computed **Daylight duration**
   * 🌔 **Moon Phase** (astronomically computed with illumination %)
