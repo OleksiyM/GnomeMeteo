@@ -23,14 +23,26 @@ function locationLabel(result) {
     return [result.name, result.admin, result.country].filter(Boolean).join(', ');
 }
 
+function locationCoordsSubtitle(result) {
+    const lat = Number(result.latitude).toFixed(4);
+    const lon = Number(result.longitude).toFixed(4);
+    return `${lat}, ${lon}`;
+}
+
 const ResultRow = GObject.registerClass(class ResultRow extends Adw.ActionRow {
-    _init(title, onActivated) {
-        super._init({ title, activatable: true });
-        const iconImage = new Gtk.Image({
-            icon_name: 'go-next-symbolic',
-            pixel_size: 16,
+    _init(result, onActivated) {
+        super._init({
+            title: locationLabel(result),
+            subtitle: locationCoordsSubtitle(result),
+            activatable: true,
         });
-        this.add_suffix(iconImage);
+        const useButton = new Gtk.Button({
+            label: _('Select'),
+            valign: Gtk.Align.CENTER,
+            css_classes: ['flat'],
+        });
+        useButton.connect('clicked', () => onActivated());
+        this.add_suffix(useButton);
         this.connect('activated', () => onActivated());
     }
 });
@@ -40,9 +52,8 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
         window.title = 'GnomeMeteo';
         const settings = this.getSettings();
         const client = new WeatherClient();
-        window.set_default_size(580, 700);
+        window.set_default_size(580, 720);
 
-        // Single clean scrollable page
         const page = new Adw.PreferencesPage();
 
         // 1. Location Group
@@ -95,6 +106,19 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
         const searchEntry = new Adw.EntryRow({
             title: _('City name — press Enter to search'),
         });
+
+        const spinner = new Gtk.Spinner({
+            valign: Gtk.Align.CENTER,
+            visible: false,
+        });
+        const searchBtn = new Gtk.Button({
+            icon_name: 'system-search-symbolic',
+            tooltip_text: _('Search a city'),
+            valign: Gtk.Align.CENTER,
+            css_classes: ['flat'],
+        });
+        searchEntry.add_suffix(spinner);
+        searchEntry.add_suffix(searchBtn);
         searchGroup.add(searchEntry);
 
         const resultsGroup = new Adw.PreferencesGroup({
@@ -104,10 +128,9 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
 
         const resultRows = [];
         const clearResults = () => {
-            for (const row of resultRows.splice(0)) {
+            // GTK4 widgets have no .destroy(): removing unparents the row cleanly
+            for (const row of resultRows.splice(0))
                 resultsGroup.remove(row);
-                row.destroy();
-            }
             resultsGroup.visible = false;
         };
 
@@ -117,13 +140,19 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
             settings.set_double('location-longitude', result.longitude);
             settings.set_string('location-name', result.name);
             onSelect(result);
+            searchEntry.set_text('');
             clearResults();
         };
 
-        searchEntry.connect('entry-activated', () => {
+        const runSearch = () => {
             const query = searchEntry.get_text().trim();
             if (query.length < 2)
                 return;
+
+            searchEntry.remove_css_class('error');
+            spinner.visible = true;
+            spinner.start();
+            searchBtn.sensitive = false;
 
             const langSetting = settings.get_string('language');
             const lang = (langSetting && langSetting !== 'auto')
@@ -143,7 +172,7 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
                     return;
                 }
                 for (const result of results) {
-                    const row = new ResultRow(locationLabel(result), () => choose(result));
+                    const row = new ResultRow(result, () => choose(result));
                     resultRows.push(row);
                     resultsGroup.add(row);
                 }
@@ -151,8 +180,15 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
             }).catch(err => {
                 searchEntry.add_css_class('error');
                 logError(err, 'GnomeMeteo prefs geocode');
+            }).finally(() => {
+                spinner.stop();
+                spinner.visible = false;
+                searchBtn.sensitive = true;
             });
-        });
+        };
+
+        searchEntry.connect('entry-activated', runSearch);
+        searchBtn.connect('clicked', runSearch);
         searchEntry.connect('changed', () => searchEntry.remove_css_class('error'));
 
         return [searchGroup, resultsGroup];
@@ -164,37 +200,55 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
             description: _('Coordinates used for the weather forecast'),
         });
 
-        const nameEntry = new Adw.EntryRow({ title: _('Display name') });
-        const latEntry = new Adw.EntryRow({ title: _('Latitude') });
-        const lonEntry = new Adw.EntryRow({ title: _('Longitude') });
+        const nameEntry = new Adw.EntryRow({
+            title: _('Display name'),
+            show_apply_button: true,
+        });
+        const latEntry = new Adw.EntryRow({
+            title: _('Latitude'),
+            show_apply_button: true,
+        });
+        const lonEntry = new Adw.EntryRow({
+            title: _('Longitude'),
+            show_apply_button: true,
+        });
 
         nameEntry.set_text(settings.get_string('location-name'));
         latEntry.set_text(settings.get_double('location-latitude').toFixed(4));
         lonEntry.set_text(settings.get_double('location-longitude').toFixed(4));
 
-        nameEntry.connect('entry-activated', () => {
+        const applyName = () => {
             const val = nameEntry.get_text().trim();
             if (val)
                 settings.set_string('location-name', val);
-        });
-        latEntry.connect('entry-activated', () => {
-            const val = parseFloat(latEntry.get_text());
+        };
+        const applyLat = () => {
+            const val = parseFloat(latEntry.get_text().replace(',', '.'));
             if (Number.isFinite(val) && val >= -90 && val <= 90) {
                 settings.set_double('location-latitude', val);
                 settings.set_boolean('auto-location', false);
                 latEntry.remove_css_class('error');
-            } else
+            } else {
                 latEntry.add_css_class('error');
-        });
-        lonEntry.connect('entry-activated', () => {
-            const val = parseFloat(lonEntry.get_text());
+            }
+        };
+        const applyLon = () => {
+            const val = parseFloat(lonEntry.get_text().replace(',', '.'));
             if (Number.isFinite(val) && val >= -180 && val <= 180) {
                 settings.set_double('location-longitude', val);
                 settings.set_boolean('auto-location', false);
                 lonEntry.remove_css_class('error');
-            } else
+            } else {
                 lonEntry.add_css_class('error');
-        });
+            }
+        };
+
+        nameEntry.connect('apply', applyName);
+        nameEntry.connect('entry-activated', applyName);
+        latEntry.connect('apply', applyLat);
+        latEntry.connect('entry-activated', applyLat);
+        lonEntry.connect('apply', applyLon);
+        lonEntry.connect('entry-activated', applyLon);
 
         manualGroup.add(nameEntry);
         manualGroup.add(latEntry);
@@ -203,8 +257,8 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
         return {
             group: manualGroup,
             setLocation(lat, lon, name) {
-                latEntry.set_text(String(lat));
-                lonEntry.set_text(String(lon));
+                latEntry.set_text(Number(lat).toFixed(4));
+                lonEntry.set_text(Number(lon).toFixed(4));
                 nameEntry.set_text(name);
             },
         };
@@ -227,6 +281,26 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
         settings.bind('show-temperature', tempRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('show-icon', iconRow, 'active', Gio.SettingsBindFlags.DEFAULT);
 
+        // Prevent disabling both toggles simultaneously: if one is turned off while the other is off,
+        // automatically enable the other so UI toggles always match the actual panel state.
+        let syncing = false;
+        tempRow.connect('notify::active', () => {
+            if (syncing) return;
+            if (!tempRow.active && !iconRow.active) {
+                syncing = true;
+                iconRow.active = true;
+                syncing = false;
+            }
+        });
+        iconRow.connect('notify::active', () => {
+            if (syncing) return;
+            if (!iconRow.active && !tempRow.active) {
+                syncing = true;
+                tempRow.active = true;
+                syncing = false;
+            }
+        });
+
         lookGroup.add(tempRow);
         lookGroup.add(iconRow);
         return lookGroup;
@@ -239,7 +313,7 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
             title: _('Language'),
             subtitle: _('Interface display language'),
             model: new Gtk.StringList({
-                strings: ['Авто (Системна / System)', 'Українська', 'Русский', 'English'],
+                strings: [_('Automatic (system)'), 'Українська', 'Русский', 'English'],
             }),
         });
         const currentLang = settings.get_string('language');
@@ -369,7 +443,7 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
                     application_icon: 'org.gnome.Weather-symbolic',
                     version: this.metadata['version-name'] ?? '1.0.1',
                     website: 'https://oleksiym.github.io/GnomeMeteo/',
-                    copyright: '© 2026 GnomeMeteo\nBased on Weatherglass by Vijay Bala',
+                    copyright: '© 2026 OleksiyM\nBased on Weatherglass by Vijay Bala',
                     license_type: Gtk.License.GPL_3_0,
                     comments: _('Clean, modern weather indicator and forecast for GNOME Shell'),
                 });
