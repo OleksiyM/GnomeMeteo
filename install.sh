@@ -147,7 +147,9 @@ gm_install() (
         # Preserve local uninstaller inside extension directory
         "${download[@]}" --output "$dest_dir/uninstall.sh" "https://raw.githubusercontent.com/$repo/$tag/uninstall.sh" 2>/dev/null || \
             "${download[@]}" --output "$dest_dir/uninstall.sh" "https://raw.githubusercontent.com/$repo/main/uninstall.sh" 2>/dev/null || true
-        [[ -f "$dest_dir/uninstall.sh" ]] && chmod 0755 "$dest_dir/uninstall.sh" || true
+        if [[ -f "$dest_dir/uninstall.sh" ]]; then
+            chmod 0755 "$dest_dir/uninstall.sh"
+        fi
     fi
 
     # Compile schemas if gschemas.compiled is missing
