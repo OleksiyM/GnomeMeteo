@@ -1,89 +1,91 @@
 # AGENTS.md — GnomeMeteo (GNOME Shell Extension)
 
-Rules and operational manual for AI agents working in this repository. Read before writing anything.
+Operational manual and architectural invariants for AI agents working in this repository.
 
-## Scope & Architecture
+## 1. Scope & Architecture
 
-GnomeMeteo is a modern, lightweight GNOME Shell extension (GNOME 45–50+) providing weather indications and forecasts with native Libadwaita styling.
-It is a single-extension repository — there is no standalone desktop app or legacy monorepo.
-- `extension/`: Root of the extension code (JavaScript, CSS, assets, schemas, compiled locale).
-- `po/`: Gettext source catalogs (`.po`, `.pot`, `LINGUAS`).
-- `scripts/`: Helper scripts for i18n (`build-i18n.sh`), packaging (`build-package.sh`), and version checking (`check-version.sh`).
-- `install.sh` / `uninstall.sh`: One-liner curl installers and local deployment scripts.
-- `index.html`: Modern landing page deployed to GitHub Pages via `.github/workflows/pages.yml`.
+GnomeMeteo (`meteo@oleksiym.github.io`) is a lightweight, modern GNOME Shell extension (GNOME 45–50+) providing weather indications and forecasts with native Libadwaita styling and keyless multi-provider support.
 
-## Worktree discipline (mandatory)
+- `extension/extension.js`: Dynamic hot-reload loader (`import('./indicator.js?t=' + Date.now())`) allowing live updates on Wayland via `disable`/`enable` without restarting GNOME Shell.
+- `extension/indicator.js`: Top-bar `PanelMenu.Button` indicator and popup card UI (`St` / `Clutter`), `WeatherCoordinator` timer, and runtime `MESSAGES` dictionary (`uk`, `ru`, `en`).
+- `extension/weather.js`: Keyless multi-provider client (`Open-Meteo`, `MET Norway`, `NOAA NWS`), astronomical `sunGeometry` calculator, and auto-location (`GeoClue` + IP fallback + localized reverse geocoding).
+- `extension/moon.js`: Pure astronomical lunar phase and illumination calculator (`moonPhase`).
+- `extension/prefs.js`: Single-page Libadwaita (`Adw` / `GTK4`) preferences window.
+- `extension/assets/`: App icons and bundled monochrome symbolic SVG icons (`meteo-*-symbolic.svg`).
+- `extension/schemas/`: GSettings schema (`org.gnome.shell.extensions.meteo.gschema.xml`).
+- `po/`: GNU Gettext catalogs (`uk.po`, `ru.po`, `meteo@oleksiym.github.io.pot`, `LINGUAS`) for `prefs.js`.
+- `scripts/`: Build and verification scripts (`build-i18n.sh`, `build-package.sh`, `check-version.sh`).
+- `install.sh` / `uninstall.sh`: Per-user installer (with `SHA256SUMS` + Sigstore SLSA v1 provenance verification) and uninstaller (`--purge`).
+- `index.html`: Multilingual (`EN` / `UA` / `RU`) landing page deployed to GitHub Pages.
 
-**Never write code in this main checkout.** It is the source deployment tree for `./install.sh` and the active testing workspace. Edits in-place risk breaking running sessions and leaving uncommitted artifacts.
+## 2. Technical Invariants & UI Rules
 
-Before any code change:
+1. **Wayland Hot-Reload**:
+   - `extension/extension.js` dynamically imports `indicator.js` with a cache-busting timestamp, and `MeteoIndicator` registers a unique GType (`MeteoIndicator_${Date.now()}`). Never replace this with a static top-level import of `indicator.js`, or live reloads on Wayland will break.
+2. **Dual Localization Architecture (i18n)**:
+   - **Popup & Indicator (`extension/indicator.js`)**: Uses the in-memory `MESSAGES` dictionary (`uk`, `ru`, `en`) resolved by `resolveLang(settings)`. This enables instant, live language switching inside the GNOME Shell popup without logging out of the desktop session.
+   - **Preferences Dialog (`extension/prefs.js`)**: Uses standard GNU Gettext (`_('...')`) compiled from `po/*.po` into `extension/locale/<lang>/LC_MESSAGES/meteo@oleksiym.github.io.mo`.
+   - **Web Landing Page (`index.html`)**: Uses client-side `I18N` dictionary (`en`, `uk`, `ru`) with instant language switcher.
+   - **Never hand-edit binary `.mo` files.** Update `po/*.po` and run `./scripts/build-i18n.sh`.
+3. **GTK4 vs GNOME Shell `St` / `Clutter`**:
+   - **`prefs.js` runs in GTK4 / Libadwaita**: GTK4 widgets do **not** have a `.destroy()` method. Always unparent rows via `group.remove(row)`.
+   - **`indicator.js` runs in GNOME Shell (`St` / `Clutter`)**: Standard CSS `linear-gradient()` is not supported by `St`. Always use native `St` gradient properties: `background-gradient-direction: horizontal; background-gradient-start: #...; background-gradient-end: #...;`.
+   - **Bundled Symbolic Icons**: To avoid missing icons across different Linux distributions, custom symbolic icons (`meteo-temperature-symbolic.svg`, `meteo-humidity-symbolic.svg`, `meteo-pressure-symbolic.svg`) live in `extension/assets/` and are loaded via `Gio.FileIcon`.
 
-1. Create a topic-branch worktree and work there:
-   ```bash
-   git worktree add ../gm-work/<slug> -b <slug> main
-   ```
-2. Do all editing, linting, and testing there.
-3. Verify syntax, schemas, and translations:
-   ```bash
-   node -c extension/*.js
-   glib-compile-schemas --strict extension/schemas/
-   ./scripts/build-i18n.sh
-   ```
-4. Merge/fast-forward into `main` in this checkout only when verification passes, and leave the main checkout clean (`git status --porcelain` empty).
-5. Deploy and test live:
-   ```bash
-   ./install.sh
-   gnome-extensions disable meteo@oleksiym.github.io && gnome-extensions enable meteo@oleksiym.github.io
-   ```
-6. Remove the worktree after merging: `git worktree remove ../gm-work/<slug>`
+## 3. Development & Verification Workflow
 
-Exceptions requiring the operator's explicit OK: docs-only typo fixes, and emergency patches the operator directs onto the live tree.
+ `./install.sh` copies (`cp -R`) files from `extension/` into `~/.local/share/gnome-shell/extensions/meteo@oleksiym.github.io/`, so editing files directly in this repository is safe and does not affect the running session until `./install.sh` is executed.
 
-## Localization (i18n)
+Before committing or deploying any changes, always run the verification suite:
 
-- Strings marked with `_('...')` in `extension/*.js` are translated via GNU Gettext.
-- PO catalogs live in `po/{uk,ru}.po` and `po/meteo@oleksiym.github.io.pot`. Active locales are listed in `po/LINGUAS`.
-- **Never hand-edit binary `.mo` files.** Always update `po/*.po` and compile via `./scripts/build-i18n.sh`.
-- Compiled `.mo` files are deployed to `extension/locale/<lang>/LC_MESSAGES/meteo@oleksiym.github.io.mo`.
+```bash
+# 1. Validate JavaScript syntax
+node -c extension/*.js
 
-## Release & Versioning Lifecycle
+# 2. Validate and compile GSettings schemas
+glib-compile-schemas --strict extension/schemas/
+
+# 3. Compile Gettext translations
+./scripts/build-i18n.sh
+
+# 4. Lint shell scripts
+shellcheck install.sh uninstall.sh scripts/*.sh
+```
+
+To deploy and test live in the active GNOME Shell session:
+
+```bash
+./install.sh
+gnome-extensions disable meteo@oleksiym.github.io && sleep 1 && gnome-extensions enable meteo@oleksiym.github.io
+journalctl --user -b -n 30 --no-pager | grep -i meteo
+```
+
+## 4. Release & Versioning Lifecycle
 
 Releases follow Semantic Versioning (`X.Y.Z`).
 
 1. **Bump Version**:
    - `extension/metadata.json`: increment integer `"version"` and set `"version-name": "X.Y.Z"`.
-   - `extension/prefs.js`: verify version reads dynamically from `this.metadata['version-name']`.
-2. **Verify Tag Contract**:
+   - `extension/prefs.js`: update fallback version string in `Adw.AboutDialog` to `"X.Y.Z"`.
+2. **Verify Tag & Package Contract**:
    ```bash
    ./scripts/check-version.sh vX.Y.Z
+   ./scripts/build-package.sh && rm -rf dist
    ```
 3. **Commit & Tag**:
    ```bash
    git commit -am "chore(release): bump version to X.Y.Z"
    git tag -a vX.Y.Z -m "GnomeMeteo X.Y.Z"
    ```
-4. **Push Release**:
-   Only push when explicitly approved by the operator:
+4. **Push Release** (only when explicitly requested by the operator):
    ```bash
    git push origin main && git push origin vX.Y.Z
    ```
-5. **Automation**:
-   - Pushing tag `v*` triggers `.github/workflows/release.yml`, which packages the extension zip, attests SLSA provenance via Sigstore, generates commit-based release notes, and publishes the GitHub Release.
-   - Pushing to `main` with changes to `index.html` or screenshots triggers `.github/workflows/pages.yml` to update the website.
+   - Pushing `v*` triggers `.github/workflows/release.yml` (validates ancestry, runs `shellcheck`, builds the zip bundle, attests SLSA v1 provenance via Sigstore, signs `SHA256SUMS`, and publishes the GitHub Release).
+   - Pushing changes in `index.html` or `screenshots/` to `main` triggers `.github/workflows/pages.yml`.
 
-## Identity & Authorship
+## 5. Identity & Lineage
 
-- Standard commits use the repository configured author: `OleksiyM <oleksiymaliovanyy@gmail.com>`.
-- Full lineage credit to original WeatherGlass author Vijay Bala is preserved in `README.md`, `LICENSE`, `prefs.js` (`Adw.AboutDialog`), and `index.html`.
-
-## Verification culture
-
-- **JS Syntax**: Run `node -c extension/*.js` before committing any JavaScript changes.
-- **GSettings Schemas**: Run `glib-compile-schemas --strict extension/schemas/` whenever schemas change.
-- **Runtime Integrity**: After reloading, verify clean initialization in GNOME Shell logs:
-  `journalctl --user -b -n 30 --no-pager | grep -i meteo`
-- **Re-verify Edits**: Always verify scripted file edits with read/grep.
-
-## Do not push
-
-Remotes stay unpushed until the operator says the word. Local commits only.
+- Repository author: `OleksiyM <oleksiymaliovanyy@gmail.com>`.
+- Lineage credit to original WeatherGlass author Vijay Bala is preserved in `README.md`, `LICENSE`, `extension/prefs.js` (`Adw.AboutDialog`), and `index.html`.
+- Do not push to `origin` unless explicitly instructed by the operator.

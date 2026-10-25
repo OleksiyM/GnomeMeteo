@@ -24,7 +24,7 @@ The installer automatically verifies `SHA256SUMS` and Sigstore SLSA v1 release p
 
 To install a specific release version or strictly enforce provenance verification:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh | bash -s -- --version v1.0.1 --require-provenance
+curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh | bash -s -- --version v1.1.0 --require-provenance
 ```
 
 ---
