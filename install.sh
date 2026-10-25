@@ -2,7 +2,7 @@
 # GnomeMeteo per-user installer / updater for GNOME Shell 45+
 #   Usage:
 #     curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh | bash
-#     bash install.sh [--version v1.0.0]
+#     bash install.sh [--version v1.0.1] [--require-provenance]
 # The entire script is wrapped in a function so `curl | bash` buffers it completely before execution.
 gm_install() (
     set -euo pipefail
@@ -11,23 +11,28 @@ gm_install() (
 
     repo="OleksiyM/GnomeMeteo"
     uuid="meteo@oleksiym.github.io"
-    dest_dir="${XDG_DATA_HOME:-$HOME/.local/share}/gnome-shell/extensions/$uuid"
+    data_dir="${XDG_DATA_HOME:-$HOME/.local/share}"
+    dest_dir="$data_dir/gnome-shell/extensions/$uuid"
     tag=""
+    require_provenance="no"
 
     while (($#)); do
         case "$1" in
             --version)
-                [[ $# -ge 2 ]] || fail '--version requires a tag (e.g. v1.0.0)'
+                [[ $# -ge 2 ]] || fail '--version requires a tag (e.g. v1.0.1)'
                 tag="$2"; shift 2 ;;
+            --require-provenance)
+                require_provenance="yes"; shift ;;
             -h|--help)
                 printf '%s\n' \
                     'Install or update GnomeMeteo for GNOME Shell 45+' \
                     'Usage: curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh | bash' \
-                    '   or: bash install.sh [--version v1.0.0]' \
+                    '   or: bash install.sh [--version v1.0.1] [--require-provenance]' \
                     '' \
                     'Options:' \
-                    '  --version <tag>    Install a specific release (e.g. v1.0.0)' \
-                    '  -h, --help         Show this help message'
+                    '  --version <tag>        Install a specific release (e.g. v1.0.1)' \
+                    '  --require-provenance   Require cryptographic SLSA provenance verification via gh' \
+                    '  -h, --help             Show this help message'
                 exit 0 ;;
             *) fail "Unknown option: $1" ;;
         esac
@@ -37,12 +42,8 @@ gm_install() (
                   '  GnomeMeteo (Installer / Updater)' \
                   '========================================================'
 
-    [[ $EUID -ne 0 ]] || fail 'Please run as regular user, not with sudo.'
-
-    # Required tools
-    for tool in curl unzip; do
-        command -v "$tool" >/dev/null || fail "Missing required command: $tool"
-    done
+    [[ $EUID -ne 0 ]] || fail 'Please run as regular desktop user, not with sudo.'
+    [[ $data_dir == /* && $data_dir != / ]] || fail 'XDG_DATA_HOME must be an absolute, non-root path.'
 
     # Check if running inside local repository
     script_dir=""
@@ -50,7 +51,7 @@ gm_install() (
         script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     fi
 
-    if [[ -n "$script_dir" && -f "$script_dir/extension/metadata.json" && -z "$tag" ]]; then
+    if [[ -n "$script_dir" && -f "$script_dir/extension/metadata.json" && -z "$tag" && "$require_provenance" == "no" ]]; then
         # ── LOCAL MODE (development / local checkout) ──
         printf '\n📁 Local checkout detected at %s\n' "$script_dir"
 
@@ -64,64 +65,89 @@ gm_install() (
         fi
 
         printf '📦 Installing to %s…\n' "$dest_dir"
-        rm -rf "$dest_dir"
+        rm -rf -- "$dest_dir" "$data_dir/gnome-shell/extension-updates/$uuid"
         mkdir -p "$dest_dir"
-        cp -r "$script_dir/extension"/* "$dest_dir/"
+        cp -R "$script_dir/extension"/. "$dest_dir/"
         if [[ -f "$script_dir/uninstall.sh" ]]; then
-            cp "$script_dir/uninstall.sh" "$dest_dir/uninstall.sh"
-            chmod +x "$dest_dir/uninstall.sh"
+            install -m 0755 "$script_dir/uninstall.sh" "$dest_dir/uninstall.sh"
         fi
     else
-        # ── REMOTE MODE (one-liner via curl | bash) ──
+        # ── REMOTE MODE (signed release package) ──
+        for tool in curl unzip sha256sum awk install mktemp; do
+            command -v "$tool" >/dev/null || fail "Missing required command: $tool"
+        done
+
         download=(curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 300)
 
         if [[ -z "$tag" ]]; then
             printf '\n🔍 Checking for latest release…\n'
             latest=$("${download[@]}" --head --output /dev/null --write-out '%{url_effective}' "https://github.com/$repo/releases/latest" 2>/dev/null || true)
-            if [[ "$latest" == *"releases/tag/"* ]]; then
-                tag="${latest##*/}"
-            fi
+            [[ "$latest" == "https://github.com/$repo/releases/tag/"* ]] || fail 'No stable release found.'
+            tag="${latest##*/}"
         fi
+        [[ "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || fail "Expected a stable semantic tag such as v1.0.1 (got: $tag)."
 
         temporary=$(mktemp -d /tmp/gnome-meteo-install.XXXXXXXX)
         trap 'rm -rf -- "$temporary"' EXIT
 
-        archive="meteo@oleksiym.github.io.shell-extension.zip"
+        archive="$uuid.shell-extension.zip"
+        base_url="https://github.com/$repo/releases/download/$tag"
 
-        if [[ -n "$tag" ]]; then
-            url="https://github.com/$repo/releases/download/$tag/$archive"
-            printf '📦 Downloading GnomeMeteo %s…\n' "$tag"
-            "${download[@]}" --output "$temporary/$archive" "$url"
-        else
-            # Fallback if no release tag exists yet: fetch branch archive
-            printf '📦 Downloading latest source package from main…\n'
-            "${download[@]}" --output "$temporary/repo.tar.gz" "https://github.com/$repo/archive/refs/heads/main.tar.gz"
-            tar -xzf "$temporary/repo.tar.gz" -C "$temporary"
-            src_root=$(find "$temporary" -maxdepth 1 -type d -name "GnomeMeteo*" | head -n 1)
-            [[ -n "$src_root" && -d "$src_root/extension" ]] || fail "Failed to extract repository source."
+        printf '📦 Downloading GnomeMeteo %s…\n' "$tag"
+        "${download[@]}" --output "$temporary/$archive" "$base_url/$archive"
+        "${download[@]}" --output "$temporary/SHA256SUMS" "$base_url/SHA256SUMS"
 
-            if command -v msgfmt >/dev/null && [[ -x "$src_root/scripts/build-i18n.sh" ]]; then
-                "$src_root/scripts/build-i18n.sh"
-            fi
-            if command -v glib-compile-schemas >/dev/null; then
-                glib-compile-schemas --strict "$src_root/extension/schemas/"
-            fi
-            (
-                cd "$src_root/extension"
-                zip -r -q "$temporary/$archive" . -x ".*"
-            )
+        printf '🔒 Verifying SHA-256 checksum…\n'
+        hash=$(awk -v name="$archive" '$2 == name || $2 == "*" name { print $1 }' "$temporary/SHA256SUMS")
+        [[ "$hash" =~ ^[0-9a-fA-F]{64}$ ]] || fail 'Missing or invalid archive checksum in SHA256SUMS.'
+        (cd "$temporary"; printf '%s  %s\n' "$hash" "$archive" | sha256sum --check --status -) || fail 'SHA-256 mismatch! Nothing installed.'
+        printf '✅ SHA-256 verified.\n'
+
+        # Probe gh attestation verify capabilities
+        verify="no"
+        if command -v gh >/dev/null && help=$(gh attestation verify --help 2>/dev/null); then
+            verify="yes"
+            for option in --bundle --repo --signer-workflow --source-ref --cert-oidc-issuer --deny-self-hosted-runners --predicate-type; do
+                [[ "$help" == *"$option"* ]] || verify="no"
+            done
         fi
 
+        if [[ "$verify" == "yes" ]]; then
+            printf '🛡️  Verifying SLSA release provenance…\n'
+            "${download[@]}" --output "$temporary/$archive.sigstore.json" "$base_url/$archive.sigstore.json"
+            gh attestation verify "$temporary/$archive" \
+                --bundle "$temporary/$archive.sigstore.json" \
+                --repo "$repo" \
+                --signer-workflow "$repo/.github/workflows/release.yml" \
+                --source-ref "refs/tags/$tag" \
+                --cert-oidc-issuer "https://token.actions.githubusercontent.com" \
+                --deny-self-hosted-runners \
+                --predicate-type "https://slsa.dev/provenance/v1"
+            printf '✅ SLSA provenance verified.\n'
+        elif [[ "$require_provenance" == "yes" ]]; then
+            fail '--require-provenance requires GitHub CLI (gh) with attestation support. Install or update gh and rerun.'
+        else
+            printf 'ℹ️  Provenance check skipped (gh CLI not installed or outdated). SHA-256 integrity passed.\n'
+        fi
+
+        # Extract into staging directory first to validate package contents before touching live installation
+        staging="$temporary/staging"
+        mkdir -p "$staging"
+        unzip -q "$temporary/$archive" -d "$staging"
+
+        for required_file in metadata.json extension.js indicator.js weather.js prefs.js stylesheet.css schemas/org.gnome.shell.extensions.meteo.gschema.xml; do
+            [[ -f "$staging/$required_file" ]] || fail "Archive is missing required file: $required_file. Nothing installed."
+        done
+
         printf '🚀 Installing extension to %s…\n' "$dest_dir"
-        rm -rf "$dest_dir"
+        rm -rf -- "$dest_dir" "$data_dir/gnome-shell/extension-updates/$uuid"
         mkdir -p "$dest_dir"
-        unzip -q "$temporary/$archive" -d "$dest_dir"
+        cp -R "$staging"/. "$dest_dir/"
 
         # Preserve local uninstaller inside extension directory
-        ref="${tag:-main}"
-        "${download[@]}" --output "$dest_dir/uninstall.sh" "https://raw.githubusercontent.com/$repo/$ref/uninstall.sh" 2>/dev/null || \
+        "${download[@]}" --output "$dest_dir/uninstall.sh" "https://raw.githubusercontent.com/$repo/$tag/uninstall.sh" 2>/dev/null || \
             "${download[@]}" --output "$dest_dir/uninstall.sh" "https://raw.githubusercontent.com/$repo/main/uninstall.sh" 2>/dev/null || true
-        [[ -f "$dest_dir/uninstall.sh" ]] && chmod +x "$dest_dir/uninstall.sh" || true
+        [[ -f "$dest_dir/uninstall.sh" ]] && chmod 0755 "$dest_dir/uninstall.sh" || true
     fi
 
     # Compile schemas if gschemas.compiled is missing
@@ -139,6 +165,6 @@ gm_install() (
         '✨ GnomeMeteo installed and enabled successfully!' \
         '💡 To open settings: run gnome-extensions prefs meteo@oleksiym.github.io' \
         '   or click the gear button in the popup.' \
-        "   To uninstall later: bash $dest_dir/uninstall.sh (or via curl)"
+        "   To uninstall later: bash $dest_dir/uninstall.sh [--purge]"
 )
 gm_install "$@"

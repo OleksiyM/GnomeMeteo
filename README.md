@@ -1,6 +1,6 @@
 # GnomeMeteo
 
-> **Elegant weather indicator and forecast for GNOME Shell 45+**
+> **Elegant weather indicator and forecast for GNOME Shell 45–50+**
 
 GnomeMeteo is a lightweight, modern weather extension for the GNOME desktop, featuring a clean card-based weather popup, native Libadwaita styling, multi-provider weather forecasts, and smooth segmented metric switching.
 
@@ -12,7 +12,7 @@ GnomeMeteo is a lightweight, modern weather extension for the GNOME desktop, fea
 
 ---
 
-## 🚀 Quick Install (One-Liner)
+## 🚀 Quick Install & Update (One-Liner)
 
 Install or update GnomeMeteo with a single command (no `git clone`, no `sudo`):
 
@@ -20,11 +20,11 @@ Install or update GnomeMeteo with a single command (no `git clone`, no `sudo`):
 curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh | bash
 ```
 
-The installer installs to your user directory (`~/.local/share/gnome-shell/extensions/meteo@oleksiym.github.io/`), compiles schemas and translations, and activates the extension live.
+The installer automatically verifies `SHA256SUMS` and Sigstore SLSA v1 release provenance (via `gh attestation verify` when GitHub CLI is available), installs to `~/.local/share/gnome-shell/extensions/meteo@oleksiym.github.io/`, and activates the extension live.
 
-To install a specific release version:
+To install a specific release version or strictly enforce provenance verification:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh | bash -s -- --version v1.0.0
+curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh | bash -s -- --version v1.0.1 --require-provenance
 ```
 
 ---
@@ -32,21 +32,21 @@ curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh
 ## ✨ Features
 
 * **Visual Hierarchy:** Clean 3-tier main condition block (prominent temperature, condition name, daily max/min range, feels-like).
-* **Segmented Metric Switcher:** Instantly toggle between **Temperature**, **Precipitation Probability**, and **Wind Speed** across both hourly and daily views.
-* **Native Libadwaita Gradients:** Smooth daily temperature range bars built with native St gradient syntax.
-* **Compact 2×2 Details Grid:** At-a-glance cards with monochrome Adwaita symbolic icons for:
-  * 🌅 Sunrise & Sunset
-  * 🌔 Moon Phase (astronomically computed with illumination %)
-  * 💧 Humidity & Dew Point
-  * 🧭 Atmospheric Pressure (mmHg)
-* **Zero Precipitation De-emphasis:** Days with 0% rain probability are gracefully dimmed to highlight relevant weather.
+* **Segmented Metric Switcher:** Instantly toggle between **Temperature**, **Precipitation Probability**, and **Wind Speed** across both hourly and 7-day views.
+* **Native Libadwaita Gradients & Live Marker:** Smooth daily temperature range bars built with native St gradient syntax, including a live current-temperature dot on Today's bar.
+* **Compact 2×2 Details Grid:** At-a-glance cards with monochrome symbolic icons for:
+  * 🌅 **Sunrise & Sunset** (`↑ Rise  ↓ Set`) with computed **Daylight duration**
+  * 🌔 **Moon Phase** (astronomically computed with illumination %)
+  * 💧 **Humidity & Dew Point**
+  * 🧭 **Atmospheric Pressure** (`mmHg` / `inHg` with dynamic Low / Normal / High level)
+* **Zero Precipitation De-emphasis:** Days and hours with 0% rain probability are gracefully dimmed to highlight relevant weather.
 * **Keyless Multi-Provider Support:**
-  * **Open-Meteo** (global, with choice of prediction models: ECMWF IFS, DWD ICON, GFS, etc.)
-  * **MET Norway** (api.met.no, CC BY-SA 4.0)
+  * **Open-Meteo** (global, with choice of prediction models: ECMWF IFS, DWD ICON, GFS, GEM, JMA, UKMO)
+  * **MET Norway** (`api.met.no`, CC BY-SA 4.0)
   * **NOAA NWS** (United States official forecasts)
-* **Clean Single-Page Preferences:** Fast, scrollable Libadwaita settings dialog with instant top-bar indicator toggles and localized city search.
+* **Clean Single-Page Preferences:** Fast, scrollable Libadwaita settings dialog with smart top-bar indicator toggles and localized city search.
 * **Full Localization:** Native Ukrainian, English, and Russian translations.
-* **Privacy by Design:** No tracking, no accounts, no API keys. Direct requests to public meteorological APIs.
+* **Privacy & Supply-Chain Security:** No tracking, no accounts, no API keys. Releases are attested with Sigstore SLSA v1 provenance.
 
 ---
 
@@ -59,15 +59,16 @@ curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh
 
 ## 🗑️ Uninstallation
 
-To remove GnomeMeteo:
+To remove GnomeMeteo (keeping your saved preferences):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/uninstall.sh | bash
 ```
 
-Or from your local machine:
+To remove GnomeMeteo and purge all saved GSettings preferences:
+
 ```bash
-~/.local/share/gnome-shell/extensions/meteo@oleksiym.github.io/uninstall.sh
+bash ~/.local/share/gnome-shell/extensions/meteo@oleksiym.github.io/uninstall.sh --purge
 ```
 
 ---
