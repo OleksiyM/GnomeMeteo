@@ -39,7 +39,7 @@ function buildHelpButton(lines, note) {
         margin_end: 12,
     });
     return new Gtk.MenuButton({
-        icon_name: 'dialog-information-symbolic',
+        icon_name: 'help-about-symbolic',
         tooltip_text: _('What is the difference?'),
         valign: Gtk.Align.CENTER,
         css_classes: ['flat'],
