@@ -10,8 +10,12 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import { WeatherClient, deriveScene, ensureDesktopEntry, removeDesktopEntry } from './weather.js';
-import { moonPhase } from './moon.js';
+// Sibling modules are imported with the same cache-busting query as this file
+// (`indicator.js?t=...`), so disable/enable reloads them too (GJS caches by full URL).
+const reloadStamp = import.meta.url.includes('?') ? `?${import.meta.url.split('?')[1]}` : '';
+const { WeatherClient, deriveScene, ensureDesktopEntry, removeDesktopEntry } =
+    await import(`./weather.js${reloadStamp}`);
+const { moonPhase } = await import(`./moon.js${reloadStamp}`);
 
 const MESSAGES = {
     uk: {
