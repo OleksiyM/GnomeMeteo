@@ -401,6 +401,7 @@ class MetNorwayProvider extends WeatherProvider {
             wind: firstDetails.wind_speed !== undefined ? firstDetails.wind_speed * 3.6 : null,
             windDeg: firstDetails.wind_from_direction ?? null,
             uv: firstDetails.ultraviolet_index_clear_sky ?? null,
+            uvClearSky: true, // MET Norway reports UV for a cloudless sky only
             visibility: null,
             cape: null,
             pressure: firstDetails.air_pressure_at_sea_level ?? null,

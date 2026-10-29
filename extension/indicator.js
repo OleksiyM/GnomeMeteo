@@ -54,6 +54,14 @@ const MESSAGES = {
             pressure: 'ТИСК',
             mm: 'мм рт. ст.',
             inHg: 'inHg',
+            wind: 'ВІТЕР',
+            uv: 'УФ-ІНДЕКС',
+            uvClearSky: 'ясне небо',
+            uvLevels: ['Низький', 'Помірний', 'Високий', 'Дуже високий', 'Екстремальний'],
+            visibility: 'ВИДИМІСТЬ',
+            km: 'км',
+            mi: 'миль',
+            compass: ['Пн', 'ПнСх', 'Сх', 'ПдСх', 'Пд', 'ПдЗх', 'Зх', 'ПнЗх'],
             low: 'Низький',
             normal: 'Нормальний',
             high: 'Високий',
@@ -135,6 +143,14 @@ const MESSAGES = {
             pressure: 'ДАВЛЕНИЕ',
             mm: 'мм рт. ст.',
             inHg: 'inHg',
+            wind: 'ВЕТЕР',
+            uv: 'УФ-ИНДЕКС',
+            uvClearSky: 'ясное небо',
+            uvLevels: ['Низкий', 'Умеренный', 'Высокий', 'Очень высокий', 'Экстремальный'],
+            visibility: 'ВИДИМОСТЬ',
+            km: 'км',
+            mi: 'миль',
+            compass: ['С', 'СВ', 'В', 'ЮВ', 'Ю', 'ЮЗ', 'З', 'СЗ'],
             low: 'Низкое',
             normal: 'Нормальное',
             high: 'Высокое',
@@ -216,6 +232,14 @@ const MESSAGES = {
             pressure: 'PRESSURE',
             mm: 'mmHg',
             inHg: 'inHg',
+            wind: 'WIND',
+            uv: 'UV INDEX',
+            uvClearSky: 'clear sky',
+            uvLevels: ['Low', 'Moderate', 'High', 'Very high', 'Extreme'],
+            visibility: 'VISIBILITY',
+            km: 'km',
+            mi: 'mi',
+            compass: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'],
             low: 'Low',
             normal: 'Normal',
             high: 'High',
@@ -386,6 +410,22 @@ function getPressureLevel(hPa, dt) {
     if (hPa < 1009) return dt.low;
     if (hPa > 1022) return dt.high;
     return dt.normal;
+}
+
+/** UV index -> index into `uvLevels` (WHO bands: <3, <6, <8, <11, 11+). */
+function uvLevelIndex(uv) {
+    return uv < 3 ? 0 : uv < 6 ? 1 : uv < 8 ? 2 : uv < 11 ? 3 : 4;
+}
+
+/** Wind direction in degrees -> 8-point compass label. */
+function compassLabel(deg, dt) {
+    return dt.compass[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+}
+
+function toDisplayVisibility(meters, isImperial, dt) {
+    const val = isImperial ? meters / 1609.344 : meters / 1000;
+    const text = val >= 10 ? String(Math.round(val)) : val.toFixed(1);
+    return `${text} ${isImperial ? dt.mi : dt.km}`;
 }
 
 class TooltipHelper {
@@ -1246,26 +1286,51 @@ export const MeteoIndicator = GObject.registerClass(
             row1.add_child(makeTile('weather-clear-night-symbolic', dt.moon, moon.nameTrans, dt.moonIllum.replace('{n}', Math.round(moon.illum * 100)), moon.nameTrans));
             detailsContainer.add_child(row1);
 
-            const row2 = new St.Widget({
-                layout_manager: new Clutter.BoxLayout({
-                    orientation: Clutter.Orientation.HORIZONTAL,
-                    homogeneous: true,
-                    spacing: 8,
-                }),
-                x_expand: true,
-            });
-            const hasHumidity = !isMissing(current.humidity) && !isMissing(current.temp);
-            const humVal = isMissing(current.humidity) ? '—' : `${Math.round(current.humidity)}%`;
-            const dewPointSub = hasHumidity
-                ? dt.dewPoint.replace('{n}', toDisplayTemp(current.temp - ((100 - current.humidity) / 5), isImperial))
-                : '';
-            const pressVal = toDisplayPressure(current.pressure, isImperial);
-            const pressUnit = isImperial ? dt.inHg : dt.mm;
-            const pressStatus = getPressureLevel(current.pressure, dt);
-
-            row2.add_child(makeTile(this._assetGIcon('meteo-humidity-symbolic.svg'), dt.humidity, humVal, dewPointSub));
-            row2.add_child(makeTile(this._assetGIcon('meteo-pressure-symbolic.svg'), dt.pressure, pressVal, `${pressUnit} · ${pressStatus}`));
-            detailsContainer.add_child(row2);
+            // Optional tiles: a tile is added only when the provider supplied its data,
+            // then all available tiles are laid out two per row (an odd one spans the full width).
+            const windUnit = isImperial ? t.windUnitImperial : t.windUnit;
+            const optionalTiles = [];
+            if (!isMissing(current.humidity)) {
+                const dewPointSub = !isMissing(current.temp)
+                    ? dt.dewPoint.replace('{n}', toDisplayTemp(current.temp - ((100 - current.humidity) / 5), isImperial))
+                    : '';
+                optionalTiles.push(() => makeTile(this._assetGIcon('meteo-humidity-symbolic.svg'),
+                    dt.humidity, `${Math.round(current.humidity)}%`, dewPointSub));
+            }
+            if (!isMissing(current.pressure) && current.pressure > 0) {
+                const pressUnit = isImperial ? dt.inHg : dt.mm;
+                optionalTiles.push(() => makeTile(this._assetGIcon('meteo-pressure-symbolic.svg'),
+                    dt.pressure, toDisplayPressure(current.pressure, isImperial),
+                    `${pressUnit} · ${getPressureLevel(current.pressure, dt)}`));
+            }
+            if (!isMissing(current.wind)) {
+                const windSub = isMissing(current.windDeg) ? '' : compassLabel(current.windDeg, dt);
+                optionalTiles.push(() => makeTile('weather-windy-symbolic',
+                    dt.wind, `${toDisplayWind(current.wind, isImperial)} ${windUnit}`, windSub));
+            }
+            if (!isMissing(current.uv)) {
+                const uvSub = dt.uvLevels[uvLevelIndex(current.uv)] +
+                    (current.uvClearSky ? ` · ${dt.uvClearSky}` : '');
+                optionalTiles.push(() => makeTile(this._assetGIcon('meteo-uv-symbolic.svg'),
+                    dt.uv, current.uv.toFixed(1), uvSub));
+            }
+            if (!isMissing(current.visibility)) {
+                optionalTiles.push(() => makeTile(this._assetGIcon('meteo-visibility-symbolic.svg'),
+                    dt.visibility, toDisplayVisibility(current.visibility, isImperial, dt), ''));
+            }
+            for (let i = 0; i < optionalTiles.length; i += 2) {
+                const row = new St.Widget({
+                    layout_manager: new Clutter.BoxLayout({
+                        orientation: Clutter.Orientation.HORIZONTAL,
+                        homogeneous: true,
+                        spacing: 8,
+                    }),
+                    x_expand: true,
+                });
+                for (const build of optionalTiles.slice(i, i + 2))
+                    row.add_child(build());
+                detailsContainer.add_child(row);
+            }
 
             contentBox.add_child(detailsContainer);
 
