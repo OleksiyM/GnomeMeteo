@@ -126,7 +126,7 @@ function buildQueryString(params) {
 function get(url) {
     return new Promise((resolve, reject) => {
         const session = new Soup.Session({
-            user_agent: 'GnomeMeteo/1.1 (GNOME Shell extension; contact: https://github.com/OleksiyM/GnomeMeteo/issues)',
+            user_agent: 'GnomeMeteo/1.2 (GNOME Shell extension; contact: https://github.com/OleksiyM/GnomeMeteo/issues)',
             timeout: 15,
         });
         const msg = Soup.Message.new('GET', url);

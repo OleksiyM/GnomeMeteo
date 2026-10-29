@@ -14,6 +14,6 @@
   "settings-schema": "org.gnome.shell.extensions.meteo",
   "gettext-domain": "meteo@oleksiym.github.io",
   "url": "https://github.com/OleksiyM/GnomeMeteo",
-  "version": 3,
-  "version-name": "1.1.0"
+  "version": 4,
+  "version-name": "1.2.0"
 }

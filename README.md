@@ -24,7 +24,7 @@ The installer automatically verifies `SHA256SUMS` and Sigstore SLSA v1 release p
 
 To install a specific release version or strictly enforce provenance verification:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh | bash -s -- --version v1.1.0 --require-provenance
+curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh | bash -s -- --version v1.2.0 --require-provenance
 ```
 
 ---
@@ -34,11 +34,12 @@ curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh
 * **Visual Hierarchy:** Clean 3-tier main condition block (prominent temperature, condition name, daily max/min range, feels-like).
 * **Segmented Metric Switcher:** Instantly toggle between **Temperature**, **Precipitation Probability**, and **Wind Speed** across both hourly and 7-day views.
 * **Native Libadwaita Gradients:** Smooth daily temperature range bars built with native St gradient syntax.
-* **Compact 2×2 Details Grid:** At-a-glance cards with monochrome symbolic icons for:
+* **Adaptive Details Cards:** At-a-glance cards with monochrome symbolic icons, shown only when the provider supplies the data:
   * 🌅 **Sunrise & Sunset** (`↑ Rise  ↓ Set`) with computed **Daylight duration**
   * 🌔 **Moon Phase** (astronomically computed with illumination %)
   * 💧 **Humidity & Dew Point**
   * 🧭 **Atmospheric Pressure** (`mmHg` / `inHg` with dynamic Low / Normal / High level)
+  * 🌬️ **Wind** with compass direction, ☀️ **UV Index** with level, 👁️ **Visibility**
 * **Zero Precipitation De-emphasis:** Days and hours with 0% rain probability are gracefully dimmed to highlight relevant weather.
 * **Keyless Multi-Provider Support:**
   * **Open-Meteo** (global, with choice of prediction models: Best match, ECMWF IFS, DWD ICON, GFS, GEM)
