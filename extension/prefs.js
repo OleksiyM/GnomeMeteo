@@ -14,10 +14,38 @@ const HOURS = ['auto', '12h', '24h'];
 const LANGUAGES = ['auto', 'uk', 'ru', 'en'];
 const PROVIDER_IDS = ['open-meteo', 'met-norway', 'noaa-nws'];
 const MODEL_IDS = [
-    'best_match', 'ecmwf_ifs', 'ecmwf_ifs025',
-    'icon_seamless', 'gfs_seamless', 'gem_global',
-    'jma_seamless', 'ukmo_global_deterministic_10km',
+    'best_match', 'ecmwf_ifs', 'icon_seamless', 'gfs_seamless', 'gem_global',
 ];
+
+/**
+ * Flat "(i)" button that opens a popover with a short help text.
+ * `lines` is a list of [name, description] pairs, `note` an optional highlighted line.
+ */
+function buildHelpButton(lines, note) {
+    const esc = GLib.markup_escape_text;
+    const body = lines
+        .map(([name, text]) => `<b>${esc(name, -1)}</b> — ${esc(text, -1)}`)
+        .join('\n\n');
+    const markup = note ? `${body}\n\n${esc(note, -1)}` : body;
+    const label = new Gtk.Label({
+        use_markup: true,
+        label: markup,
+        wrap: true,
+        xalign: 0,
+        max_width_chars: 52,
+        margin_top: 12,
+        margin_bottom: 12,
+        margin_start: 12,
+        margin_end: 12,
+    });
+    return new Gtk.MenuButton({
+        icon_name: 'dialog-information-symbolic',
+        tooltip_text: _('What is the difference?'),
+        valign: Gtk.Align.CENTER,
+        css_classes: ['flat'],
+        popover: new Gtk.Popover({ child: label }),
+    });
+}
 
 function locationLabel(result) {
     return [result.name, result.admin, result.country].filter(Boolean).join(', ');
@@ -365,6 +393,11 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
                 ],
             }),
         });
+        provRow.add_suffix(buildHelpButton([
+            ['Open-Meteo', _('Full data set: humidity, pressure, UV, visibility, rain probability. The best choice almost everywhere.')],
+            ['MET Norway', _('Strong in Europe. Publishes no rain probability and no visibility: these are shown as “—”.')],
+            ['NOAA NWS', _('United States only. Other regions return an error.')],
+        ], '🇺🇦 ' + _('Ukraine: use Open-Meteo with “Best match”.')));
         const selectedProviderIndex = PROVIDER_IDS.indexOf(settings.get_string('provider'));
         provRow.set_selected(selectedProviderIndex < 0 ? 0 : selectedProviderIndex);
         provRow.connect('notify::selected', () =>
@@ -378,15 +411,19 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
                 strings: [
                     _('Best match (Recommended)'),
                     _('ECMWF IFS (High resolution)'),
-                    _('ECMWF IFS (0.25° grid)'),
                     _('DWD ICON (Germany)'),
                     _('NOAA GFS (US)'),
                     _('GEM (Canada)'),
-                    _('JMA (Japan)'),
-                    _('UK Met Office (10 km)'),
                 ],
             }),
         });
+        modelRow.add_suffix(buildHelpButton([
+            [_('Best match (Recommended)'), _('Picks the best local models automatically (ICON and ECMWF in Europe). Full data set.')],
+            [_('ECMWF IFS (High resolution)'), _('Often the most accurate for days 3–7 in Europe. No UV index.')],
+            [_('DWD ICON (Germany)'), _('Strong for Central and Eastern Europe. No UV index.')],
+            [_('NOAA GFS (US)'), _('Global model, best suited for North America. Full data set.')],
+            [_('GEM (Canada)'), _('Best suited for North America. No UV index, visibility or CAPE.')],
+        ], '🇺🇦 ' + _('Ukraine: “Best match”, or ECMWF IFS for the longer range.')));
         const selectedModelIndex = MODEL_IDS.indexOf(settings.get_string('om-model'));
         modelRow.set_selected(Math.max(selectedModelIndex, 0));
         modelRow.connect('notify::selected', () =>

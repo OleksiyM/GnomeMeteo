@@ -88,12 +88,9 @@
       <choices>
         <choice value="best_match"/>
         <choice value="ecmwf_ifs"/>
-        <choice value="ecmwf_ifs025"/>
         <choice value="icon_seamless"/>
         <choice value="gfs_seamless"/>
         <choice value="gem_global"/>
-        <choice value="jma_seamless"/>
-        <choice value="ukmo_global_deterministic_10km"/>
       </choices>
       <default>'best_match'</default>
       <summary>Open-Meteo forecast model</summary>

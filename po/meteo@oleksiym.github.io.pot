@@ -189,10 +189,6 @@ msgstr ""
 msgid "ECMWF IFS (High resolution)"
 msgstr ""
 
-#: extension/prefs.js:306
-msgid "ECMWF IFS (0.25° grid)"
-msgstr ""
-
 #: extension/prefs.js:307
 msgid "DWD ICON (Germany)"
 msgstr ""
@@ -203,14 +199,6 @@ msgstr ""
 
 #: extension/prefs.js:309
 msgid "GEM (Canada)"
-msgstr ""
-
-#: extension/prefs.js:310
-msgid "JMA (Japan)"
-msgstr ""
-
-#: extension/prefs.js:311
-msgid "UK Met Office (10 km)"
 msgstr ""
 
 #: extension/prefs.js:330
@@ -237,3 +225,47 @@ msgstr ""
 msgid "Releases"
 msgstr ""
 
+
+#: extension/prefs.js
+msgid "What is the difference?"
+msgstr ""
+
+#: extension/prefs.js
+msgid "Full data set: humidity, pressure, UV, visibility, rain probability. The best choice almost everywhere."
+msgstr ""
+
+#: extension/prefs.js
+msgid "Strong in Europe. Publishes no rain probability and no visibility: these are shown as “—”."
+msgstr ""
+
+#: extension/prefs.js
+msgid "United States only. Other regions return an error."
+msgstr ""
+
+#: extension/prefs.js
+msgid "Ukraine: use Open-Meteo with “Best match”."
+msgstr ""
+
+#: extension/prefs.js
+msgid "Picks the best local models automatically (ICON and ECMWF in Europe). Full data set."
+msgstr ""
+
+#: extension/prefs.js
+msgid "Often the most accurate for days 3–7 in Europe. No UV index."
+msgstr ""
+
+#: extension/prefs.js
+msgid "Strong for Central and Eastern Europe. No UV index."
+msgstr ""
+
+#: extension/prefs.js
+msgid "Global model, best suited for North America. Full data set."
+msgstr ""
+
+#: extension/prefs.js
+msgid "Best suited for North America. No UV index, visibility or CAPE."
+msgstr ""
+
+#: extension/prefs.js
+msgid "Ukraine: “Best match”, or ECMWF IFS for the longer range."
+msgstr ""

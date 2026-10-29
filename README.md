@@ -41,12 +41,37 @@ curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh
   * 🧭 **Atmospheric Pressure** (`mmHg` / `inHg` with dynamic Low / Normal / High level)
 * **Zero Precipitation De-emphasis:** Days and hours with 0% rain probability are gracefully dimmed to highlight relevant weather.
 * **Keyless Multi-Provider Support:**
-  * **Open-Meteo** (global, with choice of prediction models: ECMWF IFS, DWD ICON, GFS, GEM, JMA, UKMO)
+  * **Open-Meteo** (global, with choice of prediction models: Best match, ECMWF IFS, DWD ICON, GFS, GEM)
   * **MET Norway** (`api.met.no`, CC BY-SA 4.0)
   * **NOAA NWS** (United States official forecasts)
+* **Honest Data:** If a provider does not supply a value (e.g. rain probability from MET Norway), the popup shows “—” instead of an invented number.
 * **Clean Single-Page Preferences:** Fast, scrollable Libadwaita settings dialog with smart top-bar indicator toggles and localized city search.
 * **Full Localization:** Native Ukrainian, English, and Russian translations.
 * **Privacy & Supply-Chain Security:** No tracking, no accounts, no API keys. Releases are attested with Sigstore SLSA v1 provenance.
+
+---
+
+## 🧭 Choosing a Provider & Forecast Model
+
+Preferences contain an **(i)** button next to *Provider* and *Forecast model* with the same hints. Summary (checked against live API responses):
+
+| Provider | Best for | Limitations |
+|---|---|---|
+| **Open-Meteo** | Everywhere, **including Ukraine** — the default | Depends on the chosen model (see below) |
+| **MET Norway** | Europe; a good independent second opinion | No rain probability and no visibility (shown as “—”); sunrise/sunset only for today |
+| **NOAA NWS** | **United States only** | Other regions return an error |
+
+| Forecast model (Open-Meteo) | When to use | Limitations |
+|---|---|---|
+| **Best match** | Default. Picks the best local models automatically (ICON / ECMWF in Europe) | — |
+| **ECMWF IFS** | Europe, longer range (days 3–7) | No UV index |
+| **DWD ICON** | Central and Eastern Europe | No UV index |
+| **NOAA GFS** | North America | — |
+| **GEM** | North America | No UV index, visibility or CAPE |
+
+> 🇺🇦 **Ukraine:** use **Open-Meteo + Best match**; switch to **ECMWF IFS** only if you prefer its longer-range forecast. NOAA NWS will not work here.
+
+**Automatic location** uses GeoClue, then falls back to IP lookup. IP geolocation is accurate to the city level and can be far off with a VPN, mobile network, or corporate proxy — in that case disable it and pick your city manually.
 
 ---
 

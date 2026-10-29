@@ -189,10 +189,6 @@ msgstr "Лучшее соответствие (Рекомендуется)"
 msgid "ECMWF IFS (High resolution)"
 msgstr "ECMWF IFS (Высокое разрешение)"
 
-#: extension/prefs.js:306
-msgid "ECMWF IFS (0.25° grid)"
-msgstr "ECMWF IFS (Сетка 0.25°)"
-
 #: extension/prefs.js:307
 msgid "DWD ICON (Germany)"
 msgstr "DWD ICON (Германия)"
@@ -204,14 +200,6 @@ msgstr "NOAA GFS (США)"
 #: extension/prefs.js:309
 msgid "GEM (Canada)"
 msgstr "GEM (Канада)"
-
-#: extension/prefs.js:310
-msgid "JMA (Japan)"
-msgstr "JMA (Япония)"
-
-#: extension/prefs.js:311
-msgid "UK Met Office (10 km)"
-msgstr "UK Met Office (10 км)"
 
 #: extension/prefs.js:330
 msgid "Data updates"
@@ -237,3 +225,47 @@ msgstr "Лаконичный, современный индикатор пого
 msgid "Releases"
 msgstr "Релизы"
 
+
+#: extension/prefs.js
+msgid "What is the difference?"
+msgstr "В чём разница?"
+
+#: extension/prefs.js
+msgid "Full data set: humidity, pressure, UV, visibility, rain probability. The best choice almost everywhere."
+msgstr "Полный набор данных: влажность, давление, UV, видимость, вероятность осадков. Лучший выбор почти везде."
+
+#: extension/prefs.js
+msgid "Strong in Europe. Publishes no rain probability and no visibility: these are shown as “—”."
+msgstr "Силён в Европе. Не публикует вероятность осадков и видимость: они показываются как «—»."
+
+#: extension/prefs.js
+msgid "United States only. Other regions return an error."
+msgstr "Только США. Для других регионов возвращает ошибку."
+
+#: extension/prefs.js
+msgid "Ukraine: use Open-Meteo with “Best match”."
+msgstr "Украина: Open-Meteo с «Наилучшим соответствием»."
+
+#: extension/prefs.js
+msgid "Picks the best local models automatically (ICON and ECMWF in Europe). Full data set."
+msgstr "Сам выбирает лучшие локальные модели (ICON и ECMWF в Европе). Полный набор данных."
+
+#: extension/prefs.js
+msgid "Often the most accurate for days 3–7 in Europe. No UV index."
+msgstr "Часто самая точная на 3–7 дней в Европе. Без UV-индекса."
+
+#: extension/prefs.js
+msgid "Strong for Central and Eastern Europe. No UV index."
+msgstr "Сильна для Центральной и Восточной Европы. Без UV-индекса."
+
+#: extension/prefs.js
+msgid "Global model, best suited for North America. Full data set."
+msgstr "Глобальная модель, лучше всего подходит для Северной Америки. Полный набор данных."
+
+#: extension/prefs.js
+msgid "Best suited for North America. No UV index, visibility or CAPE."
+msgstr "Лучше всего подходит для Северной Америки. Без UV-индекса, видимости и CAPE."
+
+#: extension/prefs.js
+msgid "Ukraine: “Best match”, or ECMWF IFS for the longer range."
+msgstr "Украина: «Наилучшее соответствие» или ECMWF IFS для долгого прогноза."

@@ -201,15 +201,8 @@ class OpenMeteoProvider extends WeatherProvider {
             temperature_unit: 'celsius',
             wind_speed_unit: 'kmh',
         };
-        if (model && model !== 'best_match') {
+        if (model && model !== 'best_match')
             params.models = model;
-            try {
-                return this.parse(await get(`${OPEN_METEO_FORECAST_API}?${buildQueryString(params)}`));
-            } catch {
-                delete params.models;
-                return this.parse(await get(`${OPEN_METEO_FORECAST_API}?${buildQueryString(params)}`));
-            }
-        }
         const raw = await get(`${OPEN_METEO_FORECAST_API}?${buildQueryString(params)}`);
         return this.parse(raw);
     }
@@ -223,14 +216,14 @@ class OpenMeteoProvider extends WeatherProvider {
             code: rawCurrent.weather_code,
             isDay: !!rawCurrent.is_day,
             humidity: rawCurrent.relative_humidity_2m,
-            precip: rawCurrent.precipitation ?? 0,
+            precip: rawCurrent.precipitation ?? null,
             wind: rawCurrent.wind_speed_10m,
             windDeg: rawCurrent.wind_direction_10m,
             uv: rawCurrent.uv_index ?? null,
             visibility: rawCurrent.visibility ?? null,
             cape: rawCurrent.cape ?? null,
             pressure: rawCurrent.surface_pressure ?? null,
-            intensity: rawCurrent.precipitation ?? 0,
+            intensity: rawCurrent.precipitation ?? null,
             timeIso: rawCurrent.time ?? '',
         };
 
@@ -239,22 +232,18 @@ class OpenMeteoProvider extends WeatherProvider {
             code: rawDaily.weather_code[i],
             tmax: rawDaily.temperature_2m_max[i],
             tmin: rawDaily.temperature_2m_min[i],
-            precipProb: rawDaily.precipitation_probability_max[i] ?? 0,
+            precipProb: rawDaily.precipitation_probability_max?.[i] ?? null,
             sunrise: rawDaily.sunrise[i],
             sunset: rawDaily.sunset[i],
-            uv: rawDaily.uv_index_max[i] ?? 0,
-            windMax: rawDaily.wind_speed_10m_max[i] ?? 0,
+            uv: rawDaily.uv_index_max?.[i] ?? null,
+            windMax: rawDaily.wind_speed_10m_max?.[i] ?? null,
         }));
 
         const rawProb = raw.hourly?.precipitation_probability ?? [];
-        const rawPrecip = raw.hourly?.precipitation ?? [];
-        const rawCloud = raw.hourly?.cloud_cover ?? [];
         const preTrim = {
             time: raw.hourly?.time ?? [],
             temp: raw.hourly?.temperature_2m ?? [],
-            precipProb: (raw.hourly?.time ?? []).map(
-                (_, i) => rawProb[i] ?? precipProbFrom(rawPrecip[i], rawCloud[i])
-            ),
+            precipProb: (raw.hourly?.time ?? []).map((_, i) => rawProb[i] ?? null),
             wind: raw.hourly?.wind_speed_10m ?? [],
             code: raw.hourly?.weather_code ?? [],
             isDay: (raw.hourly?.is_day ?? []).map(val => !!val),
@@ -309,13 +298,6 @@ function agnosToWmo(symbol) {
     return 3;
 }
 
-function precipProbFrom(amountMm, cloudPct = 0) {
-    const mm = Number(amountMm) || 0;
-    if (mm >= 0.05)
-        return Math.min(100, Math.round(40 + 60 * (1 - Math.exp(-mm))));
-    return Math.round(Math.min(40, (Number(cloudPct) || 0) * 0.4));
-}
-
 function localFromUtc(iso) {
     let dateTime = null;
     try {
@@ -358,7 +340,8 @@ class MetNorwayProvider extends WeatherProvider {
                 ?? entry.data?.next_6_hours?.summary?.symbol_code
                 ?? entry.data?.next_12_hours?.summary?.symbol_code ?? '';
             const temp = inst.air_temperature ?? null;
-            const prob = precipProbFrom(next1Hours?.details?.precipitation_amount, inst.cloud_area_fraction);
+            // MET Norway publishes no precipitation probability: keep it unknown (null)
+            const prob = null;
             const wind = inst.wind_speed !== undefined ? inst.wind_speed * 3.6 : null;
             hourly.time.push(`${iso.slice(0, 13)}:00`);
             hourly.temp.push(temp);
@@ -370,12 +353,13 @@ class MetNorwayProvider extends WeatherProvider {
             const date = iso.slice(0, 10);
             let day = byDate.get(date);
             if (!day)
-                byDate.set(date, day = {date, temps: [], probMax: 0, windMax: 0, uvMax: 0, syms: []});
+                byDate.set(date, day = {date, temps: [], probMax: null, windMax: null, uvMax: null, syms: []});
             if (temp !== null)
                 day.temps.push(temp);
-            day.probMax = Math.max(day.probMax, prob);
-            day.windMax = Math.max(day.windMax, wind ?? 0);
-            day.uvMax = Math.max(day.uvMax, inst.ultraviolet_index_clear_sky ?? 0);
+            if (wind !== null)
+                day.windMax = Math.max(day.windMax ?? 0, wind);
+            if (inst.ultraviolet_index_clear_sky !== undefined)
+                day.uvMax = Math.max(day.uvMax ?? 0, inst.ultraviolet_index_clear_sky);
             day.syms.push({hour: Number(iso.slice(11, 13)), sym});
         }
 
@@ -396,7 +380,7 @@ class MetNorwayProvider extends WeatherProvider {
                 code: agnosToWmo(best?.sym ?? ''),
                 tmax: day.temps.length ? Math.max(...day.temps) : null,
                 tmin: day.temps.length ? Math.min(...day.temps) : null,
-                precipProb: day.probMax,
+                precipProb: null,
                 sunrise: idx === 0 ? defaultSunriseIso : null,
                 sunset: idx === 0 ? defaultSunsetIso : null,
                 uv: day.uvMax,
@@ -409,18 +393,18 @@ class MetNorwayProvider extends WeatherProvider {
         const sym = next1Hours?.summary?.symbol_code ?? '';
         const current = {
             temp: firstDetails.air_temperature ?? null,
-            feels: firstDetails.apparent_air_temperature ?? firstDetails.air_temperature ?? null,
+            feels: firstDetails.apparent_air_temperature ?? null,
             code: agnosToWmo(sym),
             isDay: isDayFromSymbol(sym, Number(hourly.time[0]?.slice(11, 13))),
-            humidity: firstDetails.relative_humidity ?? 0,
-            precip: next1Hours?.details?.precipitation_amount ?? 0,
-            wind: (firstDetails.wind_speed ?? 0) * 3.6,
-            windDeg: firstDetails.wind_from_direction ?? 0,
+            humidity: firstDetails.relative_humidity ?? null,
+            precip: next1Hours?.details?.precipitation_amount ?? null,
+            wind: firstDetails.wind_speed !== undefined ? firstDetails.wind_speed * 3.6 : null,
+            windDeg: firstDetails.wind_from_direction ?? null,
             uv: firstDetails.ultraviolet_index_clear_sky ?? null,
             visibility: null,
             cape: null,
             pressure: firstDetails.air_pressure_at_sea_level ?? null,
-            intensity: next1Hours?.details?.precipitation_amount ?? 0,
+            intensity: next1Hours?.details?.precipitation_amount ?? null,
             timeIso: hourly.time[0] ?? '',
         };
 
@@ -576,7 +560,7 @@ class NoaaNwsProvider extends WeatherProvider {
         };
 
         const observationProps = obs?.properties;
-        const hourRh = hourly?.properties?.periods?.[0]?.relativeHumidity?.value ?? 0;
+        const hourRh = hourly?.properties?.periods?.[0]?.relativeHumidity?.value ?? null;
         const obsPressurePa = observationProps?.barometricPressure?.value ?? observationProps?.seaLevelPressure?.value ?? null;
         const obsPressureHpa = (obsPressurePa !== null && Number.isFinite(obsPressurePa)) ? (obsPressurePa / 100) : null;
 
@@ -585,39 +569,39 @@ class NoaaNwsProvider extends WeatherProvider {
                 ?? (observationProps.skyCover?.value >= 87 ? 3 : observationProps.skyCover?.value >= 25 ? 2 : 0);
             day.current = {
                 temp: observationProps.temperature.value,
-                feels: observationProps.apparentTemperature?.value ?? observationProps.temperature.value,
+                feels: observationProps.apparentTemperature?.value ?? null,
                 code,
                 isDay: (() => {
                     const hr = Number(String(observationProps.timestamp ?? '').slice(11, 13));
                     return hr >= 6 && hr < 21;
                 })(),
                 humidity: observationProps.relativeHumidity?.value ?? hourRh,
-                precip: observationProps.precipitationLastHour?.value ?? 0,
-                wind: observationProps.windSpeed?.value ?? 0,
-                windDeg: observationProps.windDirection?.value ?? 0,
+                precip: observationProps.precipitationLastHour?.value ?? null,
+                wind: observationProps.windSpeed?.value ?? null,
+                windDeg: observationProps.windDirection?.value ?? null,
                 uv: null,
                 visibility: observationProps.visibility?.value ?? null,
                 cape: null,
                 pressure: obsPressureHpa,
-                intensity: observationProps.precipitationLastHour?.value ?? 0,
+                intensity: observationProps.precipitationLastHour?.value ?? null,
                 timeIso: String(observationProps.timestamp ?? '').slice(0, 16),
             };
         } else {
             const i = 0;
             day.current = {
                 temp: hourlyData.temp[i] ?? null,
-                feels: hourlyData.temp[i] ?? null,
+                feels: null,
                 code: hourlyData.code[i] ?? 3,
                 isDay: !!hourlyData.isDay[i],
                 humidity: hourRh,
-                precip: 0,
-                wind: hourlyData.wind[i] ?? 0,
-                windDeg: 0,
+                precip: null,
+                wind: hourlyData.wind[i] ?? null,
+                windDeg: null,
                 uv: null,
                 visibility: null,
                 cape: null,
                 pressure: obsPressureHpa,
-                intensity: 0,
+                intensity: null,
                 timeIso: hourlyData.time[i] ?? '',
             };
         }
