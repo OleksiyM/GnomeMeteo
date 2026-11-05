@@ -716,7 +716,7 @@ export const MeteoIndicator = GObject.registerClass(
             // ══════════════════════════════════════════════════════════════════
             const headerItem = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
             const headerContainer = new St.BoxLayout({
-                vertical: true,
+                orientation: Clutter.Orientation.VERTICAL,
                 x_expand: true,
                 style: 'padding: 4px 4px 10px 4px;',
             });
@@ -835,7 +835,7 @@ export const MeteoIndicator = GObject.registerClass(
             });
 
             const contentBox = new St.BoxLayout({
-                vertical: true,
+                orientation: Clutter.Orientation.VERTICAL,
                 x_expand: true,
                 style: 'spacing: 10px;',
             });
@@ -845,7 +845,7 @@ export const MeteoIndicator = GObject.registerClass(
             // ──────────────────────────────────────────────────────────────────
             if (hourly && Array.isArray(hourly.temp) && hourly.temp.length > 0) {
                 const hourlyCardBox = new St.BoxLayout({
-                    vertical: true,
+                    orientation: Clutter.Orientation.VERTICAL,
                     x_expand: true,
                     style: 'background-color: rgba(255, 255, 255, 0.07); border-radius: 14px; padding: 10px 12px;',
                 });
@@ -1023,7 +1023,7 @@ export const MeteoIndicator = GObject.registerClass(
                 for (let i = 0; i < availableSlots; i++) {
                     const dataIdx = this._hourlyStartIndex + i;
                     const col = new St.BoxLayout({
-                        vertical: true,
+                        orientation: Clutter.Orientation.VERTICAL,
                         style: 'spacing: 6px; min-width: 48px;',
                         x_align: Clutter.ActorAlign.CENTER,
                     });
@@ -1069,7 +1069,7 @@ export const MeteoIndicator = GObject.registerClass(
             // ──────────────────────────────────────────────────────────────────
             if (dailyArr.length > 0) {
                 const dailyCardBox = new St.BoxLayout({
-                    vertical: true,
+                    orientation: Clutter.Orientation.VERTICAL,
                     x_expand: true,
                     style: 'background-color: rgba(255, 255, 255, 0.07); border-radius: 14px; padding: 10px 12px; spacing: 4px;',
                 });
@@ -1077,7 +1077,7 @@ export const MeteoIndicator = GObject.registerClass(
                 const daysCount = Math.min(7, dailyArr.length);
 
                 const dailyHeaderRow = new St.BoxLayout({
-                    vertical: false,
+                    orientation: Clutter.Orientation.HORIZONTAL,
                     x_expand: true,
                     y_align: Clutter.ActorAlign.CENTER,
                     style: 'spacing: 5px; margin-bottom: 4px;',
@@ -1174,14 +1174,14 @@ export const MeteoIndicator = GObject.registerClass(
             // ──────────────────────────────────────────────────────────────────
             const dt = t.details;
             const detailsContainer = new St.BoxLayout({
-                vertical: true,
+                orientation: Clutter.Orientation.VERTICAL,
                 x_expand: true,
                 style: 'spacing: 8px;',
             });
 
             const makeTile = (iconSpec, title, value, subtext, tooltipText = null, valFontSize = '14.5px') => {
                 const tile = new St.BoxLayout({
-                    vertical: true,
+                    orientation: Clutter.Orientation.VERTICAL,
                     x_expand: true,
                     reactive: !!tooltipText,
                     can_focus: false,
@@ -1189,7 +1189,7 @@ export const MeteoIndicator = GObject.registerClass(
                 });
 
                 const headRow = new St.BoxLayout({
-                    vertical: false,
+                    orientation: Clutter.Orientation.HORIZONTAL,
                     x_expand: true,
                     y_align: Clutter.ActorAlign.CENTER,
                     style: 'spacing: 5px; margin-bottom: 5px;',
