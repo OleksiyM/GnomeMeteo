@@ -189,12 +189,12 @@ class OpenMeteoProvider extends WeatherProvider {
             hourly: [
                 'temperature_2m', 'precipitation_probability',
                 'precipitation', 'cloud_cover',
-                'wind_speed_10m', 'weather_code', 'is_day',
+                'wind_speed_10m', 'wind_direction_10m', 'weather_code', 'is_day',
             ].join(','),
             daily: [
                 'weather_code', 'temperature_2m_max', 'temperature_2m_min',
-                'precipitation_probability_max', 'sunrise', 'sunset',
-                'uv_index_max', 'wind_speed_10m_max',
+                'precipitation_probability_max', 'precipitation_sum', 'sunrise', 'sunset',
+                'uv_index_max', 'wind_speed_10m_max', 'wind_direction_10m_dominant',
             ].join(','),
             timezone: 'auto',
             forecast_days: days,
@@ -233,10 +233,12 @@ class OpenMeteoProvider extends WeatherProvider {
             tmax: rawDaily.temperature_2m_max[i],
             tmin: rawDaily.temperature_2m_min[i],
             precipProb: rawDaily.precipitation_probability_max?.[i] ?? null,
+            precipSum: rawDaily.precipitation_sum?.[i] ?? null,
             sunrise: rawDaily.sunrise[i],
             sunset: rawDaily.sunset[i],
             uv: rawDaily.uv_index_max?.[i] ?? null,
             windMax: rawDaily.wind_speed_10m_max?.[i] ?? null,
+            windDeg: rawDaily.wind_direction_10m_dominant?.[i] ?? null,
         }));
 
         const rawProb = raw.hourly?.precipitation_probability ?? [];
@@ -244,7 +246,9 @@ class OpenMeteoProvider extends WeatherProvider {
             time: raw.hourly?.time ?? [],
             temp: raw.hourly?.temperature_2m ?? [],
             precipProb: (raw.hourly?.time ?? []).map((_, i) => rawProb[i] ?? null),
+            precip: (raw.hourly?.time ?? []).map((_, i) => raw.hourly?.precipitation?.[i] ?? null),
             wind: raw.hourly?.wind_speed_10m ?? [],
+            windDeg: (raw.hourly?.time ?? []).map((_, i) => raw.hourly?.wind_direction_10m?.[i] ?? null),
             code: raw.hourly?.weather_code ?? [],
             isDay: (raw.hourly?.is_day ?? []).map(val => !!val),
         };
@@ -329,7 +333,7 @@ class MetNorwayProvider extends WeatherProvider {
 
     parse(raw, {days = 8, latitude = 0, longitude = 0} = {}) {
         const timeseries = raw?.properties?.timeseries ?? [];
-        const hourly = {time: [], temp: [], precipProb: [], wind: [], code: [], isDay: []};
+        const hourly = {time: [], temp: [], precipProb: [], precip: [], wind: [], windDeg: [], code: [], isDay: []};
         const byDate = new Map();
 
         for (const entry of timeseries) {
@@ -342,22 +346,34 @@ class MetNorwayProvider extends WeatherProvider {
             const temp = inst.air_temperature ?? null;
             // MET Norway publishes no precipitation probability: keep it unknown (null)
             const prob = null;
+            const stepPrecip = next1Hours?.details?.precipitation_amount
+                ?? entry.data?.next_6_hours?.details?.precipitation_amount ?? null;
             const wind = inst.wind_speed !== undefined ? inst.wind_speed * 3.6 : null;
+            const windDeg = inst.wind_from_direction ?? null;
             hourly.time.push(`${iso.slice(0, 13)}:00`);
             hourly.temp.push(temp);
             hourly.precipProb.push(prob);
+            hourly.precip.push(stepPrecip);
             hourly.wind.push(wind);
+            hourly.windDeg.push(windDeg);
             hourly.code.push(agnosToWmo(sym));
             hourly.isDay.push(isDayFromSymbol(sym, Number(iso.slice(11, 13))));
 
             const date = iso.slice(0, 10);
             let day = byDate.get(date);
             if (!day)
-                byDate.set(date, day = {date, temps: [], probMax: null, windMax: null, uvMax: null, syms: []});
+                byDate.set(date, day = {date, temps: [], probMax: null, precipSum: 0, hasPrecip: false, windMax: null, windDeg: null, uvMax: null, syms: []});
             if (temp !== null)
                 day.temps.push(temp);
-            if (wind !== null)
-                day.windMax = Math.max(day.windMax ?? 0, wind);
+            if (stepPrecip !== null && Number.isFinite(stepPrecip)) {
+                day.precipSum += stepPrecip;
+                day.hasPrecip = true;
+            }
+            if (wind !== null && (day.windMax === null || wind >= day.windMax)) {
+                day.windMax = wind;
+                if (windDeg !== null)
+                    day.windDeg = windDeg;
+            }
             if (inst.ultraviolet_index_clear_sky !== undefined)
                 day.uvMax = Math.max(day.uvMax ?? 0, inst.ultraviolet_index_clear_sky);
             day.syms.push({hour: Number(iso.slice(11, 13)), sym});
@@ -381,10 +397,12 @@ class MetNorwayProvider extends WeatherProvider {
                 tmax: day.temps.length ? Math.max(...day.temps) : null,
                 tmin: day.temps.length ? Math.min(...day.temps) : null,
                 precipProb: null,
+                precipSum: day.hasPrecip ? day.precipSum : null,
                 sunrise: idx === 0 ? defaultSunriseIso : null,
                 sunset: idx === 0 ? defaultSunsetIso : null,
                 uv: day.uvMax,
                 windMax: day.windMax,
+                windDeg: day.windDeg,
             };
         });
 
@@ -470,6 +488,17 @@ function nwsWindKmh(text) {
 const nwsTempC = (val, unit) =>
     val === null ? null : (String(unit).toUpperCase() === 'F' ? (val - 32) * 5 / 9 : val);
 
+function nwsCompassToDeg(dir) {
+    const map = {
+        N: 0, NNE: 22.5, NE: 45, ENE: 67.5,
+        E: 90, ESE: 112.5, SE: 135, SSE: 157.5,
+        S: 180, SSW: 202.5, SW: 225, WSW: 247.5,
+        W: 270, WNW: 292.5, NW: 315, NNW: 337.5,
+    };
+    const key = String(dir ?? '').trim().toUpperCase();
+    return key in map ? map[key] : null;
+}
+
 class NoaaNwsProvider extends WeatherProvider {
     constructor() {
         super('noaa-nws', 'NOAA NWS', 'Forecast: National Weather Service (US public data)');
@@ -511,7 +540,7 @@ class NoaaNwsProvider extends WeatherProvider {
     }
 
     parse({hourly, daily, obs, days = 8, latitude = 0, longitude = 0} = {}) {
-        const hourlyData = {time: [], temp: [], precipProb: [], wind: [], code: [], isDay: []};
+        const hourlyData = {time: [], temp: [], precipProb: [], precip: [], wind: [], windDeg: [], code: [], isDay: []};
         for (const period of hourly?.properties?.periods ?? []) {
             const iso = String(period.startTime ?? period.time ?? '').slice(0, 16);
             if (!iso)
@@ -519,7 +548,9 @@ class NoaaNwsProvider extends WeatherProvider {
             hourlyData.time.push(`${iso.slice(0, 13)}:00`);
             hourlyData.temp.push(nwsTempC(nwsNum(period.temperature), period.temperatureUnit));
             hourlyData.precipProb.push(period.probabilityOfPrecipitation?.value ?? 0);
+            hourlyData.precip.push(null);
             hourlyData.wind.push(nwsWindKmh(period.windSpeed));
+            hourlyData.windDeg.push(nwsCompassToDeg(period.windDirection));
             hourlyData.code.push(nwsTextToWmo(period.shortForecast) ?? 3);
             hourlyData.isDay.push(!!(period.isDaytime ?? period.isDayTime));
         }
@@ -531,16 +562,29 @@ class NoaaNwsProvider extends WeatherProvider {
                 continue;
             let row = byDate.get(date);
             if (!row)
-                byDate.set(date, row = {date, code: 3, tmax: null, tmin: null, precipProb: 0, windMax: 0});
+                byDate.set(date, row = {date, code: 3, tmax: null, tmin: null, precipProb: 0, precipSum: null, windMax: 0, windDeg: null});
             const temp = nwsTempC(nwsNum(period.temperature), period.temperatureUnit);
+            const periodWind = nwsWindKmh(period.windSpeed);
+            const periodDeg = nwsCompassToDeg(period.windDirection);
             if (period.isDaytime ?? period.isDayTime) {
                 row.code = nwsTextToWmo(period.shortForecast) ?? row.code;
                 row.tmax = temp ?? row.tmax;
                 row.precipProb = Math.max(row.precipProb, period.probabilityOfPrecipitation?.value ?? 0);
-                row.windMax = Math.max(row.windMax, nwsWindKmh(period.windSpeed));
+                if (periodWind >= row.windMax) {
+                    row.windMax = periodWind;
+                    if (periodDeg !== null)
+                        row.windDeg = periodDeg;
+                } else if (row.windDeg === null && periodDeg !== null) {
+                    row.windDeg = periodDeg;
+                }
             } else {
                 row.tmin = temp ?? row.tmin;
                 row.precipProb = Math.max(row.precipProb, period.probabilityOfPrecipitation?.value ?? 0);
+                if (periodWind > row.windMax) {
+                    row.windMax = periodWind;
+                    if (periodDeg !== null)
+                        row.windDeg = periodDeg;
+                }
             }
         }
 

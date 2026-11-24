@@ -5,9 +5,14 @@ import Gtk from 'gi://Gtk';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
+import Cairo from 'cairo';
+import Gettext from 'gettext';
 
 import { ExtensionPreferences, gettext as _ } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 import { WeatherClient } from './weather.js';
+import { SCALE_MIN_C, SCALE_MAX_C, TEMP_BAR_STYLES, getScaleStops } from './thermal.js';
+
+const INITIAL_LANGUAGE_ENV = GLib.getenv('LANGUAGE');
 
 const UNITS = ['metric', 'imperial'];
 const HOURS = ['auto', '12h', '24h'];
@@ -76,12 +81,24 @@ const ResultRow = GObject.registerClass(class ResultRow extends Adw.ActionRow {
 });
 
 export default class GnomeMeteoPrefs extends ExtensionPreferences {
-    fillPreferencesWindow(window) {
-        window.title = 'GnomeMeteo';
-        const settings = this.getSettings();
-        const client = new WeatherClient();
-        window.set_default_size(580, 720);
+    _syncLocale(settings) {
+        const pref = settings.get_string('language');
+        if (pref === 'uk' || pref === 'ru') {
+            GLib.setenv('LANGUAGE', pref, true);
+        } else if (pref === 'en') {
+            GLib.setenv('LANGUAGE', 'C', true);
+        } else if (INITIAL_LANGUAGE_ENV !== null && INITIAL_LANGUAGE_ENV !== undefined) {
+            GLib.setenv('LANGUAGE', INITIAL_LANGUAGE_ENV, true);
+        } else {
+            GLib.unsetenv('LANGUAGE');
+        }
 
+        const domain = this.metadata['gettext-domain'] ?? this.uuid;
+        this.initTranslations(domain);
+        Gettext.textdomain(domain);
+    }
+
+    _buildPage(settings, client, registerCleanup) {
         const page = new Adw.PreferencesPage();
 
         // 1. Location Group
@@ -97,8 +114,9 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
         searchGroups.forEach(group => page.add(group));
         page.add(manual.group);
 
-        // 2. Panel indicator
+        // 2. Panel indicator & 7-day forecast bars
         page.add(this._buildIndicatorGroup(settings));
+        page.add(this._buildForecastGroup(settings, registerCleanup));
 
         // 3. Units & Language
         page.add(this._buildUnitsGroup(settings));
@@ -107,10 +125,57 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
         page.add(this._buildProviderGroup(settings));
         page.add(this._buildUpdatesGroup(settings));
 
-        window.add(page);
+        return page;
+    }
+
+    fillPreferencesWindow(window) {
+        window.title = 'GnomeMeteo';
+        const settings = this.getSettings();
+        const client = new WeatherClient();
+        window.set_default_size(580, 780);
+
+        this._syncLocale(settings);
+
+        let pageCleanups = [];
+        const registerCleanup = fn => pageCleanups.push(fn);
+        const runPageCleanups = () => {
+            for (const fn of pageCleanups.splice(0))
+                fn();
+        };
+
+        let currentPage = this._buildPage(settings, client, registerCleanup);
+        window.add(currentPage);
 
         // Header bar button (i) -> Adw.AboutDialog
-        this._setupAboutButton(window);
+        const aboutBtn = this._setupAboutButton(window);
+
+        let rebuildIdleId = 0;
+        const langChangedId = settings.connect('changed::language', () => {
+            if (rebuildIdleId)
+                return;
+            rebuildIdleId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                rebuildIdleId = 0;
+                runPageCleanups();
+                this._syncLocale(settings);
+                const nextPage = this._buildPage(settings, client, registerCleanup);
+                window.remove(currentPage);
+                currentPage = nextPage;
+                window.add(currentPage);
+                if (aboutBtn)
+                    aboutBtn.tooltip_text = _('About GnomeMeteo');
+                return GLib.SOURCE_REMOVE;
+            });
+        });
+
+        window.connect('close-request', () => {
+            if (rebuildIdleId) {
+                GLib.source_remove(rebuildIdleId);
+                rebuildIdleId = 0;
+            }
+            settings.disconnect(langChangedId);
+            runPageCleanups();
+            return false;
+        });
     }
 
     _buildAutoLocationGroup(settings, onToggled) {
@@ -334,6 +399,168 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
         return lookGroup;
     }
 
+    _buildForecastGroup(settings, registerCleanup) {
+        const forecastGroup = new Adw.PreferencesGroup({
+            title: _('7-day forecast'),
+            description: _('Range and intensity bars in the forecast popup'),
+        });
+
+        const styleRow = new Adw.ComboRow({
+            title: _('Bar color style'),
+            subtitle: _('Color palette for temperature, precipitation and wind'),
+            model: new Gtk.StringList({
+                strings: [_('Thermal spectrum'), _('Minimalist')],
+            }),
+        });
+        const currentStyle = settings.get_string('temp-bar-style');
+        styleRow.set_selected(Math.max(0, TEMP_BAR_STYLES.indexOf(currentStyle)));
+        styleRow.connect('notify::selected', () =>
+            settings.set_string('temp-bar-style', TEMP_BAR_STYLES[styleRow.get_selected()] ?? 'spectrum'));
+        forecastGroup.add(styleRow);
+
+        const drawRoundedRect = (cr, x, y, w, h, r) => {
+            const rad = Math.min(r, w / 2, h / 2);
+            cr.newSubPath();
+            cr.arc(x + w - rad, y + rad, rad, -Math.PI / 2, 0);
+            cr.arc(x + w - rad, y + h - rad, rad, 0, Math.PI / 2);
+            cr.arc(x + rad, y + h - rad, rad, Math.PI / 2, Math.PI);
+            cr.arc(x + rad, y + rad, rad, Math.PI, 3 * Math.PI / 2);
+            cr.closePath();
+        };
+
+        const formatScaleTemp = (celsius, isImperial) => {
+            if (isImperial)
+                return `${Math.round(celsius * 9 / 5 + 32)}°`;
+            if (celsius > 0)
+                return `+${celsius}°`;
+            return `${celsius}°`;
+        };
+
+        const previewArea = new Gtk.DrawingArea({
+            content_height: 58,
+            hexpand: true,
+            margin_top: 8,
+            margin_bottom: 8,
+            margin_start: 12,
+            margin_end: 12,
+        });
+
+        previewArea.set_draw_func((area, cr, width, height) => {
+            if (width <= 0 || height <= 0)
+                return;
+
+            const style = settings.get_string('temp-bar-style');
+            const showZero = settings.get_boolean('show-zero-mark');
+            const showDot = settings.get_boolean('show-current-temp-dot');
+            const isImperial = settings.get_string('units') === 'imperial';
+
+            // Dark popup-matching card backdrop so palette, 0° tick, and dot read accurately
+            drawRoundedRect(cr, 0.5, 0.5, width - 1, height - 1, 10);
+            cr.setSourceRGB(0.145, 0.157, 0.192);
+            cr.fillPreserve();
+            cr.setSourceRGBA(1, 1, 1, 0.09);
+            cr.setLineWidth(1);
+            cr.stroke();
+
+            const barX = 24;
+            const barW = Math.max(40, width - 48);
+            const barY = 14;
+            const barH = 6;
+            const span = SCALE_MAX_C - SCALE_MIN_C;
+
+            const stops = getScaleStops(style);
+            const grad = new Cairo.LinearGradient(barX, 0, barX + barW, 0);
+            for (const [tempC, [r, g, b]] of stops) {
+                const offset = Math.max(0, Math.min(1, (tempC - SCALE_MIN_C) / span));
+                grad.addColorStopRGB(offset, r / 255, g / 255, b / 255);
+            }
+
+            drawRoundedRect(cr, barX, barY, barW, barH, 3);
+            cr.setSource(grad);
+            cr.fill();
+
+            if (showZero) {
+                const zeroX = Math.round(barX + ((0 - SCALE_MIN_C) / span) * barW);
+                cr.setSourceRGBA(0.06, 0.075, 0.10, 0.58);
+                cr.rectangle(zeroX - 1.5, barY - 3, 3, barH + 6);
+                cr.fill();
+
+                cr.setSourceRGBA(1, 1, 1, 0.88);
+                cr.rectangle(zeroX - 0.5, barY - 2, 1, barH + 4);
+                cr.fill();
+            }
+
+            if (showDot) {
+                const dotX = Math.round(barX + ((15 - SCALE_MIN_C) / span) * barW);
+                const dotY = barY + barH / 2;
+
+                cr.setSourceRGBA(0.07, 0.086, 0.118, 0.92);
+                cr.arc(dotX, dotY, 5, 0, Math.PI * 2);
+                cr.fill();
+
+                cr.setSourceRGB(1, 1, 1);
+                cr.arc(dotX, dotY, 2.75, 0, Math.PI * 2);
+                cr.fill();
+            }
+
+            const ticks = [-20, -10, 0, 10, 20, 35];
+            cr.selectFontFace('Cantarell', Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL);
+            cr.setFontSize(10.5);
+
+            for (const tC of ticks) {
+                const tx = Math.round(barX + ((tC - SCALE_MIN_C) / span) * barW);
+                const isZero = tC === 0;
+
+                cr.setSourceRGBA(1, 1, 1, isZero && showZero ? 0.72 : 0.25);
+                cr.rectangle(tx - 0.5, barY + barH + 4, 1, 3);
+                cr.fill();
+
+                const label = formatScaleTemp(tC, isImperial);
+                cr.selectFontFace(
+                    'Cantarell',
+                    Cairo.FontSlant.NORMAL,
+                    isZero && showZero ? Cairo.FontWeight.BOLD : Cairo.FontWeight.NORMAL
+                );
+                const ext = cr.textExtents(label);
+                let textX = tx - (ext.width / 2 + ext.xBearing);
+                textX = Math.max(8, Math.min(width - ext.width - 8, textX));
+
+                cr.setSourceRGBA(1, 1, 1, isZero && showZero ? 0.95 : 0.65);
+                cr.moveTo(textX, barY + barH + 20);
+                cr.showText(label);
+            }
+        });
+
+        const previewRow = new Adw.PreferencesRow({
+            activatable: false,
+            focusable: false,
+        });
+        previewRow.set_child(previewArea);
+        forecastGroup.add(previewRow);
+
+        const dotRow = new Adw.SwitchRow({
+            title: _('Current temperature dot'),
+            subtitle: _('Mark current temperature on Today’s range bar'),
+        });
+        settings.bind('show-current-temp-dot', dotRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        forecastGroup.add(dotRow);
+
+        const zeroRow = new Adw.SwitchRow({
+            title: _('Freezing point mark (0°)'),
+            subtitle: _('Show 0° threshold on Today’s bar when in range'),
+        });
+        settings.bind('show-zero-mark', zeroRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        forecastGroup.add(zeroRow);
+
+        const previewChangedId = settings.connect('changed', (_s, key) => {
+            if (['temp-bar-style', 'show-current-temp-dot', 'show-zero-mark', 'units'].includes(key))
+                previewArea.queue_draw();
+        });
+        registerCleanup(() => settings.disconnect(previewChangedId));
+
+        return forecastGroup;
+    }
+
     _buildUnitsGroup(settings) {
         const unitsGroup = new Adw.PreferencesGroup({ title: _('Units and Format') });
 
@@ -490,6 +717,8 @@ export default class GnomeMeteoPrefs extends ExtensionPreferences {
                 dialog.present(window);
             });
             headerBar.pack_end(aboutBtn);
+            return aboutBtn;
         }
+        return null;
     }
 }

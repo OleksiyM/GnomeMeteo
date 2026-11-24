@@ -331,7 +331,7 @@
     .showcase-grid {
       display: flex;
       justify-content: center;
-      align-items: flex-start;
+      align-items: center;
       gap: 2.5rem;
       flex-wrap: wrap;
       margin-bottom: 4rem;
@@ -342,10 +342,10 @@
     }
 
     .showcase-item img {
+      display: block;
       max-width: 100%;
       height: auto;
       filter: drop-shadow(0 24px 48px rgba(0, 0, 0, 0.65));
-      border-radius: 18px;
       transition: transform 0.3s ease;
     }
 
@@ -523,13 +523,13 @@
     </div>
 
     <div class="showcase-grid">
-      <div class="showcase-item" style="max-width: 380px;">
+      <div class="showcase-item" style="max-width: 348px;">
         <img src="screenshots/screenshot-1.png" alt="GnomeMeteo Forecast Popup Preview">
-        <div class="showcase-caption" data-i18n="capPopup">Live Weather &amp; 7-Day Forecast Card</div>
+        <div class="showcase-caption" data-i18n="capPopup">Live Forecast Card with Thermal Scale, 0° Mark &amp; Today Dot</div>
       </div>
-      <div class="showcase-item" style="max-width: 500px;">
+      <div class="showcase-item" style="max-width: 550px;">
         <img src="screenshots/05-preferences.png" alt="GnomeMeteo Preferences Window">
-        <div class="showcase-caption" data-i18n="capPrefs">Clean Single-Page Libadwaita Preferences</div>
+        <div class="showcase-caption" data-i18n="capPrefs">Libadwaita Preferences with Interactive Scale Preview</div>
       </div>
     </div>
 
@@ -538,17 +538,17 @@
     <div class="features-grid">
       <div class="feature-card">
         <div class="feature-icon">🌡️</div>
-        <div class="feature-title" data-i18n="f1Title">Segmented Metric Switcher</div>
+        <div class="feature-title" data-i18n="f1Title">Temperature, Precipitation &amp; Wind</div>
         <div class="feature-desc" data-i18n="f1Desc">
-          Switch seamlessly between Temperature, Precipitation probability, and Wind speed across both the 24-hour strip and 7-day forecast rows.
+          Switch seamlessly across 24-hour and 7-day views: temperature ranges, daily precipitation volume (mm/in) alongside probability %, and wind speed with compass direction arrows.
         </div>
       </div>
 
       <div class="feature-card">
-        <div class="feature-icon">🌅</div>
-        <div class="feature-title" data-i18n="f2Title">Solar, Lunar &amp; Barometric Details</div>
+        <div class="feature-icon">🎨</div>
+        <div class="feature-title" data-i18n="f2Title">Thermal Spectrum &amp; Minimalist Themes</div>
         <div class="feature-desc" data-i18n="f2Desc">
-          Adaptive at-a-glance cards: Sunrise/Sunset with Daylight duration, Moon Phase, Humidity &amp; Dew Point, Pressure, Wind, UV Index and Visibility — only what your provider actually reports.
+          Physically grounded −20°C to +35°C thermal gradients, Beaufort wind colors, and monochrome Libadwaita mode — with Today’s current-temperature dot, 0° freezing mark, and live Cairo preview in Preferences.
         </div>
       </div>
 
@@ -556,15 +556,15 @@
         <div class="feature-icon">🌍</div>
         <div class="feature-title" data-i18n="f3Title">Keyless Multi-Provider Engine</div>
         <div class="feature-desc" data-i18n="f3Desc">
-          Choose between Open-Meteo (with ECMWF IFS, DWD ICON, NOAA GFS models), MET Norway, or US NOAA NWS. Zero accounts, zero API keys, zero telemetry.
+          Choose between Open-Meteo (Best match, ECMWF IFS, DWD ICON, NOAA GFS, GEM), MET Norway, or US NOAA NWS. Zero accounts, zero API keys, zero telemetry.
         </div>
       </div>
 
       <div class="feature-card">
-        <div class="feature-icon">📊</div>
-        <div class="feature-title" data-i18n="f4Title">7-Day Gradient Visualizer</div>
+        <div class="feature-icon">🌅</div>
+        <div class="feature-title" data-i18n="f4Title">Solar, Lunar &amp; Atmospheric Tiles</div>
         <div class="feature-desc" data-i18n="f4Desc">
-          Native St horizontal temperature range bars showing weekly minimum and maximum temperature spans at a glance.
+          Balanced 2×2 detail cards: Sunrise &amp; Sunset with Daylight duration, astronomical Moon Phase, Humidity &amp; Dew Point, Pressure, Wind, UV Index, and Visibility — only what your provider reports.
         </div>
       </div>
 
@@ -578,9 +578,9 @@
 
       <div class="feature-card">
         <div class="feature-icon">🌐</div>
-        <div class="feature-title" data-i18n="f6Title">Full Localization &amp; Units</div>
+        <div class="feature-title" data-i18n="f6Title">Unified Live Localization &amp; Units</div>
         <div class="feature-desc" data-i18n="f6Desc">
-          Complete Ukrainian, English, and Russian translations. Instant switching between Metric (°C, km/h, mmHg) and Imperial (°F, mph, inHg) systems.
+          Complete Ukrainian, English, and Russian translations synced instantly across both the GNOME Shell popup and Libadwaita preferences, with Metric (°C, km/h, mm, mmHg) and Imperial (°F, mph, in, inHg) units.
         </div>
       </div>
     </div>
@@ -612,21 +612,21 @@
         installVerify: '🔒 SHA-256 + Sigstore SLSA verification',
         copyBtn: 'Copy',
         copiedBtn: 'Copied!',
-        capPopup: 'Live Weather & 7-Day Forecast Card',
-        capPrefs: 'Clean Single-Page Libadwaita Preferences',
+        capPopup: 'Live Forecast Card with Thermal Scale, 0° Mark & Today Dot',
+        capPrefs: 'Libadwaita Preferences with Interactive Scale Preview',
         secFeatures: 'Designed for the Modern GNOME Desktop',
-        f1Title: 'Segmented Metric Switcher',
-        f1Desc: 'Switch seamlessly between Temperature, Precipitation probability, and Wind speed across both the 24-hour strip and 7-day forecast rows.',
-        f2Title: 'Solar, Lunar & Barometric Details',
-        f2Desc: 'Adaptive at-a-glance cards: Sunrise/Sunset with Daylight duration, Moon Phase, Humidity & Dew Point, Pressure, Wind, UV Index and Visibility — only what your provider actually reports.',
+        f1Title: 'Temperature, Precipitation & Wind',
+        f1Desc: 'Switch seamlessly across 24-hour and 7-day views: temperature ranges, daily precipitation volume (mm/in) alongside probability %, and wind speed with compass direction arrows.',
+        f2Title: 'Thermal Spectrum & Minimalist Themes',
+        f2Desc: 'Physically grounded −20°C to +35°C thermal gradients, Beaufort wind colors, and monochrome Libadwaita mode — with Today’s current-temperature dot, 0° freezing mark, and live Cairo preview in Preferences.',
         f3Title: 'Keyless Multi-Provider Engine',
-        f3Desc: 'Choose between Open-Meteo (with ECMWF IFS, DWD ICON, NOAA GFS models), MET Norway, or US NOAA NWS. Zero accounts, zero API keys, zero telemetry.',
-        f4Title: '7-Day Gradient Visualizer',
-        f4Desc: 'Native St horizontal temperature range bars showing weekly minimum and maximum temperature spans at a glance.',
+        f3Desc: 'Choose between Open-Meteo (Best match, ECMWF IFS, DWD ICON, NOAA GFS, GEM), MET Norway, or US NOAA NWS. Zero accounts, zero API keys, zero telemetry.',
+        f4Title: 'Solar, Lunar & Atmospheric Tiles',
+        f4Desc: 'Balanced 2×2 detail cards: Sunrise & Sunset with Daylight duration, astronomical Moon Phase, Humidity & Dew Point, Pressure, Wind, UV Index, and Visibility — only what your provider reports.',
         f5Title: 'Smart Location Discovery',
         f5Desc: 'Automatic detection via system GeoClue or public IP fallback, plus instant localized city search with coordinate subtitles in Libadwaita preferences.',
-        f6Title: 'Full Localization & Units',
-        f6Desc: 'Complete Ukrainian, English, and Russian translations. Instant switching between Metric (°C, km/h, mmHg) and Imperial (°F, mph, inHg) systems.',
+        f6Title: 'Unified Live Localization & Units',
+        f6Desc: 'Complete Ukrainian, English, and Russian translations synced instantly across both the GNOME Shell popup and Libadwaita preferences, with Metric (°C, km/h, mm, mmHg) and Imperial (°F, mph, in, inHg) units.',
         secBannerTitle: '🛡️ Verifiable Supply-Chain Security',
         secBannerDesc: 'Every GnomeMeteo release is built on GitHub Actions, verified with <code>SHA256SUMS</code>, and cryptographically attested with Sigstore SLSA v1 provenance. The installer automatically verifies checksums and provenance via <code>gh attestation verify</code> (or enforce strictly with <code>--require-provenance</code>).'
       },
@@ -639,21 +639,21 @@
         installVerify: '🔒 Перевірка SHA-256 + Sigstore SLSA',
         copyBtn: 'Копіювати',
         copiedBtn: 'Скопійовано!',
-        capPopup: 'Картка поточної погоди та прогнозу на 7 днів',
-        capPrefs: 'Лаконічні односторінкові налаштування Libadwaita',
+        capPopup: 'Картка прогнозу з термошкалою, позначкою 0° та маркером «Зараз»',
+        capPrefs: 'Налаштування Libadwaita з інтерактивним прев’ю шкали',
         secFeatures: 'Створено для сучасного робочого столу GNOME',
-        f1Title: 'Перемикач погодних метрик',
-        f1Desc: 'Миттєво перемикайтеся між Температурою, Ймовірністю опадів та Швидкістю вітру одночасно для погодинного та 7-денного прогнозу.',
-        f2Title: 'Світловий день, Місяць та Тиск',
-        f2Desc: 'Адаптивні картки: схід і захід сонця з тривалістю дня, фаза Місяця, вологість і точка роси, тиск, вітер, УФ-індекс і видимість — лише те, що реально віддає провайдер.',
+        f1Title: 'Температура, Опади та Вітер',
+        f1Desc: 'Миттєво перемикайте погодинний та 7-денний прогноз: діапазони температур, добовий об’єм опадів (мм/in) поруч із ймовірністю % та швидкість вітру зі стрілками напрямку.',
+        f2Title: 'Живий спектр та стримана тема',
+        f2Desc: 'Фізично точна термошкала від −20°C до +35°C, кольори сили вітру та монохромний режим Libadwaita — з точкою поточної температури, позначкою 0° і живим прев’ю в налаштуваннях.',
         f3Title: 'Кілька провайдерів без ключів',
-        f3Desc: 'Обирайте між Open-Meteo (моделі ECMWF IFS, DWD ICON, NOAA GFS), MET Norway або NOAA NWS. Жодних облікових записів, API-ключів чи телеметрії.',
-        f4Title: '7-денна градієнтна шкала',
-        f4Desc: 'Нативні градієнтні смуги температурного діапазону на 7 днів, що наочно показують мінімум та максимум тижня.',
+        f3Desc: 'Обирайте між Open-Meteo (Best match, ECMWF IFS, DWD ICON, NOAA GFS, GEM), MET Norway або NOAA NWS. Жодних облікових записів, API-ключів чи телеметрії.',
+        f4Title: 'Сонце, Місяць та деталі атмосфери',
+        f4Desc: 'Збалансовані картки 2×2: схід і захід із тривалістю дня, астрономічна фаза Місяця, вологість і точка роси, тиск, вітер, УФ-індекс і видимість — лише реальні дані провайдера.',
         f5Title: 'Розумний пошук та геолокація',
         f5Desc: 'Автоматичне визначення через системний GeoClue або за IP-адресою, а також зручний пошук міст рідною мовою у налаштуваннях.',
-        f6Title: 'Повна локалізація та одиниці',
-        f6Desc: 'Якісні переклади українською, англійською та російською мовами. Підтримка метричної (°C, км/год, мм рт. ст.) та імперської (°F, миль/год, inHg) систем.',
+        f6Title: 'Єдина жива локалізація та одиниці',
+        f6Desc: 'Повні переклади українською, англійською та російською мовами з миттєвим перемиканням одночасно у вікні прогнозу та в налаштуваннях Libadwaita. Метрична та імперська системи.',
         secBannerTitle: '🛡️ Криптографічний захист релізів (SLSA v1)',
         secBannerDesc: 'Кожен реліз GnomeMeteo збирається у GitHub Actions, перевіряється за <code>SHA256SUMS</code> та підписується сертифікатом Sigstore SLSA v1. Інсталятор автоматично перевіряє цілісність та криптографічний підпис через <code>gh attestation verify</code> (або суворо з прапорцем <code>--require-provenance</code>).'
       },
@@ -666,21 +666,21 @@
         installVerify: '🔒 Проверка SHA-256 + Sigstore SLSA',
         copyBtn: 'Копировать',
         copiedBtn: 'Скопировано!',
-        capPopup: 'Карточка текущей погоды и прогноза на 7 дней',
-        capPrefs: 'Лаконичные одностраничные настройки Libadwaita',
+        capPopup: 'Карточка прогноза с термошкалой, отметкой 0° и маркером «Сейчас»',
+        capPrefs: 'Настройки Libadwaita с интерактивным превью шкалы',
         secFeatures: 'Создано для современного рабочего стола GNOME',
-        f1Title: 'Переключатель погодных метрик',
-        f1Desc: 'Мгновенно переключайтесь между Температурой, Вероятностью осадков и Скоростью ветра одновременно для почасового и 7-дневного прогноза.',
-        f2Title: 'Световой день, Луна и Давление',
-        f2Desc: 'Адаптивные карточки: восход и закат с длиной дня, фаза Луны, влажность и точка росы, давление, ветер, УФ-индекс и видимость — только то, что реально отдаёт провайдер.',
+        f1Title: 'Температура, Осадки и Ветер',
+        f1Desc: 'Мгновенно переключайте почасовой и 7-дневный прогноз: диапазоны температур, суточный объём осадков (мм/in) рядом с вероятностью % и скорость ветра со стрелками направления.',
+        f2Title: 'Живой спектр и сдержанная тема',
+        f2Desc: 'Физически точная термошкала от −20°C до +35°C, цвета силы ветра и монохромный режим Libadwaita — с точкой текущей температуры, отметкой 0° и живым превью в настройках.',
         f3Title: 'Несколько провайдеров без ключей',
-        f3Desc: 'Выбирайте между Open-Meteo (модели ECMWF IFS, DWD ICON, NOAA GFS), MET Norway или NOAA NWS. Никаких аккаунтов, API-ключей и телеметрии.',
-        f4Title: '7-дневная градиентная шкала',
-        f4Desc: 'Нативные градиентные полосы температурного диапазона на 7 дней, наглядно показывающие минимум и максимум недели.',
+        f3Desc: 'Выбирайте между Open-Meteo (Best match, ECMWF IFS, DWD ICON, NOAA GFS, GEM), MET Norway или NOAA NWS. Никаких аккаунтов, API-ключей и телеметрии.',
+        f4Title: 'Солнце, Луна и детали атмосферы',
+        f4Desc: 'Сбалансированные карточки 2×2: восход и закат с длиной дня, астрономическая фаза Луны, влажность и точка росы, давление, ветер, УФ-индекс и видимость — только реальные данные провайдера.',
         f5Title: 'Умный поиск и геолокация',
         f5Desc: 'Автоматическое определение через системный GeoClue или по IP-адресу, а также удобный поиск городов на родном языке в настройках.',
-        f6Title: 'Полная локализация и единицы',
-        f6Desc: 'Полный перевод на украинский, английский и русский языки. Поддержка метрической (°C, км/ч, мм рт. ст.) и имперской (°F, миль/ч, inHg) систем.',
+        f6Title: 'Единая живая локализация и единицы',
+        f6Desc: 'Полный перевод на украинский, английский и русский языки с мгновенным переключением одновременно в окне прогноза и в настройках Libadwaita. Метрическая и имперская системы.',
         secBannerTitle: '🛡️ Криптографическая защита релизов (SLSA v1)',
         secBannerDesc: 'Каждый релиз GnomeMeteo собирается в GitHub Actions, проверяется по <code>SHA256SUMS</code> и подписывается сертификатом Sigstore SLSA v1. Инсталлятор автоматически проверяет целостность и подпись через <code>gh attestation verify</code> (или в строгом режиме с флагом <code>--require-provenance</code>).'
       }

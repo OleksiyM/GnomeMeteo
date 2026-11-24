@@ -16,6 +16,7 @@ const reloadStamp = import.meta.url.includes('?') ? `?${import.meta.url.split('?
 const { WeatherClient, deriveScene, ensureDesktopEntry, removeDesktopEntry } =
     await import(`./weather.js${reloadStamp}`);
 const { moonPhase } = await import(`./moon.js${reloadStamp}`);
+const { tempToHex, precipBarColors, windBarColors } = await import(`./thermal.js${reloadStamp}`);
 
 const MESSAGES = {
     uk: {
@@ -35,6 +36,8 @@ const MESSAGES = {
         dailyTitle: 'ПРОГНОЗ НА {n} ДНІВ',
         windUnit: 'км/год',
         windUnitImperial: 'миль/год',
+        precipUnit: 'мм',
+        precipUnitImperial: 'in',
         now: 'Зараз',
         max: 'Макс.',
         min: 'Мін.',
@@ -124,6 +127,8 @@ const MESSAGES = {
         dailyTitle: 'ПРОГНОЗ НА {n} ДНЕЙ',
         windUnit: 'км/ч',
         windUnitImperial: 'миль/ч',
+        precipUnit: 'мм',
+        precipUnitImperial: 'in',
         now: 'Сейчас',
         max: 'Макс.',
         min: 'Мин.',
@@ -213,6 +218,8 @@ const MESSAGES = {
         dailyTitle: '{n}-DAY FORECAST',
         windUnit: 'km/h',
         windUnitImperial: 'mph',
+        precipUnit: 'mm',
+        precipUnitImperial: 'in',
         now: 'Now',
         max: 'Max.',
         min: 'Min.',
@@ -417,9 +424,28 @@ function uvLevelIndex(uv) {
     return uv < 3 ? 0 : uv < 6 ? 1 : uv < 8 ? 2 : uv < 11 ? 3 : 4;
 }
 
+const WIND_ARROWS = ['↓', '↙', '←', '↖', '↑', '↗', '→', '↘'];
+
 /** Wind direction in degrees -> 8-point compass label. */
 function compassLabel(deg, dt) {
     return dt.compass[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+}
+
+function compassArrowLabel(deg, dt) {
+    const idx = Math.round((((deg % 360) + 360) % 360) / 45) % 8;
+    return `${WIND_ARROWS[idx]} ${dt.compass[idx]}`;
+}
+
+function fmtPrecipSum(mm, isImperial, t) {
+    if (isMissing(mm)) return null;
+    if (isImperial) {
+        const inches = mm / 25.4;
+        if (inches < 0.01) return null;
+        return `${inches >= 1 ? inches.toFixed(1) : inches.toFixed(2)} ${t.precipUnitImperial}`;
+    }
+    if (mm < 0.05) return null;
+    const text = mm >= 10 ? String(Math.round(mm)) : mm.toFixed(1);
+    return `${text} ${t.precipUnit}`;
 }
 
 function toDisplayVisibility(meters, isImperial, dt) {
@@ -615,6 +641,13 @@ export const MeteoIndicator = GObject.registerClass(
                     if (settings.get_boolean('auto-location')) ensureDesktopEntry();
                     else removeDesktopEntry();
                     this._coordinator.fetch();
+                } else if (['temp-bar-style', 'show-current-temp-dot', 'show-zero-mark'].includes(key)) {
+                    if (this._dailySlots.length > 0) {
+                        this._updateDailyRows();
+                    } else if (this._weatherData) {
+                        const isAuto = settings.get_boolean('auto-location');
+                        this._onWeatherReceived(this._weatherData, isAuto);
+                    }
                 } else if (['location-latitude', 'location-longitude', 'provider', 'om-model'].includes(key)) {
                     this._coordinator.fetch();
                 }
@@ -777,7 +810,7 @@ export const MeteoIndicator = GObject.registerClass(
             prefsBtn.connect('clicked', () => {
                 this._tooltipHelper.hide();
                 this.menu.close();
-                this._ext.openPreferences();
+                Promise.resolve(this._ext.openPreferences()).catch(() => {});
             });
 
             topRow.add_child(refreshBtn);
@@ -785,39 +818,58 @@ export const MeteoIndicator = GObject.registerClass(
             topRow.add_child(prefsBtn);
             headerContainer.add_child(topRow);
 
+            const dispCurrentTemp = toDisplayTemp(current.temp, isImperial);
+            const opticalPad = dispCurrentTemp === null
+                ? ''
+                : (dispCurrentTemp >= 0 ? 'padding-left: 14px;' : 'padding-right: 4px;');
+
             const tempLabel = new St.Label({
                 text: fmtTemp(current.temp, isImperial),
-                style: 'font-size: 56px; font-weight: 300; color: #ffffff; text-align: center; margin-top: 1px; margin-bottom: 1px;',
+                style: `font-size: 56px; font-weight: 300; color: #ffffff; text-align: center; margin-top: 0px; margin-bottom: 0px; ${opticalPad}`,
                 x_align: Clutter.ActorAlign.CENTER,
             });
             headerContainer.add_child(tempLabel);
 
+            const condRow = new St.BoxLayout({
+                orientation: Clutter.Orientation.HORIZONTAL,
+                x_align: Clutter.ActorAlign.CENTER,
+                y_align: Clutter.ActorAlign.CENTER,
+                style: 'spacing: 6px; margin-top: 1px;',
+            });
+            const condIcon = new St.Icon({
+                icon_name: getSymbolicIcon(sceneInfo.scene, current.isDay),
+                icon_size: 16,
+                style_class: 'system-status-icon',
+                style: 'color: rgba(255, 255, 255, 0.92);',
+                y_align: Clutter.ActorAlign.CENTER,
+            });
             const condText = t.wmo[current.code] || sceneInfo.desc || t.wmo[0];
             const condLabel = new St.Label({
                 text: condText,
-                style: 'font-size: 14.5px; font-weight: 500; color: #ffffff; text-align: center;',
-                x_align: Clutter.ActorAlign.CENTER,
+                style: 'font-size: 15px; font-weight: 600; color: #ffffff;',
+                y_align: Clutter.ActorAlign.CENTER,
             });
-            headerContainer.add_child(condLabel);
+            condLabel.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+            condRow.add_child(condIcon);
+            condRow.add_child(condLabel);
+            headerContainer.add_child(condRow);
 
+            const metaParts = [];
+            if (!isMissing(current.feels))
+                metaParts.push(`${t.feelsLikeShort} ${fmtTemp(current.feels, isImperial)}`);
             if (dailyArr.length > 0 && !isMissing(dailyArr[0].tmax) && !isMissing(dailyArr[0].tmin)) {
                 const todayMax = toDisplayTemp(dailyArr[0].tmax, isImperial);
                 const todayMin = toDisplayTemp(dailyArr[0].tmin, isImperial);
-                const rangeLabel = new St.Label({
-                    text: `${t.max} ${todayMax}° · ${t.min} ${todayMin}°`,
-                    style: 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.82); text-align: center; margin-top: 3px;',
-                    x_align: Clutter.ActorAlign.CENTER,
-                });
-                headerContainer.add_child(rangeLabel);
+                metaParts.push(`↑ ${todayMax}°  ↓ ${todayMin}°`);
             }
-
-            if (!isMissing(current.feels)) {
-                const feelsLabel = new St.Label({
-                    text: `${t.feelsLikeShort} ${fmtTemp(current.feels, isImperial)}`,
-                    style: 'font-size: 12px; font-weight: 400; color: rgba(255, 255, 255, 0.72); text-align: center; margin-top: 2px;',
+            if (metaParts.length > 0) {
+                const metaLabel = new St.Label({
+                    text: metaParts.join('  ·  '),
+                    style: 'font-size: 12.5px; font-weight: 500; color: rgba(255, 255, 255, 0.68); text-align: center; margin-top: 5px;',
                     x_align: Clutter.ActorAlign.CENTER,
                 });
-                headerContainer.add_child(feelsLabel);
+                metaLabel.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+                headerContainer.add_child(metaLabel);
             }
 
             headerItem.add_child(headerContainer);
@@ -1024,7 +1076,7 @@ export const MeteoIndicator = GObject.registerClass(
                     const dataIdx = this._hourlyStartIndex + i;
                     const col = new St.BoxLayout({
                         orientation: Clutter.Orientation.VERTICAL,
-                        style: 'spacing: 6px; min-width: 48px;',
+                        style: 'spacing: 6px; min-width: 50px;',
                         x_align: Clutter.ActorAlign.CENTER,
                     });
 
@@ -1045,6 +1097,14 @@ export const MeteoIndicator = GObject.registerClass(
                         x_align: Clutter.ActorAlign.CENTER,
                     });
 
+                    const dirLab = new St.Label({
+                        text: '',
+                        style: 'font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, 0.75); height: 18px;',
+                        x_align: Clutter.ActorAlign.CENTER,
+                        y_align: Clutter.ActorAlign.CENTER,
+                        visible: false,
+                    });
+
                     const valLab = new St.Label({
                         text: '',
                         style: 'font-size: 13px; font-weight: 600; color: #ffffff;',
@@ -1053,10 +1113,11 @@ export const MeteoIndicator = GObject.registerClass(
 
                     col.add_child(tLab);
                     col.add_child(hIcon);
+                    col.add_child(dirLab);
                     col.add_child(valLab);
                     hourlyRow.add_child(col);
 
-                    this._hourlySlots.push({ dataIdx, icon: hIcon, val: valLab });
+                    this._hourlySlots.push({ isNow: (i === 0), dataIdx, icon: hIcon, dirLab, val: valLab });
                 }
 
                 hScroll.set_child(hourlyRow);
@@ -1103,7 +1164,7 @@ export const MeteoIndicator = GObject.registerClass(
                     const dayData = dailyArr[i];
                     const dayRow = new St.BoxLayout({
                         x_expand: true,
-                        style: 'spacing: 8px; padding: 2px 0;',
+                        style: 'spacing: 7px; padding: 2px 0;',
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
@@ -1120,36 +1181,69 @@ export const MeteoIndicator = GObject.registerClass(
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
-                    const spacer = new St.Widget({
-                        x_expand: true,
-                    });
-
                     const leftLab = new St.Label({
                         text: '',
-                        style: 'font-size: 13px; color: rgba(255, 255, 255, 0.55); min-width: 28px; text-align: right;',
+                        style: 'font-size: 13px; color: rgba(255, 255, 255, 0.55); text-align: right;',
+                        x_expand: true,
+                        x_align: Clutter.ActorAlign.END,
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
                     const barBox = new St.Widget({
-                        style: `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`,
+                        style: `width: ${BAR_WIDTH}px; height: 11px;`,
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
+                    const barTrack = new St.Widget({
+                        style_class: 'meteo-range-track',
+                        style: `margin-left: 0px; margin-top: 3px; width: ${BAR_WIDTH}px; height: 5px;`,
+                    });
+                    barBox.add_child(barTrack);
+
                     const barFill = new St.Widget({
                         style_class: 'meteo-range-fill',
-                        style: 'height: 5px; border-radius: 3px;',
+                        style: 'margin-top: 3px; height: 5px;',
                     });
                     barBox.add_child(barFill);
 
+                    let zeroHalo = null;
+                    let zeroTick = null;
+                    let dotHalo = null;
+                    let dotCore = null;
+                    if (i === 0) {
+                        zeroHalo = new St.Widget({
+                            style_class: 'meteo-zero-halo',
+                            visible: false,
+                        });
+                        barBox.add_child(zeroHalo);
+
+                        zeroTick = new St.Widget({
+                            style_class: 'meteo-zero-tick',
+                            visible: false,
+                        });
+                        barBox.add_child(zeroTick);
+
+                        dotHalo = new St.Widget({
+                            style_class: 'meteo-range-dot-halo',
+                            visible: false,
+                        });
+                        barBox.add_child(dotHalo);
+
+                        dotCore = new St.Widget({
+                            style_class: 'meteo-range-dot',
+                            visible: false,
+                        });
+                        barBox.add_child(dotCore);
+                    }
+
                     const rightLab = new St.Label({
                         text: '',
-                        style: 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 30px; text-align: right;',
+                        style: 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 36px; text-align: right;',
                         y_align: Clutter.ActorAlign.CENTER,
                     });
 
                     dayRow.add_child(nameLab);
                     dayRow.add_child(dIcon);
-                    dayRow.add_child(spacer);
                     dayRow.add_child(leftLab);
                     dayRow.add_child(barBox);
                     dayRow.add_child(rightLab);
@@ -1161,7 +1255,12 @@ export const MeteoIndicator = GObject.registerClass(
                         icon: dIcon,
                         leftLab,
                         barBox,
+                        barTrack,
                         barFill,
+                        zeroHalo,
+                        zeroTick,
+                        dotHalo,
+                        dotCore,
                         rightLab,
                     });
                 }
@@ -1179,20 +1278,22 @@ export const MeteoIndicator = GObject.registerClass(
                 style: 'spacing: 8px;',
             });
 
-            const makeTile = (iconSpec, title, value, subtext, tooltipText = null, valFontSize = '14.5px') => {
+            const makeTile = (iconSpec, title, value, subtext, tooltipText = null, valFontSize = '15.5px') => {
+                const minContentH = subtext ? 54 : 42;
                 const tile = new St.BoxLayout({
                     orientation: Clutter.Orientation.VERTICAL,
                     x_expand: true,
+                    y_expand: true,
                     reactive: !!tooltipText,
                     can_focus: false,
-                    style: 'background-color: rgba(255, 255, 255, 0.07); border-radius: 14px; padding: 9px 10px; min-height: 64px;',
+                    style: `background-color: rgba(255, 255, 255, 0.07); border-radius: 14px; padding: 11px 12px; min-height: ${minContentH}px;`,
                 });
 
                 const headRow = new St.BoxLayout({
                     orientation: Clutter.Orientation.HORIZONTAL,
                     x_expand: true,
                     y_align: Clutter.ActorAlign.CENTER,
-                    style: 'spacing: 5px; margin-bottom: 5px;',
+                    style: 'spacing: 5px;',
                 });
                 if (iconSpec) {
                     const iconProps = {
@@ -1216,8 +1317,10 @@ export const MeteoIndicator = GObject.registerClass(
 
                 const vLab = new St.Label({
                     text: value,
-                    style: `font-size: ${valFontSize}; font-weight: 600; color: #ffffff; margin: 1px 0;`,
+                    style: `font-size: ${valFontSize}; font-weight: 600; color: #ffffff; margin: ${subtext ? '4px 0' : '4px 0 0 0'};`,
                     x_expand: true,
+                    y_expand: true,
+                    y_align: Clutter.ActorAlign.CENTER,
                 });
                 vLab.clutter_text.ellipsize = Pango.EllipsizeMode.END;
                 tile.add_child(vLab);
@@ -1225,7 +1328,7 @@ export const MeteoIndicator = GObject.registerClass(
                 if (subtext) {
                     const sLab = new St.Label({
                         text: subtext,
-                        style: 'font-size: 11.5px; color: rgba(255, 255, 255, 0.72); margin-top: 2px;',
+                        style: 'font-size: 11.5px; color: rgba(255, 255, 255, 0.68);',
                         x_expand: true,
                     });
                     sLab.clutter_text.ellipsize = Pango.EllipsizeMode.END;
@@ -1279,7 +1382,7 @@ export const MeteoIndicator = GObject.registerClass(
                 ? `↑${sunriseStr} · ↓${sunsetStr}`
                 : `↑ ${sunriseStr}  ↓ ${sunsetStr}`;
             const sunTipStr = `↑ ${sunriseFullStr}  ↓ ${sunsetFullStr}${daylightSub ? ` · ${daylightSub}` : ''}`;
-            const sunFontSize = is12h ? '12.5px' : '14.5px';
+            const sunFontSize = is12h ? '12.5px' : '15px';
             const moon = getMoonInfo(lang);
 
             row1.add_child(makeTile('daytime-sunrise-symbolic', dt.sunriseSunset, sunValStr, daylightSub, sunTipStr, sunFontSize));
@@ -1379,37 +1482,93 @@ export const MeteoIndicator = GObject.registerClass(
             const { hourly, current } = this._weatherData;
             if (!Array.isArray(hourly.temp)) return;
             const isImperial = this._settings.get_string('units') === 'imperial';
+            const lang = resolveLang(this._settings);
+            const t = MESSAGES[lang] || MESSAGES.uk;
+            const dt = t.details;
 
             for (const slot of this._hourlySlots) {
                 const dataIdx = slot.dataIdx;
                 if (dataIdx === undefined || dataIdx >= hourly.temp.length) continue;
 
                 if (this._hourlyMetric === 'precip') {
-                    slot.icon.icon_name = 'weather-showers-symbolic';
                     const rawProb = hourly.precipProb ? hourly.precipProb[dataIdx] : null;
                     const prob = isMissing(rawProb) ? null : Math.round(rawProb);
+                    const rawMm = hourly.precip ? hourly.precip[dataIdx] : null;
+                    const hCode = slot.isNow
+                        ? current.code
+                        : (hourly.code ? hourly.code[dataIdx] : current.code);
+                    const hScene = deriveScene({
+                        code: hCode,
+                        visibility: null,
+                        cape: 0,
+                        isDay: true,
+                    });
+                    const isDry = (prob === null || prob < 15) && (isMissing(rawMm) || rawMm < 0.1);
+
+                    slot.dirLab?.hide();
+                    slot.icon.show();
+                    if (isDry) {
+                        slot.icon.icon_name = null;
+                        slot.icon.gicon = this._assetGIcon('meteo-humidity-symbolic.svg');
+                        slot.icon.opacity = 95;
+                    } else {
+                        slot.icon.gicon = null;
+                        if (hScene.scene === 'snow')
+                            slot.icon.icon_name = 'weather-snow-symbolic';
+                        else if (hScene.scene === 'storm' || hScene.scene === 'hail')
+                            slot.icon.icon_name = 'weather-severe-alert-symbolic';
+                        else
+                            slot.icon.icon_name = 'weather-showers-symbolic';
+                        slot.icon.opacity = 255;
+                    }
+
                     slot.val.text = prob === null ? '—' : `${prob}%`;
-                    slot.val.style = !prob
-                        ? 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.4);'
+                    slot.val.style = (prob === null || prob < 10)
+                        ? 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.42);'
                         : 'font-size: 13px; font-weight: 600; color: #ffffff;';
-                    slot.icon.opacity = !prob ? 130 : 255;
                 } else if (this._hourlyMetric === 'wind') {
-                    slot.icon.icon_name = 'weather-windy-symbolic';
-                    slot.icon.opacity = 255;
-                    const windSpeed = toDisplayWind(hourly.wind ? hourly.wind[dataIdx] : null, isImperial);
+                    const rawWindDeg = slot.isNow && !isMissing(current.windDeg)
+                        ? current.windDeg
+                        : (hourly.windDeg ? hourly.windDeg[dataIdx] : null);
+                    if (!isMissing(rawWindDeg) && slot.dirLab) {
+                        slot.icon.hide();
+                        slot.dirLab.text = compassArrowLabel(rawWindDeg, dt);
+                        slot.dirLab.show();
+                    } else {
+                        slot.dirLab?.hide();
+                        slot.icon.gicon = null;
+                        slot.icon.icon_name = 'weather-windy-symbolic';
+                        slot.icon.opacity = 255;
+                        slot.icon.show();
+                    }
+
+                    const rawWind = slot.isNow && !isMissing(current.wind)
+                        ? current.wind
+                        : (hourly.wind ? hourly.wind[dataIdx] : null);
+                    const windSpeed = toDisplayWind(rawWind, isImperial);
                     slot.val.text = windSpeed === null ? '—' : `${windSpeed}`;
                     slot.val.style = 'font-size: 13px; font-weight: 600; color: #ffffff;';
                 } else {
-                    const isDay = hourly.isDay ? hourly.isDay[dataIdx] : current.isDay;
-                    const hScene = deriveScene({
-                        code: hourly.code ? hourly.code[dataIdx] : current.code,
-                        visibility: null,
-                        cape: 0,
-                        isDay,
-                    });
+                    const isDay = slot.isNow
+                        ? Boolean(current.isDay)
+                        : (hourly.isDay ? hourly.isDay[dataIdx] : current.isDay);
+                    const hScene = slot.isNow
+                        ? deriveScene(current)
+                        : deriveScene({
+                            code: hourly.code ? hourly.code[dataIdx] : current.code,
+                            visibility: null,
+                            cape: 0,
+                            isDay,
+                        });
+                    const rawTemp = slot.isNow && !isMissing(current.temp)
+                        ? current.temp
+                        : hourly.temp[dataIdx];
+                    slot.dirLab?.hide();
+                    slot.icon.gicon = null;
                     slot.icon.opacity = 255;
                     slot.icon.icon_name = getSymbolicIcon(hScene.scene, isDay);
-                    slot.val.text = fmtTemp(hourly.temp[dataIdx], isImperial);
+                    slot.icon.show();
+                    slot.val.text = fmtTemp(rawTemp, isImperial);
                     slot.val.style = 'font-size: 13px; font-weight: 600; color: #ffffff;';
                 }
             }
@@ -1418,17 +1577,27 @@ export const MeteoIndicator = GObject.registerClass(
         _updateDailyRows() {
             if (!this._dailySlots || this._dailySlots.length === 0) return;
             const isImperial = this._settings.get_string('units') === 'imperial';
+            const barStyle = this._settings.get_string('temp-bar-style');
+            const showDot = this._settings.get_boolean('show-current-temp-dot');
+            const showZero = this._settings.get_boolean('show-zero-mark');
+            const currentTemp = this._weatherData?.current?.temp;
+            const lang = resolveLang(this._settings);
+            const t = MESSAGES[lang] || MESSAGES.uk;
+            const dt = t.details;
 
             let globalMin = Infinity;
             let globalMax = -Infinity;
             let maxWind = 1;
+            let maxPrecipSum = 1;
             for (const slot of this._dailySlots) {
                 const d = slot.data;
                 if (!isMissing(d.tmin) && d.tmin < globalMin) globalMin = d.tmin;
                 if (!isMissing(d.tmax) && d.tmax > globalMax) globalMax = d.tmax;
                 if ((d.windMax ?? 0) > maxWind) maxWind = d.windMax;
+                if (!isMissing(d.precipSum) && d.precipSum > maxPrecipSum) maxPrecipSum = d.precipSum;
             }
             const rangeSpan = Math.max(1, globalMax - globalMin);
+            const BAR_WIDTH = 104;
 
             for (const slot of this._dailySlots) {
                 const d = slot.data;
@@ -1441,54 +1610,144 @@ export const MeteoIndicator = GObject.registerClass(
                 slot.icon.show();
                 slot.icon.icon_name = getSymbolicIcon(dScene.scene, true);
 
-                const BAR_WIDTH = 104;
-
                 if (this._hourlyMetric === 'precip') {
                     const hasProb = !isMissing(d.precipProb);
                     const prob = hasProb ? Math.round(d.precipProb) : 0;
+                    const sumStr = fmtPrecipSum(d.precipSum, isImperial, t);
                     slot.leftLab.show();
-                    slot.leftLab.text = '💧';
-                    slot.leftLab.style = `font-size: 11px; min-width: 28px; text-align: right; opacity: ${prob >= 20 ? '0.95' : (prob > 0 ? '0.6' : '0.25')};`;
+                    slot.leftLab.text = sumStr ?? '—';
+                    slot.leftLab.style = sumStr
+                        ? 'font-size: 12px; font-weight: 500; color: rgba(255, 255, 255, 0.62); text-align: right;'
+                        : 'font-size: 12px; font-weight: 500; color: rgba(255, 255, 255, 0.28); text-align: right;';
 
-                    slot.barBox.style = `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`;
-                    const fillW = Math.max(0, Math.min(BAR_WIDTH, Math.round((prob / 100) * BAR_WIDTH)));
-                    slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 5px; background-gradient-direction: none; background-color: #3898ec; border-radius: 3px;`;
+                    const precipRatio = hasProb
+                        ? (prob < 5 ? 0 : prob / 100)
+                        : (!isMissing(d.precipSum) && d.precipSum >= 0.05 ? d.precipSum / maxPrecipSum : 0);
+                    const fillW = precipRatio <= 0
+                        ? 0
+                        : Math.max(4, Math.min(BAR_WIDTH, Math.round(precipRatio * BAR_WIDTH)));
+                    if (fillW > 0) {
+                        const colors = precipBarColors(hasProb ? prob : Math.round(precipRatio * 100), barStyle);
+                        slot.barFill.show();
+                        slot.barFill.style = `margin-left: 0px; margin-top: 3px; width: ${fillW}px; height: 5px; background-gradient-direction: horizontal; background-gradient-start: ${colors.start}; background-gradient-end: ${colors.end}; border-radius: 3px;`;
+                    } else {
+                        slot.barFill.hide();
+                    }
+                    slot.zeroHalo?.hide();
+                    slot.zeroTick?.hide();
+                    slot.dotHalo?.hide();
+                    slot.dotCore?.hide();
 
-                    slot.rightLab.text = hasProb ? `${prob}%` : '—';
-                    slot.rightLab.style = prob === 0
-                        ? 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.4); min-width: 38px; text-align: right;'
-                        : 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 38px; text-align: right;';
+                    if (hasProb) {
+                        slot.rightLab.text = `${prob}%`;
+                        slot.rightLab.style = prob < 10
+                            ? 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.42); min-width: 36px; text-align: right;'
+                            : 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 36px; text-align: right;';
+                    } else {
+                        slot.rightLab.text = '—';
+                        slot.rightLab.style = 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.42); min-width: 36px; text-align: right;';
+                    }
                 } else if (this._hourlyMetric === 'wind') {
                     const windVal = toDisplayWind(d.windMax, isImperial);
                     const maxDisplayWind = toDisplayWind(maxWind, isImperial);
                     const fillW = windVal === null ? 0
-                        : Math.max(0, Math.min(BAR_WIDTH, Math.round((windVal / Math.max(1, maxDisplayWind)) * BAR_WIDTH)));
+                        : Math.max(4, Math.min(BAR_WIDTH, Math.round((windVal / Math.max(1, maxDisplayWind)) * BAR_WIDTH)));
+                    const dirText = isMissing(d.windDeg) ? '—' : compassLabel(d.windDeg, dt);
 
                     slot.leftLab.show();
-                    slot.leftLab.text = '💨';
-                    slot.leftLab.style = 'font-size: 11px; min-width: 28px; text-align: right; opacity: 0.75;';
+                    slot.leftLab.text = dirText;
+                    slot.leftLab.style = isMissing(d.windDeg)
+                        ? 'font-size: 12px; font-weight: 500; color: rgba(255, 255, 255, 0.35); text-align: right;'
+                        : 'font-size: 12px; font-weight: 500; color: rgba(255, 255, 255, 0.62); text-align: right;';
 
-                    slot.barBox.style = `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`;
-                    slot.barFill.style = `margin-left: 0px; width: ${fillW}px; height: 5px; background-gradient-direction: none; background-color: #30b0c7; border-radius: 3px;`;
+                    if (fillW > 0) {
+                        const colors = windBarColors(d.windMax ?? 0, barStyle);
+                        slot.barFill.show();
+                        slot.barFill.style = `margin-left: 0px; margin-top: 3px; width: ${fillW}px; height: 5px; background-gradient-direction: horizontal; background-gradient-start: ${colors.start}; background-gradient-end: ${colors.end}; border-radius: 3px;`;
+                    } else {
+                        slot.barFill.hide();
+                    }
+                    slot.zeroHalo?.hide();
+                    slot.zeroTick?.hide();
+                    slot.dotHalo?.hide();
+                    slot.dotCore?.hide();
 
                     slot.rightLab.text = windVal === null ? '—' : `${windVal}`;
-                    slot.rightLab.style = 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 30px; text-align: right;';
+                    slot.rightLab.style = 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 36px; text-align: right;';
                 } else {
-                    slot.barBox.style = `width: ${BAR_WIDTH}px; height: 5px; background-color: rgba(255, 255, 255, 0.14); border-radius: 3px;`;
-
                     slot.leftLab.show();
                     slot.leftLab.text = fmtTemp(d.tmin, isImperial);
-                    slot.leftLab.style = 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.6); min-width: 28px; text-align: right; opacity: 1;';
+                    slot.leftLab.style = 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.6); text-align: right; opacity: 1;';
 
                     const hasRange = !isMissing(d.tmin) && !isMissing(d.tmax);
                     const fillLeft = hasRange ? Math.max(0, Math.min(BAR_WIDTH - 8, Math.round(((d.tmin - globalMin) / rangeSpan) * BAR_WIDTH))) : 0;
                     const fillRight = hasRange ? Math.max(fillLeft + 8, Math.min(BAR_WIDTH, Math.round(((d.tmax - globalMin) / rangeSpan) * BAR_WIDTH))) : 0;
                     const fillWidth = Math.max(8, fillRight - fillLeft);
 
-                    slot.barFill.style = `margin-left: ${fillLeft}px; width: ${fillWidth}px; height: 5px; background-gradient-direction: horizontal; background-gradient-start: #59c0fa; background-gradient-end: #f59e0b; border-radius: 3px;`;
+                    if (hasRange) {
+                        const startHex = tempToHex(d.tmin, barStyle);
+                        const endHex = tempToHex(d.tmax, barStyle);
+                        slot.barFill.style = `margin-left: ${fillLeft}px; margin-top: 3px; width: ${fillWidth}px; height: 5px; background-gradient-direction: horizontal; background-gradient-start: ${startHex}; background-gradient-end: ${endHex}; border-radius: 3px;`;
+                        slot.barFill.show();
+                    } else {
+                        slot.barFill.hide();
+                    }
+
+                    let todayZeroX = null;
+                    if (slot.isToday && slot.zeroHalo && slot.zeroTick) {
+                        const todayIncludesZero = hasRange &&
+                            Math.min(d.tmin, Math.round(d.tmin)) <= 0 &&
+                            Math.max(d.tmax, Math.round(d.tmax)) >= 0;
+                        if (showZero && todayIncludesZero) {
+                            const daySpan = d.tmax - d.tmin;
+                            const zeroRatio = daySpan > 0.05
+                                ? Math.max(0, Math.min(1, (0 - d.tmin) / daySpan))
+                                : 0.5;
+                            todayZeroX = Math.max(1, Math.min(BAR_WIDTH - 2,
+                                Math.round(fillLeft + zeroRatio * (fillWidth - 1))));
+                            slot.zeroHalo.style = `margin-left: ${todayZeroX - 1}px; margin-top: 0px; width: 3px; height: 11px;`;
+                            slot.zeroTick.style = `margin-left: ${todayZeroX}px; margin-top: 0px; width: 1px; height: 11px;`;
+                            slot.zeroHalo.show();
+                            slot.zeroTick.show();
+                        } else {
+                            slot.zeroHalo.hide();
+                            slot.zeroTick.hide();
+                        }
+                    }
+
+                    if (slot.isToday && slot.dotHalo && slot.dotCore) {
+                        if (showDot && hasRange && !isMissing(currentTemp)) {
+                            const daySpan = d.tmax - d.tmin;
+                            const ratio = daySpan > 0.05
+                                ? Math.max(0, Math.min(1, (currentTemp - d.tmin) / daySpan))
+                                : 0.5;
+                            const minCenter = Math.max(4, fillLeft + 2);
+                            const maxCenter = Math.min(BAR_WIDTH - 5, fillLeft + fillWidth - 3);
+                            let dotCenterX = maxCenter >= minCenter
+                                ? Math.round(minCenter + ratio * (maxCenter - minCenter))
+                                : Math.round(fillLeft + fillWidth / 2);
+
+                            if (todayZeroX !== null && Math.abs(dotCenterX - todayZeroX) < 4) {
+                                const nudged = currentTemp >= 0
+                                    ? Math.max(dotCenterX, todayZeroX + 4)
+                                    : Math.min(dotCenterX, todayZeroX - 4);
+                                const safeMin = Math.max(4, fillLeft);
+                                const safeMax = Math.min(BAR_WIDTH - 5, fillLeft + fillWidth);
+                                dotCenterX = Math.max(safeMin, Math.min(safeMax, nudged));
+                            }
+
+                            slot.dotHalo.style = `margin-left: ${dotCenterX - 4}px; margin-top: 1px; width: 9px; height: 9px;`;
+                            slot.dotCore.style = `margin-left: ${dotCenterX - 2}px; margin-top: 3px; width: 5px; height: 5px;`;
+                            slot.dotHalo.show();
+                            slot.dotCore.show();
+                        } else {
+                            slot.dotHalo.hide();
+                            slot.dotCore.hide();
+                        }
+                    }
 
                     slot.rightLab.text = fmtTemp(d.tmax, isImperial);
-                    slot.rightLab.style = 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 30px; text-align: right;';
+                    slot.rightLab.style = 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 36px; text-align: right;';
                 }
             }
         }

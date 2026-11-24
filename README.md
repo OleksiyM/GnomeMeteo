@@ -5,9 +5,9 @@
 GnomeMeteo is a lightweight, modern weather extension for the GNOME desktop, featuring a clean card-based weather popup, native Libadwaita styling, multi-provider weather forecasts, and smooth segmented metric switching.
 
 <p align="center">
-  <img src="screenshots/screenshot-1.png" alt="GnomeMeteo Forecast Popup" width="45%" />
+  <img src="screenshots/screenshot-1.png" alt="GnomeMeteo Forecast Popup" width="37%" />
   &nbsp; &nbsp;
-  <img src="screenshots/05-preferences.png" alt="GnomeMeteo Preferences Window" width="48%" />
+  <img src="screenshots/05-preferences.png" alt="GnomeMeteo Preferences Window" width="58%" />
 </p>
 
 ---
@@ -24,30 +24,29 @@ The installer automatically verifies `SHA256SUMS` and Sigstore SLSA v1 release p
 
 To install a specific release version or strictly enforce provenance verification:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh | bash -s -- --version v1.2.0 --require-provenance
+curl -fsSL https://raw.githubusercontent.com/OleksiyM/GnomeMeteo/main/install.sh | bash -s -- --version v1.2.1 --require-provenance
 ```
 
 ---
 
 ## ✨ Features
 
-* **Visual Hierarchy:** Clean 3-tier main condition block (prominent temperature, condition name, daily max/min range, feels-like).
-* **Segmented Metric Switcher:** Instantly toggle between **Temperature**, **Precipitation Probability**, and **Wind Speed** across both hourly and 7-day views.
-* **Native Libadwaita Gradients:** Smooth daily temperature range bars built with native St gradient syntax.
-* **Adaptive Details Cards:** At-a-glance cards with monochrome symbolic icons, shown only when the provider supplies the data:
+* **Balanced Hero Header:** Optically centered current temperature, symbolic condition row, and compact feels-like + `↑ max° ↓ min°` summary synced live with the `"Now"` forecast slot.
+* **Segmented Metric Switcher:** Toggle seamlessly across both 24-hour and 7-day views between **Temperature**, **Precipitation** (type-aware snow/rain/storm icons, daily `mm`/`in` volume alongside probability `%`, and dimmed `< 10%` model noise), and **Wind** (speed + compass direction arrows and labels).
+* **Thermal Spectrum & Minimalist Themes:** Choose between **Thermal Spectrum** (physically grounded `−20°C … +35°C` temperature colors, precipitation intensity, and Beaufort wind scale) and **Minimalist** (monochrome Libadwaita slate-to-pearl), complete with Today’s **current-temperature dot** and **0° freezing threshold mark**.
+* **Interactive Libadwaita Preferences:** Clean single-page GTK4/Libadwaita dialog featuring a **live Cairo scale preview**, smart panel toggles, and localized city search.
+* **Adaptive `2×2` Details Cards:** Evenly balanced tiles with monochrome symbolic icons:
   * 🌅 **Sunrise & Sunset** (`↑ Rise  ↓ Set`) with computed **Daylight duration**
   * 🌔 **Moon Phase** (astronomically computed with illumination %)
   * 💧 **Humidity & Dew Point**
   * 🧭 **Atmospheric Pressure** (`mmHg` / `inHg` with dynamic Low / Normal / High level)
   * 🌬️ **Wind** with compass direction, ☀️ **UV Index** with level, 👁️ **Visibility**
-* **Zero Precipitation De-emphasis:** Days and hours with 0% rain probability are gracefully dimmed to highlight relevant weather.
 * **Keyless Multi-Provider Support:**
   * **Open-Meteo** (global, with choice of prediction models: Best match, ECMWF IFS, DWD ICON, GFS, GEM)
   * **MET Norway** (`api.met.no`, CC BY-SA 4.0)
   * **NOAA NWS** (United States official forecasts)
 * **Honest Data:** If a provider does not supply a value (e.g. rain probability from MET Norway), the popup shows “—” instead of an invented number.
-* **Clean Single-Page Preferences:** Fast, scrollable Libadwaita settings dialog with smart top-bar indicator toggles and localized city search.
-* **Full Localization:** Native Ukrainian, English, and Russian translations.
+* **Unified Live Localization:** Complete Ukrainian, English, and Russian translations synced instantly across both the GNOME Shell popup and the Libadwaita Preferences window, with Metric (`°C`, `km/h`, `mm`, `mmHg`) and Imperial (`°F`, `mph`, `in`, `inHg`) units.
 * **Privacy & Supply-Chain Security:** No tracking, no accounts, no API keys. Releases are attested with Sigstore SLSA v1 provenance.
 
 ---
@@ -59,7 +58,7 @@ Preferences contain an **(i)** button next to *Provider* and *Forecast model* wi
 | Provider | Best for | Limitations |
 |---|---|---|
 | **Open-Meteo** | Everywhere, **including Ukraine** — the default | Depends on the chosen model (see below) |
-| **MET Norway** | Europe; a good independent second opinion | No rain probability and no visibility (shown as “—”); sunrise/sunset only for today |
+| **MET Norway** | Europe; a good independent second opinion | No rain probability % (daily bars fall back to mm totals) and no visibility (shown as “—”); sunrise/sunset only for today |
 | **NOAA NWS** | **United States only** | Other regions return an error |
 
 | Forecast model (Open-Meteo) | When to use | Limitations |

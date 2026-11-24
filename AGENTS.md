@@ -10,7 +10,8 @@ GnomeMeteo (`meteo@oleksiym.github.io`) is a lightweight, modern GNOME Shell ext
 - `extension/indicator.js`: Top-bar `PanelMenu.Button` indicator and popup card UI (`St` / `Clutter`), `WeatherCoordinator` timer, and runtime `MESSAGES` dictionary (`uk`, `ru`, `en`).
 - `extension/weather.js`: Keyless multi-provider client (`Open-Meteo`, `MET Norway`, `NOAA NWS`), astronomical `sunGeometry` calculator, and auto-location (`GeoClue` + IP fallback + localized reverse geocoding).
 - `extension/moon.js`: Pure astronomical lunar phase and illumination calculator (`moonPhase`).
-- `extension/prefs.js`: Single-page Libadwaita (`Adw` / `GTK4`) preferences window.
+- `extension/thermal.js`: Shared physical color scales (`tempToHex`, `precipBarColors`, `windBarColors`) for `-20°C … +35°C` thermal spectrum and monochrome minimalist themes.
+- `extension/prefs.js`: Single-page Libadwaita (`Adw` / `GTK4`) preferences window with live Cairo scale preview and live language sync.
 - `extension/assets/`: App icons and bundled monochrome symbolic SVG icons (`meteo-*-symbolic.svg`).
 - `extension/schemas/`: GSettings schema (`org.gnome.shell.extensions.meteo.gschema.xml`).
 - `po/`: GNU Gettext catalogs (`uk.po`, `ru.po`, `meteo@oleksiym.github.io.pot`, `LINGUAS`) for `prefs.js`.
@@ -24,7 +25,7 @@ GnomeMeteo (`meteo@oleksiym.github.io`) is a lightweight, modern GNOME Shell ext
    - `extension/extension.js` dynamically imports `indicator.js` with a cache-busting timestamp, and `MeteoIndicator` registers a unique GType (`MeteoIndicator_${Date.now()}`). Never replace this with a static top-level import of `indicator.js`, or live reloads on Wayland will break.
 2. **Dual Localization Architecture (i18n)**:
    - **Popup & Indicator (`extension/indicator.js`)**: Uses the in-memory `MESSAGES` dictionary (`uk`, `ru`, `en`) resolved by `resolveLang(settings)`. This enables instant, live language switching inside the GNOME Shell popup without logging out of the desktop session.
-   - **Preferences Dialog (`extension/prefs.js`)**: Uses standard GNU Gettext (`_('...')`) compiled from `po/*.po` into `extension/locale/<lang>/LC_MESSAGES/meteo@oleksiym.github.io.mo`.
+   - **Preferences Dialog (`extension/prefs.js`)**: Uses GNU Gettext (`_('...')`) compiled from `po/*.po` into `extension/locale/<lang>/LC_MESSAGES/meteo@oleksiym.github.io.mo`, and dynamically honors the extension's `language` GSettings key (`LANGUAGE` + `Gettext.textdomain(...)`) with live page rebuilds.
    - **Web Landing Page (`index.html`)**: Uses client-side `I18N` dictionary (`en`, `uk`, `ru`) with instant language switcher.
    - **Never hand-edit binary `.mo` files.** Update `po/*.po` and run `./scripts/build-i18n.sh`.
 3. **GTK4 vs GNOME Shell `St` / `Clutter`**:

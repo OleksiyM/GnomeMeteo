@@ -97,5 +97,25 @@
       <description>Forecast model for Open-Meteo service</description>
     </key>
 
+    <key name="temp-bar-style" type="s">
+      <choices>
+        <choice value="spectrum"/>
+        <choice value="minimal"/>
+      </choices>
+      <default>'spectrum'</default>
+      <summary>Daily temperature bar color style</summary>
+      <description>spectrum = thermal spectrum (-20°C..+35°C), minimal = calm Libadwaita cold/warm scale</description>
+    </key>
+
+    <key name="show-current-temp-dot" type="b">
+      <default>true</default>
+      <summary>Show current temperature dot on today’s bar</summary>
+    </key>
+
+    <key name="show-zero-mark" type="b">
+      <default>true</default>
+      <summary>Show 0° freezing point mark on daily bars</summary>
+    </key>
+
   </schema>
 </schemalist>

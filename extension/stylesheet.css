@@ -1,14 +1,29 @@
 /* GnomeMeteo — Native GNOME Shell St Stylesheet */
 
+.meteo-range-track {
+    background-color: rgba(255, 255, 255, 0.14);
+    border-radius: 3px;
+}
+
 .meteo-range-fill {
     border-radius: 3px;
-    background-gradient-direction: horizontal;
-    background-gradient-start: #59c0fa;
-    background-gradient-end: #f59e0b;
+}
+
+.meteo-zero-halo {
+    background-color: rgba(15, 19, 26, 0.5);
+    border-radius: 1px;
+}
+
+.meteo-zero-tick {
+    background-color: rgba(255, 255, 255, 0.75);
+}
+
+.meteo-range-dot-halo {
+    background-color: rgba(18, 22, 30, 0.92);
+    border-radius: 5px;
 }
 
 .meteo-range-dot {
-    border-radius: 4px;
     background-color: #ffffff;
-    border: 1.5px solid rgba(16, 20, 28, 0.85);
+    border-radius: 3px;
 }

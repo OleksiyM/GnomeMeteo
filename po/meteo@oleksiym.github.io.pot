@@ -269,3 +269,43 @@ msgstr ""
 #: extension/prefs.js
 msgid "Ukraine: “Best match”, or ECMWF IFS for the longer range."
 msgstr ""
+
+#: extension/prefs.js
+msgid "7-day forecast"
+msgstr ""
+
+#: extension/prefs.js
+msgid "Range and intensity bars in the forecast popup"
+msgstr ""
+
+#: extension/prefs.js
+msgid "Bar color style"
+msgstr ""
+
+#: extension/prefs.js
+msgid "Color palette for temperature, precipitation and wind"
+msgstr ""
+
+#: extension/prefs.js
+msgid "Thermal spectrum"
+msgstr ""
+
+#: extension/prefs.js
+msgid "Minimalist"
+msgstr ""
+
+#: extension/prefs.js
+msgid "Current temperature dot"
+msgstr ""
+
+#: extension/prefs.js
+msgid "Mark current temperature on Today’s range bar"
+msgstr ""
+
+#: extension/prefs.js
+msgid "Freezing point mark (0°)"
+msgstr ""
+
+#: extension/prefs.js
+msgid "Show 0° threshold on Today’s bar when in range"
+msgstr ""
