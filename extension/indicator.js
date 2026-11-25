@@ -1591,12 +1591,21 @@ export const MeteoIndicator = GObject.registerClass(
             let maxPrecipSum = 1;
             for (const slot of this._dailySlots) {
                 const d = slot.data;
-                if (!isMissing(d.tmin) && d.tmin < globalMin) globalMin = d.tmin;
-                if (!isMissing(d.tmax) && d.tmax > globalMax) globalMax = d.tmax;
+                const dMin = toDisplayTemp(d.tmin, isImperial);
+                const dMax = toDisplayTemp(d.tmax, isImperial);
+                if (dMin !== null) {
+                    if (dMin < globalMin) globalMin = dMin;
+                    if (dMin > globalMax) globalMax = dMin;
+                }
+                if (dMax !== null) {
+                    if (dMax < globalMin) globalMin = dMax;
+                    if (dMax > globalMax) globalMax = dMax;
+                }
                 if ((d.windMax ?? 0) > maxWind) maxWind = d.windMax;
                 if (!isMissing(d.precipSum) && d.precipSum > maxPrecipSum) maxPrecipSum = d.precipSum;
             }
-            const rangeSpan = Math.max(1, globalMax - globalMin);
+            const rawSpan = globalMax - globalMin;
+            const rangeSpan = Number.isFinite(rawSpan) ? Math.max(1, rawSpan) : 1;
             const BAR_WIDTH = 104;
 
             for (const slot of this._dailySlots) {
@@ -1675,33 +1684,38 @@ export const MeteoIndicator = GObject.registerClass(
                     slot.rightLab.text = windVal === null ? '—' : `${windVal}`;
                     slot.rightLab.style = 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 36px; text-align: right;';
                 } else {
+                    const dispMin = toDisplayTemp(d.tmin, isImperial);
+                    const dispMax = toDisplayTemp(d.tmax, isImperial);
                     slot.leftLab.show();
-                    slot.leftLab.text = fmtTemp(d.tmin, isImperial);
+                    slot.leftLab.text = dispMin === null ? '—' : `${dispMin}°`;
                     slot.leftLab.style = 'font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, 0.6); text-align: right; opacity: 1;';
 
-                    const hasRange = !isMissing(d.tmin) && !isMissing(d.tmax);
-                    const fillLeft = hasRange ? Math.max(0, Math.min(BAR_WIDTH - 8, Math.round(((d.tmin - globalMin) / rangeSpan) * BAR_WIDTH))) : 0;
-                    const fillRight = hasRange ? Math.max(fillLeft + 8, Math.min(BAR_WIDTH, Math.round(((d.tmax - globalMin) / rangeSpan) * BAR_WIDTH))) : 0;
+                    const hasRange = dispMin !== null && dispMax !== null;
+                    const low = hasRange ? Math.min(dispMin, dispMax) : 0;
+                    const high = hasRange ? Math.max(dispMin, dispMax) : 0;
+                    const fillLeft = hasRange ? Math.max(0, Math.min(BAR_WIDTH - 8, Math.round(((low - globalMin) / rangeSpan) * BAR_WIDTH))) : 0;
+                    const fillRight = hasRange ? Math.max(fillLeft + 8, Math.min(BAR_WIDTH, Math.round(((high - globalMin) / rangeSpan) * BAR_WIDTH))) : 0;
                     const fillWidth = Math.max(8, fillRight - fillLeft);
 
                     if (hasRange) {
-                        const startHex = tempToHex(d.tmin, barStyle);
-                        const endHex = tempToHex(d.tmax, barStyle);
+                        const startC = isImperial ? (low - 32) * 5 / 9 : low;
+                        const endC = isImperial ? (high - 32) * 5 / 9 : high;
+                        const startHex = tempToHex(startC, barStyle);
+                        const endHex = tempToHex(endC, barStyle);
                         slot.barFill.style = `margin-left: ${fillLeft}px; margin-top: 3px; width: ${fillWidth}px; height: 5px; background-gradient-direction: horizontal; background-gradient-start: ${startHex}; background-gradient-end: ${endHex}; border-radius: 3px;`;
                         slot.barFill.show();
                     } else {
                         slot.barFill.hide();
                     }
 
+                    const freezeTemp = isImperial ? 32 : 0;
                     let todayZeroX = null;
                     if (slot.isToday && slot.zeroHalo && slot.zeroTick) {
-                        const todayIncludesZero = hasRange &&
-                            Math.min(d.tmin, Math.round(d.tmin)) <= 0 &&
-                            Math.max(d.tmax, Math.round(d.tmax)) >= 0;
+                        const todayIncludesZero = hasRange && low <= freezeTemp && high >= freezeTemp;
                         if (showZero && todayIncludesZero) {
-                            const daySpan = d.tmax - d.tmin;
-                            const zeroRatio = daySpan > 0.05
-                                ? Math.max(0, Math.min(1, (0 - d.tmin) / daySpan))
+                            const daySpan = high - low;
+                            const zeroRatio = daySpan > 0
+                                ? Math.max(0, Math.min(1, (freezeTemp - low) / daySpan))
                                 : 0.5;
                             todayZeroX = Math.max(1, Math.min(BAR_WIDTH - 2,
                                 Math.round(fillLeft + zeroRatio * (fillWidth - 1))));
@@ -1716,10 +1730,11 @@ export const MeteoIndicator = GObject.registerClass(
                     }
 
                     if (slot.isToday && slot.dotHalo && slot.dotCore) {
-                        if (showDot && hasRange && !isMissing(currentTemp)) {
-                            const daySpan = d.tmax - d.tmin;
-                            const ratio = daySpan > 0.05
-                                ? Math.max(0, Math.min(1, (currentTemp - d.tmin) / daySpan))
+                        const dispCurrent = toDisplayTemp(currentTemp, isImperial);
+                        if (showDot && hasRange && dispCurrent !== null) {
+                            const daySpan = high - low;
+                            const ratio = daySpan > 0
+                                ? Math.max(0, Math.min(1, (dispCurrent - low) / daySpan))
                                 : 0.5;
                             const minCenter = Math.max(4, fillLeft + 2);
                             const maxCenter = Math.min(BAR_WIDTH - 5, fillLeft + fillWidth - 3);
@@ -1746,7 +1761,7 @@ export const MeteoIndicator = GObject.registerClass(
                         }
                     }
 
-                    slot.rightLab.text = fmtTemp(d.tmax, isImperial);
+                    slot.rightLab.text = dispMax === null ? '—' : `${dispMax}°`;
                     slot.rightLab.style = 'font-size: 13px; font-weight: 600; color: #ffffff; min-width: 36px; text-align: right;';
                 }
             }
