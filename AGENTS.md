@@ -11,10 +11,11 @@ GnomeMeteo (`meteo@oleksiym.github.io`) is a lightweight, modern GNOME Shell ext
 - `extension/weather.js`: Keyless multi-provider client (`Open-Meteo`, `MET Norway`, `NOAA NWS`), astronomical `sunGeometry` calculator, and auto-location (`GeoClue` + IP fallback + localized reverse geocoding).
 - `extension/moon.js`: Pure astronomical lunar phase and illumination calculator (`moonPhase`).
 - `extension/thermal.js`: Shared physical color scales (`tempToHex`, `precipBarColors`, `windBarColors`) for `-20°C … +35°C` thermal spectrum and monochrome minimalist themes.
-- `extension/prefs.js`: Single-page Libadwaita (`Adw` / `GTK4`) preferences window with live Cairo scale preview and live language sync.
+- `extension/prefs.js`: Dynamic hot-reload loader (`import('./prefs-ui.js?t=' + Date.now())`) reloading preferences UI on every window open without restarting `org.gnome.Shell.Extensions`.
+- `extension/prefs-ui.js`: Single-page Libadwaita (`Adw` / `GTK4`) preferences window with live Cairo scale preview, live language sync, and custom About dialog with GitHub release update check.
 - `extension/assets/`: App icons and bundled monochrome symbolic SVG icons (`meteo-*-symbolic.svg`).
 - `extension/schemas/`: GSettings schema (`org.gnome.shell.extensions.meteo.gschema.xml`).
-- `po/`: GNU Gettext catalogs (`uk.po`, `ru.po`, `meteo@oleksiym.github.io.pot`, `LINGUAS`) for `prefs.js`.
+- `po/`: GNU Gettext catalogs (`uk.po`, `ru.po`, `meteo@oleksiym.github.io.pot`, `LINGUAS`) for `prefs-ui.js`.
 - `scripts/`: Build and verification scripts (`build-i18n.sh`, `build-package.sh`, `check-version.sh`).
 - `install.sh` / `uninstall.sh`: Per-user installer (with `SHA256SUMS` + Sigstore SLSA v1 provenance verification) and uninstaller (`--purge`).
 - `index.html`: Multilingual (`EN` / `UA` / `RU`) landing page deployed to GitHub Pages.
@@ -23,13 +24,14 @@ GnomeMeteo (`meteo@oleksiym.github.io`) is a lightweight, modern GNOME Shell ext
 
 1. **Wayland Hot-Reload**:
    - `extension/extension.js` dynamically imports `indicator.js` with a cache-busting timestamp, and `MeteoIndicator` registers a unique GType (`MeteoIndicator_${Date.now()}`). Never replace this with a static top-level import of `indicator.js`, or live reloads on Wayland will break.
+   - `extension/prefs.js` similarly imports `prefs-ui.js` with a cache-busting timestamp (`MeteoResultRow_${Date.now()}_${seq}`) so preferences UI reloads cleanly on every open.
 2. **Dual Localization Architecture (i18n)**:
    - **Popup & Indicator (`extension/indicator.js`)**: Uses the in-memory `MESSAGES` dictionary (`uk`, `ru`, `en`) resolved by `resolveLang(settings)`. This enables instant, live language switching inside the GNOME Shell popup without logging out of the desktop session.
-   - **Preferences Dialog (`extension/prefs.js`)**: Uses GNU Gettext (`_('...')`) compiled from `po/*.po` into `extension/locale/<lang>/LC_MESSAGES/meteo@oleksiym.github.io.mo`, and dynamically honors the extension's `language` GSettings key (`LANGUAGE` + `Gettext.textdomain(...)`) with live page rebuilds.
+   - **Preferences Dialog (`extension/prefs-ui.js`)**: Uses GNU Gettext (`_('...')`) compiled from `po/*.po` into `extension/locale/<lang>/LC_MESSAGES/meteo@oleksiym.github.io.mo`, and dynamically honors the extension's `language` GSettings key (`LANGUAGE` + `Gettext.textdomain(...)`) with live page rebuilds.
    - **Web Landing Page (`index.html`)**: Uses client-side `I18N` dictionary (`en`, `uk`, `ru`) with instant language switcher.
    - **Never hand-edit binary `.mo` files.** Update `po/*.po` and run `./scripts/build-i18n.sh`.
 3. **GTK4 vs GNOME Shell `St` / `Clutter`**:
-   - **`prefs.js` runs in GTK4 / Libadwaita**: GTK4 widgets do **not** have a `.destroy()` method. Always unparent rows via `group.remove(row)`.
+   - **`prefs-ui.js` runs in GTK4 / Libadwaita**: GTK4 widgets do **not** have a `.destroy()` method. Always unparent rows via `group.remove(row)`.
    - **`indicator.js` runs in GNOME Shell (`St` / `Clutter`)**: Standard CSS `linear-gradient()` is not supported by `St`. Always use native `St` gradient properties: `background-gradient-direction: horizontal; background-gradient-start: #...; background-gradient-end: #...;`.
    - **Bundled Symbolic Icons**: To avoid missing icons across different Linux distributions, custom symbolic icons (`meteo-temperature-symbolic.svg`, `meteo-humidity-symbolic.svg`, `meteo-pressure-symbolic.svg`) live in `extension/assets/` and are loaded via `Gio.FileIcon`.
 
@@ -67,7 +69,7 @@ Releases follow Semantic Versioning (`X.Y.Z`).
 
 1. **Bump Version**:
    - `extension/metadata.json`: increment integer `"version"` and set `"version-name": "X.Y.Z"`.
-   - `extension/prefs.js`: update fallback version string in `Adw.AboutDialog` to `"X.Y.Z"`.
+   - `extension/prefs-ui.js`: update fallback version string in the custom About dialog to `"X.Y.Z"`.
 2. **Verify Tag & Package Contract**:
    ```bash
    ./scripts/check-version.sh vX.Y.Z
@@ -88,5 +90,5 @@ Releases follow Semantic Versioning (`X.Y.Z`).
 ## 5. Identity & Lineage
 
 - Repository author: `OleksiyM <oleksiymaliovanyy@gmail.com>`.
-- Lineage credit to original WeatherGlass author Vijay Bala is preserved in `README.md`, `LICENSE`, `extension/prefs.js` (`Adw.AboutDialog`), and `index.html`.
+- Lineage credit to original WeatherGlass author Vijay Bala is preserved in `README.md`, `LICENSE`, `extension/prefs-ui.js` (About dialog), and `index.html`.
 - Do not push to `origin` unless explicitly instructed by the operator.

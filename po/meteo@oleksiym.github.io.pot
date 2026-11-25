@@ -309,3 +309,40 @@ msgstr ""
 #: extension/prefs.js
 msgid "Show 0° threshold on Today’s bar when in range"
 msgstr ""
+
+
+#: extension/prefs.js
+msgid "Checking for updates…"
+msgstr ""
+
+#: extension/prefs.js
+msgid "You are up to date"
+msgstr ""
+
+#: extension/prefs.js
+msgid "Update available: %s"
+msgstr ""
+
+#: extension/prefs.js
+msgid "Could not check for updates"
+msgstr ""
+
+#: extension/prefs.js
+msgid "Open website to update"
+msgstr ""
+
+#: extension/prefs.js
+msgid "Copy update command"
+msgstr ""
+
+#: extension/prefs.js
+msgid "Copied!"
+msgstr ""
+
+#: extension/prefs.js
+msgid "Website"
+msgstr ""
+
+#: extension/prefs.js
+msgid "Based on Weatherglass by Vijay Bala"
+msgstr ""

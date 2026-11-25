@@ -309,3 +309,40 @@ msgstr "Позначка 0°"
 #: extension/prefs.js
 msgid "Show 0° threshold on Today’s bar when in range"
 msgstr "Показувати позначку 0° на смужці «Сьогодні», якщо в діапазоні"
+
+
+#: extension/prefs.js
+msgid "Checking for updates…"
+msgstr "Перевірка оновлень…"
+
+#: extension/prefs.js
+msgid "You are up to date"
+msgstr "У вас найновіша версія"
+
+#: extension/prefs.js
+msgid "Update available: %s"
+msgstr "Доступне оновлення: %s"
+
+#: extension/prefs.js
+msgid "Could not check for updates"
+msgstr "Не вдалося перевірити оновлення"
+
+#: extension/prefs.js
+msgid "Open website to update"
+msgstr "Відкрити сайт для оновлення"
+
+#: extension/prefs.js
+msgid "Copy update command"
+msgstr "Скопіювати команду оновлення"
+
+#: extension/prefs.js
+msgid "Copied!"
+msgstr "Скопійовано!"
+
+#: extension/prefs.js
+msgid "Website"
+msgstr "Сайт"
+
+#: extension/prefs.js
+msgid "Based on Weatherglass by Vijay Bala"
+msgstr "На основі Weatherglass від Vijay Bala"

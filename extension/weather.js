@@ -2,7 +2,7 @@
 
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
-import Soup from 'gi://Soup';
+import Soup from 'gi://Soup?version=3.0';
 
 const OPEN_METEO_FORECAST_API = 'https://api.open-meteo.com/v1/forecast';
 const OPEN_METEO_GEOCODING_API = 'https://geocoding-api.open-meteo.com/v1/search';
