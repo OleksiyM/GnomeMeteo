@@ -825,7 +825,7 @@ class PreferencesController {
     _presentAboutDialog(window) {
         ensureAboutCss();
 
-        const currentVersion = this._ext.metadata['version-name'] ?? '1.3.0';
+        const currentVersion = this._ext.metadata['version-name'] ?? '1.4.0';
         const cancellable = new Gio.Cancellable();
         let alive = true;
         let copyResetId = 0;
